@@ -1,0 +1,6 @@
+<div class="card p-3 mb-3">
+  <h2>{{ doc.title }}</h2>
+  <div v-html="doc.content" class="mb-2"></div>
+  <p class="text-muted">등록 IP: {{ doc.ip }}</p>
+  <button @click="$props.onEdit(doc)" class="btn btn-sm btn-warning">수정</button>
+</div>

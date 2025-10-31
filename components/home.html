@@ -1,0 +1,11 @@
+<div>
+  <div v-if="searchResults.length===0">
+    <h2>대문 소개</h2>
+    <p>🧭 로르륵위키에 오신 것을 환영합니다! 이 위키는 문서를 등록, 수정, 검색 가능합니다.</p>
+  </div>
+  <ul class="list-group" v-else>
+    <li v-for="doc in searchResults" @click="$props.onView(doc)" class="list-group-item list-group-item-action">
+      {{ doc.title }} - {{ doc.dateStr }}
+    </li>
+  </ul>
+</div>
