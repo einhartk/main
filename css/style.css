@@ -6,12 +6,24 @@
 @import url('components/floating-bar.css');
 
 /* 기본 설정 */
+:root {
+  --header-height: 56px;
+  --sidebar-width: 280px;
+  --content-padding: 1.5rem;
+  --border-radius: 8px;
+  --box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
+}
+
 body {
-  font-family: 'Noto Sans KR', sans-serif;
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   background: #f5f6fa;
   color: #333;
   margin: 0;
-  padding-top: 70px; /* fixed header 때문에 내용 가림 방지 */
+  padding-top: var(--header-height);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a { 
@@ -75,29 +87,190 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px;
+  padding: 0.5rem 1rem;
   background: #4a69bd;
   color: white;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 0.5rem;
   position: fixed;
   top: 0;
-  width: 100%;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
   z-index: 999;
+  box-shadow: var(--box-shadow);
 }
 
-header h1 { 
-  margin: 0; 
-  cursor: pointer; 
+header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
 }
 
-header input.form-control { 
-  flex: 1 1 200px; 
-  max-width: 300px; 
-  margin-right: 5px; 
+header .form-control {
+  height: 36px;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: 4px;
+  padding: 0.375rem 0.75rem;
+  box-shadow: none;
+  transition: var(--transition);
 }
 
-/* 메인 레이아웃 */
+header .form-control:focus {
+  box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.25);
+}
+
+header .btn {
+  height: 36px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* 모바일 메뉴 토글 버튼 */
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.5rem;
+}
+
+/* 반응형 레이아웃 */
+.main-container {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - var(--header-height));
+  padding: 1rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.content-wrapper {
+  display: flex;
+  flex: 1;
+  gap: 1.5rem;
+  position: relative;
+}
+
+/* 사이드바 */
+.sidebar-container {
+  flex: 0 0 var(--sidebar-width);
+  max-width: var(--sidebar-width);
+  transition: var(--transition);
+  position: sticky;
+  top: calc(var(--header-height) + 1rem);
+  height: fit-content;
+  max-height: calc(100vh - var(--header-height) - 2rem);
+  overflow-y: auto;
+}
+
+/* 메인 콘텐츠 */
+#content {
+  flex: 1;
+  min-width: 0; /* flexbox에서 컨텐츠가 넘치는 문제 방지 */
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 1.5rem;
+  transition: var(--transition);
+}
+
+/* 반응형 조정 */
+@media (max-width: 992px) {
+  :root {
+    --sidebar-width: 240px;
+  }
+  
+  .content-wrapper {
+    flex-direction: column;
+  }
+  
+  .sidebar-container {
+    position: static;
+    max-width: 100%;
+    width: 100%;
+    margin-bottom: 1rem;
+  }
+  
+  #content {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --content-padding: 1rem;
+  }
+  
+  .main-container {
+    padding: 0.75rem;
+  }
+  
+  header {
+    padding: 0.5rem;
+  }
+  
+  header h1 {
+    font-size: 1.25rem;
+    max-width: 150px;
+  }
+  
+  .menu-toggle {
+    display: block;
+  }
+  
+  .sidebar-container {
+    position: fixed;
+    top: var(--header-height);
+    left: -100%;
+    height: calc(100vh - var(--header-height));
+    z-index: 998;
+    background: white;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: var(--transition);
+    padding: 1rem;
+  }
+  
+  .sidebar-container.show {
+    left: 0;
+  }
+  
+  #content {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  :root {
+    --content-padding: 0.75rem;
+  }
+  
+  header .btn {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+  }
+  
+  header input.form-control {
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .main-container {
+    padding: 0.5rem;
+  }
+}
 main { 
   display: flex; 
   flex-wrap: wrap; 
