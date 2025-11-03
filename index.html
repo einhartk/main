@@ -68,12 +68,27 @@
   </div>
 
   <!-- 헤더 -->
-  <header class="d-flex flex-wrap align-items-center shadow-sm bg-white fixed-top p-2">
-    <h1 @click="goHome" class="me-3">🧭 로르륵위키</h1>
-    <div class="d-flex align-items-center flex-wrap">
-      <input v-model="searchQuery" placeholder="문서 검색..." class="form-control form-control-sm me-2" />
-      <button @click="searchDocs" class="btn btn-sm btn-primary me-2">검색</button>
-      <button @click="editDoc()" class="btn btn-sm btn-success">새 문서 작성</button>
+  <header class="bg-white fixed-top">
+    <div class="container-fluid">
+      <div class="d-flex align-items-center">
+        <h1 @click="goHome" class="me-3 flex-shrink-0">🧭 로르륵위키</h1>
+        <div class="search-container me-2">
+          <input v-model="searchQuery" 
+                 @keyup.enter="searchDocs"
+                 placeholder="문서 검색..." 
+                 class="form-control form-control-sm" />
+        </div>
+        <div class="btn-group">
+          <button @click="searchDocs" class="btn btn-sm btn-primary">
+            <span class="d-none d-sm-inline">검색</span>
+            <i class="bi bi-search d-sm-none"></i>
+          </button>
+          <button @click="editDoc()" class="btn btn-sm btn-success">
+            <span class="d-none d-sm-inline">새 문서</span>
+            <i class="bi bi-plus-lg d-sm-none"></i>
+          </button>
+        </div>
+      </div>
     </div>
   </header>
 

@@ -496,13 +496,44 @@ new Vue({
       }
     },
     async searchDocs(){
-      if(!this.searchQuery) return;
-      this.loading=true; this.searchMode=true;
-      const snapshot = await db.collection('docs').get();
-      this.searchResults = snapshot.docs
-        .map(d=>({...d.data(), dateStr: new Date(d.data().date.seconds*1000).toLocaleString()}))
-        .filter(d=>d.title.includes(this.searchQuery));
-      this.loading=false;
+      if(!this.searchQuery || this.searchQuery.trim() === '') {
+        this.searchMode = false;
+        this.searchResults = [];
+        return;
+      }
+      
+      this.loading = true;
+      this.searchMode = true;
+      
+      try {
+        const snapshot = await db.collection('docs').get();
+        const searchTerm = this.searchQuery.toLowerCase().trim();
+        
+        this.searchResults = snapshot.docs
+          .map(doc => {
+            const data = doc.data();
+            return {
+              ...data,
+              id: doc.id,
+              dateStr: data.date ? new Date(data.date.seconds * 1000).toLocaleString() : '날짜 없음'
+            };
+          })
+          .filter(doc => {
+            const titleMatch = doc.title && doc.title.toLowerCase().includes(searchTerm);
+            const contentMatch = doc.content && doc.content.toLowerCase().includes(searchTerm);
+            return titleMatch || contentMatch;
+          });
+          
+        // If no results, show a message
+        if (this.searchResults.length === 0) {
+          console.log('검색 결과가 없습니다.');
+        }
+      } catch (error) {
+        console.error('검색 중 오류가 발생했습니다:', error);
+        alert('검색 중 오류가 발생했습니다: ' + (error.message || error));
+      } finally {
+        this.loading = false;
+      }
     },
     toggleEditUserId(){
       if(this.editUserId) {

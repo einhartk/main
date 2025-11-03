@@ -85,20 +85,39 @@ h1, h2, h3 {
 /* 헤더 */
 header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 1rem;
-  background: #4a69bd;
-  color: white;
-  flex-wrap: wrap;
-  gap: 0.5rem;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: var(--header-height);
-  z-index: 999;
+  z-index: 1000;
+  height: auto;
+  min-height: var(--header-height);
+  background: white;
   box-shadow: var(--box-shadow);
+  padding: 0.5rem 1rem;
+}
+
+header > .container-fluid,
+header > .container-fluid > .d-flex {
+  flex-wrap: nowrap;
+  min-width: 0; /* flexbox에서 컨테이너가 줄어들 수 있도록 함 */
+}
+
+header .search-container {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0; /* flexbox에서 컨테이너가 줄어들 수 있도록 함 */
+  max-width: 600px;
+}
+
+header .search-container .form-control {
+  min-width: 120px;
+  flex: 1 1 auto;
+}
+
+header .btn-group {
+  flex-shrink: 0;
+  margin-left: 0.5rem;
 }
 
 header h1 {
