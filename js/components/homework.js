@@ -84,7 +84,7 @@ Vue.component('homework-view', {
                         <div class="mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 class="mb-0 fw-bold border-bottom pb-1">일일 숙제</h6>
-                                <div class="form-check form-switch d-flex align-items-center">
+                                <div class="form-check form-switch d-flex align-items-center toggle-all">
                                     <input class="form-check-input me-2" type="checkbox" role="switch"
                                            :id="'toggle-all-daily-' + char.CharacterName"
                                            @change="toggleAllDailyTasks(char.CharacterName)"
@@ -120,7 +120,7 @@ Vue.component('homework-view', {
                         <div class="mb-2">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 class="mb-0 fw-bold border-bottom pb-1">주간 레이드</h6>
-                                <div class="form-check form-switch d-flex align-items-center">
+                                <div class="form-check form-switch d-flex align-items-center toggle-all">
                                     <input class="form-check-input me-2" type="checkbox" role="switch"
                                            :id="'toggle-all-weekly-' + char.CharacterName"
                                            @change="toggleAllWeeklyTasks(char.CharacterName)"
@@ -317,7 +317,13 @@ Vue.component('homework-view', {
             return this.dailyTasks[characterName][taskType];
         },
 
-        saveDailyTask(characterName, taskType) {
+        saveDailyTask(characterName, taskType = null) {
+            // If taskType is provided, ensure the character exists in the tasks object
+            if (taskType && !this.dailyTasks[characterName]) {
+                this.dailyTasks[characterName] = {};
+            }
+            
+            // Save to localStorage
             localStorage.setItem('dailyTasks', JSON.stringify(this.dailyTasks));
         },
 
@@ -331,7 +337,13 @@ Vue.component('homework-view', {
             return this.weeklyTasks[characterName][taskType];
         },
 
-        saveWeeklyTask(characterName, taskType) {
+        saveWeeklyTask(characterName, taskType = null) {
+            // If taskType is provided, ensure the character exists in the tasks object
+            if (taskType && !this.weeklyTasks[characterName]) {
+                this.weeklyTasks[characterName] = {};
+            }
+            
+            // Save to localStorage
             localStorage.setItem('weeklyTasks', JSON.stringify(this.weeklyTasks));
         },
 
@@ -342,10 +354,16 @@ Vue.component('homework-view', {
                 this.getDailyTask(characterName, task).completed
             );
             
+            // Update all tasks first
             tasks.forEach(task => {
                 this.getDailyTask(characterName, task).completed = !allCompleted;
-                this.saveDailyTask(characterName, task);
             });
+            
+            // Save once after all updates
+            this.saveDailyTask(characterName);
+            
+            // Force Vue to update the view
+            this.$forceUpdate();
         },
         
         // 주간 레이드 전체 토글
@@ -355,10 +373,16 @@ Vue.component('homework-view', {
                 this.getWeeklyTask(characterName, task).completed
             );
             
+            // Update all tasks first
             tasks.forEach(task => {
                 this.getWeeklyTask(characterName, task).completed = !allCompleted;
-                this.saveWeeklyTask(characterName, task);
             });
+            
+            // Save once after all updates
+            this.saveWeeklyTask(characterName);
+            
+            // Force Vue to update the view
+            this.$forceUpdate();
         },
 
         // 캐릭터 정보 가져오기
