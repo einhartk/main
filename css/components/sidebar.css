@@ -1,0 +1,46 @@
+/* 사이드바 스타일 */
+.sidebar-container {
+    width: 200px;
+    padding: 10px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    flex-shrink: 0;
+    transition: all 0.3s ease-in-out;
+}
+
+.sidebar-container h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+}
+
+.sidebar-container ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.sidebar-container li {
+    padding: 5px 0;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.sidebar-container li:hover {
+    background: #eee;
+}
+
+.sidebar-container .hover-highlight:hover {
+    background: rgba(74, 105, 189, 0.1);
+}
+
+.sidebar-container .tag-cloud .badge {
+    cursor: pointer;
+    margin: 2px;
+    transition: all 0.2s;
+}
+
+.sidebar-container .tag-cloud .badge:hover {
+    transform: scale(1.1);
+}

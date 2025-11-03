@@ -183,6 +183,12 @@ new Vue({
     }
   },
   methods:{
+    openHomework() {
+      this.currentView = 'homework-view';
+      this.searchMode = false;
+      this.currentDoc = null;
+      this.searchResults = [];
+    },
     async loadComponent(path){
       const res=await fetch(path);
       return await res.text();

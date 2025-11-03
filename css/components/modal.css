@@ -1,0 +1,48 @@
+/* 모달 관련 스타일 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.history-item {
+    padding: 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.diff-add {
+    background-color: #d4edda;
+    text-decoration: none;
+    padding: 2px 4px;
+    margin: 0 2px;
+    border-radius: 2px;
+}
+
+.diff-del {
+    background-color: #f8d7da;
+    text-decoration: line-through;
+    padding: 2px 4px;
+    margin: 0 2px;
+    border-radius: 2px;
+}

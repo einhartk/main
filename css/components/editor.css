@@ -1,0 +1,49 @@
+/* 에디터 관련 스타일 */
+.editor .tags-container {
+    min-height: 38px;
+    padding: 5px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+.editor .markdown-preview {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.editor .toc-preview {
+    background: #f8f9fa;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.editor #editor-container {
+    min-height: 300px;
+    background: white;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.editor-toolbar {
+    margin-bottom: 10px;
+}
+
+.editor-toolbar button {
+    margin-right: 5px;
+    padding: 5px 10px;
+    transition: all 0.2s;
+}
+
+.editor-toolbar button.active,
+.editor-toolbar button:hover {
+    background: #4a69bd;
+    color: white;
+    transform: scale(1.05);
+}

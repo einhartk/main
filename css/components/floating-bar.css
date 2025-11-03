@@ -1,0 +1,59 @@
+/* 플로팅 메뉴 스타일 */
+#floating-bar {
+    position: fixed;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    background: rgba(255,255,255,0.95);
+    border: 1px solid #ddd;
+    border-radius: 5px 0 0 5px;
+    padding: 5px;
+    z-index: 9999;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    transition: all 0.3s ease-in-out;
+}
+
+#floating-bar a {
+    margin: 5px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none;
+    color: #333;
+    transition: all 0.2s;
+}
+
+#floating-bar a:hover {
+    transform: scale(1.1);
+}
+
+#floating-bar img {
+    width: 40px;
+    height: 40px;
+    transition: transform 0.2s;
+}
+
+#floating-bar img:hover {
+    transform: scale(1.1);
+}
+
+#user-id-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+#user-id-container input {
+    width: 90px;
+    padding: 3px;
+    margin-bottom: 3px;
+    text-align: center;
+}
+
+#user-id-container button {
+    padding: 2px 5px;
+    font-size: 0.8em;
+}

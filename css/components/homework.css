@@ -1,0 +1,48 @@
+/* 숙제 체크 스타일 */
+.homework-container {
+    padding: 20px;
+}
+
+.character-list .card {
+    transition: all 0.2s ease-in-out;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+
+.character-list .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.character-list .char-info {
+    font-size: 0.9em;
+}
+
+.character-list .badge {
+    font-size: 0.85em;
+    padding: 0.4em 0.6em;
+}
+
+.homework-container .btn-group {
+    margin-right: 10px;
+}
+
+.homework-container .card-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+/* 아이템 레벨 뱃지 스타일 */
+.level-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-weight: bold;
+}
+
+/* 검색 필터 영역 */
+.filter-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}

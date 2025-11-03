@@ -1,0 +1,233 @@
+/* Import component styles */
+@import url('components/editor.css');
+@import url('components/sidebar.css');
+@import url('components/homework.css');
+@import url('components/modal.css');
+@import url('components/floating-bar.css');
+
+/* 기본 설정 */
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: #f5f6fa;
+  color: #333;
+  margin: 0;
+  padding-top: 70px; /* fixed header 때문에 내용 가림 방지 */
+}
+a { color: #4a69bd; text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, pre { 
+  background: #f0f0f0; 
+  padding: 2px 4px; 
+  border-radius: 4px; 
+  overflow-x: auto;
+}
+h1,h2,h3 { margin-top:0; }
+
+/* 버튼 */
+button { cursor:pointer; transition: all 0.2s ease-in-out; }
+
+/* 에디터 관련 스타일 */
+.editor .tags-container {
+    min-height: 38px;
+    padding: 5px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    margin-top: 5px;
+}
+
+.editor .markdown-preview {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.editor .toc-preview {
+    background: #f8f9fa;
+    padding: 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+/* 모달 스타일 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 800px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.history-item {
+    padding: 10px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.diff-add {
+    background-color: #d4edda;
+    text-decoration: none;
+    padding: 2px 4px;
+    margin: 0 2px;
+    border-radius: 2px;
+}
+
+.diff-del {
+    background-color: #f8d7da;
+    text-decoration: line-through;
+    padding: 2px 4px;
+    margin: 0 2px;
+    border-radius: 2px;
+}
+button:hover { background:#4a69bd; color:white; }
+button:disabled { background:#ccc; cursor:not-allowed; }
+
+/* 로딩 오버레이 */
+#loading-overlay {
+  position: fixed;
+  top:0; left:0; width:100%; height:100%;
+  background: rgba(255,255,255,0.7);
+  display:flex; justify-content:center; align-items:center;
+  z-index: 9999;
+  opacity:0;
+  pointer-events:none;
+  transition: opacity 0.3s ease-in-out;
+}
+#loading-overlay.show { opacity:1; pointer-events:all; }
+.loader {
+  border: 6px solid #f3f3f3;
+  border-top: 6px solid #3498db;
+  border-radius: 50%;
+  width: 50px; height:50px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
+
+/* 헤더 */
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px; background:#4a69bd; color:white;
+  flex-wrap: wrap; gap:5px;
+  position: fixed; top:0; width:100%; z-index: 999;
+}
+header h1 { margin:0; cursor:pointer; }
+header input.form-control { flex:1 1 200px; max-width:300px; margin-right:5px; }
+header button { margin-left:5px; white-space:nowrap; }
+
+/* 메인 & 사이드바 */
+main { display:flex; flex-wrap:wrap; gap:10px; }
+.sidebar-container {
+  width:200px; padding:10px; background:#f9f9f9; border:1px solid #ddd;
+  border-radius:5px; flex-shrink:0; transition: all 0.3s ease-in-out;
+}
+.sidebar-container h3 { margin-top:0; margin-bottom:10px; font-size:1.1em; }
+.sidebar-container ul { list-style:none; padding-left:0; margin:0; }
+.sidebar-container li { padding:5px 0; cursor:pointer; transition: background 0.2s; }
+.sidebar-container li:hover { background:#eee; }
+
+section#content {
+  flex:1; padding:20px; min-height:400px; background:white; border-radius:5px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+  transition: all 0.3s ease-in-out;
+}
+
+/* 에디터 */
+.editor #editor-container {
+  min-height:300px;
+  background:white;
+  border:1px solid #ccc;
+  padding:10px;
+  border-radius:5px;
+}
+.editor-toolbar { margin-bottom:10px; }
+.editor-toolbar button {
+  margin-right:5px; padding:5px 10px;
+  transition: all 0.2s;
+}
+.editor-toolbar button.active,
+.editor-toolbar button:hover {
+  background:#4a69bd; color:white;
+  transform: scale(1.05);
+}
+
+/* 플로팅바 */
+#floating-bar {
+  position: fixed;
+  top:50%; 
+  right: 15px; /* 기존보다 띄워줌 */
+  transform: translateY(-50%);
+  display:flex; flex-direction:column;
+  background: rgba(255,255,255,0.95);
+  border:1px solid #ddd; border-radius:5px 0 0 5px;
+  padding:5px;
+  z-index:9999;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+  transition: all 0.3s ease-in-out;
+}
+#floating-bar a { margin:5px 0; display:flex; justify-content:center; }
+
+/* 숙제 체크 스타일 */
+.homework-container {
+  padding: 20px;
+}
+
+.character-list .card {
+  transition: all 0.2s ease-in-out;
+}
+
+.character-list .card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.character-list .char-info {
+  font-size: 0.9em;
+}
+
+.character-list .badge {
+  font-size: 0.85em;
+  padding: 0.4em 0.6em;
+}
+#floating-bar img { width:40px; height:40px; transition: transform 0.2s; }
+#floating-bar img:hover { transform: scale(1.1); }
+#user-id-container { display:flex; flex-direction:column; align-items:center; margin-bottom:5px; }
+#user-id-container input { width:90px; padding:3px; margin-bottom:3px; text-align:center; }
+#user-id-container button { padding:2px 5px; font-size:0.8em; }
+
+/* 반응형 */
+@media (max-width:768px){
+  .sidebar-container { display:none; }
+  section#content { margin-left:0; flex:1 1 100%; }
+  #floating-bar { display:none; }
+  header input.form-control { flex:1 1 50%; min-width:120px; }
+  header { gap:5px; }
+}
+
+/* 애니메이션 */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
+.fade-enter, .fade-leave-to { opacity:0; }
+
+.slide-enter-active, .slide-leave-active { transition: all 0.3s ease; }
+.slide-enter, .slide-leave-to { transform: translateX(20px); opacity:0; }
+.slide-down-enter-active, .slide-down-leave-active { transition: all 0.3s ease; }
+.slide-down-enter, .slide-down-leave-to { transform: translateY(-20px); opacity:0; }

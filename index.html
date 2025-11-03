@@ -19,10 +19,12 @@
   <!-- App Scripts -->
   <script src="js/config/firebase-config.js"></script>
   <script src="js/config/categories.js"></script>
+  <script src="js/config/api-config.js"></script>
   <script src="js/services/documentService.js"></script>
   <script src="js/components/sidebar.js"></script>
   <script src="js/components/viewer.js"></script>
   <script src="js/components/editor.js"></script>
+  <script src="js/components/homework.js"></script>
 
   <!-- Summernote -->
   <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css" rel="stylesheet">
@@ -32,16 +34,17 @@
   <!-- Marked.js for Markdown -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   
-  <!-- DiffMatch.js for diff view -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/diff-match-patch/20121119/diff_match_patch.js"></script>
-
   <!-- Prism.js for syntax highlighting -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markdown.min.js"></script>
 
+  <!-- Axios (for API calls) -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
   <!-- 커스텀 CSS -->
   <link rel="stylesheet" href="css/style.css">
+  <!-- 컴포넌트별 CSS는 style.css에서 @import로 자동 로드됨 -->
 </head>
 <body>
 <div id="app">
@@ -81,6 +84,10 @@
     <a :href="floatingLinks[3]" target="_blank" class="d-flex align-items-center text-decoration-none">
       <img src="img/icon4.png" alt="icon4" class="me-1"/>
       <span class="text-dark">알로아</span>
+    </a>
+    <a @click="openHomework" class="d-flex align-items-center text-decoration-none mt-2" style="cursor: pointer;">
+      <img src="img/homework.png" alt="숙제 체크" class="me-1"/>
+      <span class="text-dark">숙제 체크</span>
     </a>
   </div>
 
