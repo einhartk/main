@@ -1,27 +1,45 @@
 /* 사이드바 스타일 */
 .sidebar-container {
-    width: 200px;
-    padding: 10px;
-    background: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    flex-shrink: 0;
-    transition: all 0.3s ease-in-out;
+    width: 250px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1000;
+    overflow-y: auto;
+    transition: transform 0.3s ease-in-out, width 0.3s ease-in-out;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
 }
 
-@media (max-width: 768px) {
+/* Mobile First Approach */
+@media (max-width: 991.98px) {
     .sidebar-container {
-        position: fixed;
-        left: -200px;
-        top: 70px;
-        bottom: 0;
-        z-index: 1030;
-        height: calc(100vh - 70px);
-        overflow-y: auto;
+        transform: translateX(-100%);
+        width: 280px;
+        background: #fff;
     }
-
+    
     .sidebar-container.show {
+        transform: translateX(0);
+    }
+    
+    /* Overlay when sidebar is open */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
         left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+    
+    .sidebar-overlay.show {
+        display: block;
     }
 }
 

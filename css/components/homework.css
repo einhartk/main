@@ -1,24 +1,60 @@
-/* 숙제 체크 스타일 */
-.homework-container {
-    padding: 15px;
+/* 숙제 체크 스타일 - Bootstrap 카드 레이아웃 */
+.character-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+    padding: 1rem 0;
 }
 
-/* 반응형 그리드 */
-.character-list .card {
-    transition: all 0.2s ease-in-out;
-    border: 1px solid rgba(0,0,0,0.1);
+.character-card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.character-card:hover {
+    transform: translateY(-5px);
+}
+
+.character-card .card {
     height: 100%;
-    margin-bottom: 0;
+    border: 1px solid rgba(0,0,0,0.125);
+    transition: all 0.2s ease-in-out;
 }
 
-.character-list .card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+.character-card .card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
 }
 
-/* 카드 내부 여백 조정 */
-.character-list .card-body {
+.character-card .card-body {
     padding: 1.25rem;
+}
+
+.character-card .card-title {
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+}
+
+.character-card .card-text {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+/* 반응형 조정 */
+@media (max-width: 768px) {
+    .character-list {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 1rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .character-list {
+        grid-template-columns: 1fr;
+        padding: 0.5rem;
+    }
+    
+    .character-card .card-body {
+        padding: 1rem;
+    }
 }
 
 /* 캐릭터 정보 영역 */

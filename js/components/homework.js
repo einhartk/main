@@ -1,125 +1,162 @@
 // API 설정 파일 참조
 Vue.component('homework-view', {
     template: `
-    <div class="homework-container">
-        <h2>원정대 숙제 체크</h2>
-        <div v-if="loading" class="text-center">
-            <div class="spinner-border" role="status">
+    <div class="homework-container container py-4">
+        <!-- 헤더 -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h4 mb-0">원정대 숙제 체크</h2>
+            <div class="d-flex gap-2">
+                <div class="btn-group">
+                    <button class="btn btn-sm" :class="{'btn-primary': sortBy === 'level', 'btn-outline-primary': sortBy !== 'level'}"
+                            @click="sortBy = 'level'" title="레벨순 정렬">
+                        <i class="bi bi-sort-numeric-down"></i> 레벨순
+                    </button>
+                    <button class="btn btn-sm" :class="{'btn-primary': sortBy === 'name', 'btn-outline-secondary': sortBy !== 'name'}"
+                            @click="sortBy = 'name'" title="이름순 정렬">
+                        <i class="bi bi-sort-alpha-down"></i> 이름순
+                    </button>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" @click="fetchCharacters" :disabled="loading" title="새로고침">
+                    <i class="bi" :class="{'bi-arrow-repeat': !loading, 'bi-arrow-repeat spin': loading}"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 검색창 -->
+        <div class="mb-4">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" 
+                       v-model="searchText" 
+                       placeholder="캐릭터 이름으로 검색..."
+                       :disabled="loading">
+            </div>
+        </div>
+
+        <!-- 로딩 상태 -->
+        <div v-if="loading" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">로딩중...</span>
             </div>
+            <p class="mt-2 text-muted">캐릭터 정보를 불러오는 중입니다...</p>
         </div>
+
+        <!-- 에러 메시지 -->
         <div v-else-if="error" class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
             {{ error }}
         </div>
-        <div v-else-if="characters.length > 0" class="character-list">
-            <!-- 필터 옵션 -->
-            <div class="mb-3">
-                <div class="row g-2 align-items-center">
-                    <div class="col-auto">
-                        <div class="btn-group me-2">
-                            <button class="btn" :class="{'btn-primary': sortBy === 'level', 'btn-outline-primary': sortBy !== 'level'}"
-                                    @click="sortBy = 'level'">레벨순</button>
-                            <button class="btn" :class="{'btn-primary': sortBy === 'name', 'btn-outline-primary': sortBy !== 'name'}"
-                                    @click="sortBy = 'name'">이름순</button>
-                        </div>
-                        <button class="btn btn-outline-secondary" @click="fetchCharacters" :disabled="loading">
-                            <i class="bi bi-arrow-clockwise" :class="{'bi-spin': loading}"></i>
-                            새로고침
-                        </button>
-                    </div>
-                    <div class="col-12 col-sm-auto">
-                        <input type="text" class="form-control" 
-                               v-model="searchText" placeholder="캐릭터 검색...">
-                    </div>
-                </div>
-            </div>
 
-            <!-- 캐릭터 카드 목록 -->
-            <div class="row g-3">
-                <div v-for="char in filteredCharacters" :key="char.CharacterName" class="col-12 col-sm-6 col-lg-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h5 class="card-title mb-0">{{ char.CharacterName }}</h5>
-                                <div class="text-end">
-                                    <div>
-                                        <div class="d-flex align-items-center">
-                                            <span class="me-1">아이템 레벨:</span>
-                                            <span :class="getItemLevelClass(char.ItemMaxLevel)">
-                                                {{ char.ItemMaxLevel || '0' }}
-                                            </span>
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <span class="me-1">전투력:</span>
-                                            <span class="text-primary fw-bold">
-                                                {{ char.CombatPower ? char.CombatPower.toLocaleString() : '0' }}
-                                            </span>
-                                        </div>
-                                        <small class="text-muted">
-                                            Lv.{{ char.CombatLevel || '0' }}
-                                        </small>
-                                    </div>
+        <!-- 캐릭터 목록 -->
+        <div v-else-if="characters.length > 0" class="row g-4">
+            <div v-for="char in filteredCharacters" :key="char.CharacterName" class="col-12 col-sm-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-white p-0 overflow-hidden">
+                        <div class="character-image" :style="{'background-image': 'url(' + (char.CharacterImage || 'img/default-character.png') + ')'}"></div>
+                    </div>
+                    <div class="card-body">
+                        <!-- 캐릭터 기본 정보 -->
+                        <div class="text-center mb-3">
+                            <h5 class="card-title mb-1">{{ char.CharacterName }}</h5>
+                            <div class="badge" :class="getClassBadgeColor(char.CharacterClassName)">
+                                {{ char.CharacterClassName }}
+                            </div>
+                        </div>
+                        
+                        <!-- 아이템 레벨 & 전투력 -->
+                        <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded">
+                            <div class="text-center">
+                                <div class="small text-muted">아이템 레벨</div>
+                                <div :class="'fw-bold ' + getItemLevelClass(char.ItemMaxLevel)">
+                                    {{ char.ItemMaxLevel || '0' }}
                                 </div>
                             </div>
-                            <div class="char-info">
-                                <p class="mb-1">
-                                    <span class="badge" :class="getClassBadgeColor(char.CharacterClassName)">
-                                        {{ char.CharacterClassName }}
-                                    </span>
-                                    <span class="text-muted ms-2">{{ char.ServerName }}</span>
-                                </p>
-                                <div class="mt-3">
-                                    <div class="daily-tasks mb-2">
-                                        <strong class="d-block mb-2">일일 숙제 ({{getDailyResetTimeText()}})</strong>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                :id="'chaos-'+char.CharacterName"
-                                                v-model="getDailyTask(char.CharacterName, 'chaos').completed"
-                                                @change="saveDailyTask(char.CharacterName, 'chaos')">
-                                            <label class="form-check-label" :for="'chaos-'+char.CharacterName">
-                                                카오스 던전
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                :id="'guardian-'+char.CharacterName"
-                                                v-model="getDailyTask(char.CharacterName, 'guardian').completed"
-                                                @change="saveDailyTask(char.CharacterName, 'guardian')">
-                                            <label class="form-check-label" :for="'guardian-'+char.CharacterName">
-                                                가디언 토벌
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div class="weekly-tasks">
-                                        <strong class="d-block mb-2">주간 레이드 ({{getWeeklyResetTimeText()}})</strong>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                :id="'raid1-'+char.CharacterName"
-                                                v-model="getWeeklyTask(char.CharacterName, 'raid1').completed"
-                                                @change="saveWeeklyTask(char.CharacterName, 'raid1')">
-                                            <label class="form-check-label" :for="'raid1-'+char.CharacterName">
-                                                레이드 1
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                :id="'raid2-'+char.CharacterName"
-                                                v-model="getWeeklyTask(char.CharacterName, 'raid2').completed"
-                                                @change="saveWeeklyTask(char.CharacterName, 'raid2')">
-                                            <label class="form-check-label" :for="'raid2-'+char.CharacterName">
-                                                레이드 2
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                :id="'raid3-'+char.CharacterName"
-                                                v-model="getWeeklyTask(char.CharacterName, 'raid3').completed"
-                                                @change="saveWeeklyTask(char.CharacterName, 'raid3')">
-                                            <label class="form-check-label" :for="'raid3-'+char.CharacterName">
-                                                레이드 3
-                                            </label>
-                                        </div>
-                                    </div>
+                            <div class="vr"></div>
+                            <div class="text-center">
+                                <div class="small text-muted">전투력</div>
+                                <div class="fw-bold text-primary">
+                                    {{ char.CombatPower ? char.CombatPower.toLocaleString() : '0' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 일일 숙제 -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold border-bottom pb-1">일일 숙제</h6>
+                                <div class="form-check form-switch d-flex align-items-center">
+                                    <input class="form-check-input me-2" type="checkbox" role="switch"
+                                           :id="'toggle-all-daily-' + char.CharacterName"
+                                           @change="toggleAllDailyTasks(char.CharacterName)"
+                                           :checked="['chaos', 'guardian'].every(task => getDailyTask(char.CharacterName, task).completed)">
+                                    <label class="form-check-label small" :for="'toggle-all-daily-' + char.CharacterName">
+                                        전체
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           :id="'chaos-' + char.CharacterName"
+                                           v-model="getDailyTask(char.CharacterName, 'chaos').completed"
+                                           @change="saveDailyTask(char.CharacterName, 'chaos')">
+                                    <label class="form-check-label" :for="'chaos-' + char.CharacterName">
+                                        카던
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           :id="'guardian-' + char.CharacterName"
+                                           v-model="getDailyTask(char.CharacterName, 'guardian').completed"
+                                           @change="saveDailyTask(char.CharacterName, 'guardian')">
+                                    <label class="form-check-label" :for="'guardian-' + char.CharacterName">
+                                        가토
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 주간 레이드 -->
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold border-bottom pb-1">주간 레이드</h6>
+                                <div class="form-check form-switch d-flex align-items-center">
+                                    <input class="form-check-input me-2" type="checkbox" role="switch"
+                                           :id="'toggle-all-weekly-' + char.CharacterName"
+                                           @change="toggleAllWeeklyTasks(char.CharacterName)"
+                                           :checked="['raid1', 'raid2', 'raid3'].every(task => getWeeklyTask(char.CharacterName, task).completed)">
+                                    <label class="form-check-label small" :for="'toggle-all-weekly-' + char.CharacterName">
+                                        전체
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           :id="'raid1-' + char.CharacterName"
+                                           v-model="getWeeklyTask(char.CharacterName, 'raid1').completed"
+                                           @change="saveWeeklyTask(char.CharacterName, 'raid1')">
+                                    <label class="form-check-label" :for="'raid1-' + char.CharacterName">
+                                        레이드1
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           :id="'raid2-' + char.CharacterName"
+                                           v-model="getWeeklyTask(char.CharacterName, 'raid2').completed"
+                                           @change="saveWeeklyTask(char.CharacterName, 'raid2')">
+                                    <label class="form-check-label" :for="'raid2-' + char.CharacterName">
+                                        레이드2
+                                    </label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           :id="'raid3-' + char.CharacterName"
+                                           v-model="getWeeklyTask(char.CharacterName, 'raid3').completed"
+                                           @change="saveWeeklyTask(char.CharacterName, 'raid3')">
+                                    <label class="form-check-label" :for="'raid3-' + char.CharacterName">
+                                        레이드3
+                                    </label>
                                 </div>
                             </div>
                         </div>
@@ -127,9 +164,18 @@ Vue.component('homework-view', {
                 </div>
             </div>
         </div>
-        <div v-else class="text-center">
-            <p>캐릭터 정보를 불러오려면 우측 상단에서 대표 캐릭터 이름을 입력해주세요.</p>
+
+        <!-- 캐릭터 없을 때 -->
+        <div v-else class="text-center py-5">
+            <div class="text-muted mb-3">
+                <i class="bi bi-people fs-1"></i>
+            </div>
+            <p class="text-muted">캐릭터 정보를 불러오려면 대표 캐릭터 이름을 입력해주세요.</p>
+            <button class="btn btn-sm btn-outline-primary" @click="$root.userIdInput = ''">
+                <i class="bi bi-person-plus me-1"></i> 캐릭터 설정하기
+            </button>
         </div>
+    </div>
     </div>
     `,
     data() {
@@ -277,6 +323,10 @@ Vue.component('homework-view', {
             return this.dailyTasks[characterName][taskType];
         },
 
+        saveDailyTask(characterName, taskType) {
+            localStorage.setItem('dailyTasks', JSON.stringify(this.dailyTasks));
+        },
+
         getWeeklyTask(characterName, taskType) {
             if (!this.weeklyTasks[characterName]) {
                 this.weeklyTasks[characterName] = {};
@@ -287,12 +337,34 @@ Vue.component('homework-view', {
             return this.weeklyTasks[characterName][taskType];
         },
 
-        saveDailyTask(characterName, taskType) {
-            localStorage.setItem('dailyTasks', JSON.stringify(this.dailyTasks));
-        },
-
         saveWeeklyTask(characterName, taskType) {
             localStorage.setItem('weeklyTasks', JSON.stringify(this.weeklyTasks));
+        },
+
+        // 일일 숙제 전체 토글
+        toggleAllDailyTasks(characterName) {
+            const tasks = ['chaos', 'guardian'];
+            const allCompleted = tasks.every(task => 
+                this.getDailyTask(characterName, task).completed
+            );
+            
+            tasks.forEach(task => {
+                this.getDailyTask(characterName, task).completed = !allCompleted;
+                this.saveDailyTask(characterName, task);
+            });
+        },
+        
+        // 주간 레이드 전체 토글
+        toggleAllWeeklyTasks(characterName) {
+            const tasks = ['raid1', 'raid2', 'raid3'];
+            const allCompleted = tasks.every(task => 
+                this.getWeeklyTask(characterName, task).completed
+            );
+            
+            tasks.forEach(task => {
+                this.getWeeklyTask(characterName, task).completed = !allCompleted;
+                this.saveWeeklyTask(characterName, task);
+            });
         },
 
         // 캐릭터 정보 가져오기
