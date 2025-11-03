@@ -1,9 +1,9 @@
-/* Import component styles */
-@import url('components/editor.css');
-@import url('components/sidebar.css');
-@import url('components/homework.css');
-@import url('components/modal.css');
-@import url('components/floating-bar.css');
+/* Import component styles with version parameters */
+@import url('components/editor.css?v=1.0.0');
+@import url('components/sidebar.css?v=1.0.0');
+@import url('components/homework.css?v=1.0.0');
+@import url('components/modal.css?v=1.0.0');
+@import url('components/floating-bar.css?v=1.0.0');
 
 /* 기본 설정 */
 :root {
