@@ -50,8 +50,8 @@ Vue.component('sidebar-view', {
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="m-0">카테고리</h5>
           <button @click="expandedSections.categories = !expandedSections.categories" 
-                  class="btn btn-sm btn-outline-secondary">
-            {{ expandedSections.categories ? '접기' : '펼치기' }}
+                  class="btn btn-sm btn-link text-dark p-1" :title="expandedSections.categories ? '접기' : '펼치기'">
+            <i class="bi" :class="expandedSections.categories ? 'bi-dash-circle' : 'bi-plus-circle'"></i>
           </button>
         </div>
         <div v-if="expandedSections.categories">
@@ -78,8 +78,8 @@ Vue.component('sidebar-view', {
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="m-0">인기 문서</h5>
           <button @click="expandedSections.popular = !expandedSections.popular" 
-                  class="btn btn-sm btn-outline-secondary">
-            {{ expandedSections.popular ? '접기' : '펼치기' }}
+                  class="btn btn-sm btn-link text-dark p-1" :title="expandedSections.popular ? '접기' : '펼치기'">
+            <i class="bi" :class="expandedSections.popular ? 'bi-dash-circle' : 'bi-plus-circle'"></i>
           </button>
         </div>
         <div v-if="expandedSections.popular">
@@ -97,8 +97,8 @@ Vue.component('sidebar-view', {
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="m-0">최근 문서</h5>
           <button @click="expandedSections.recent = !expandedSections.recent" 
-                  class="btn btn-sm btn-outline-secondary">
-            {{ expandedSections.recent ? '접기' : '펼치기' }}
+                  class="btn btn-sm btn-link text-dark p-1" :title="expandedSections.recent ? '접기' : '펼치기'">
+            <i class="bi" :class="expandedSections.recent ? 'bi-dash-circle' : 'bi-plus-circle'"></i>
           </button>
         </div>
         <div v-if="expandedSections.recent">
@@ -116,8 +116,8 @@ Vue.component('sidebar-view', {
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="m-0">태그 클라우드</h5>
           <button @click="expandedSections.tags = !expandedSections.tags" 
-                  class="btn btn-sm btn-outline-secondary">
-            {{ expandedSections.tags ? '접기' : '펼치기' }}
+                  class="btn btn-sm btn-link text-dark p-1" :title="expandedSections.tags ? '접기' : '펼치기'">
+            <i class="bi" :class="expandedSections.tags ? 'bi-dash-circle' : 'bi-plus-circle'"></i>
           </button>
         </div>
         <div v-if="expandedSections.tags" class="tag-cloud">
@@ -161,7 +161,8 @@ new Vue({
     discussions: [],
     docHistory: [],
     prevDoc: null,
-    nextDoc: null
+    nextDoc: null,
+    isFloatingBarVisible: true
   },
   computed:{
     floatingLinks() {
@@ -190,8 +191,17 @@ new Vue({
       this.userIdInput = savedUserId;
       this.tempUserId = savedUserId; // Also initialize tempUserId
     }
+    
+    // Load floating bar visibility state
+    const floatingBarVisible = localStorage.getItem('floatingBarVisible');
+    this.isFloatingBarVisible = floatingBarVisible === null ? true : JSON.parse(floatingBarVisible);
   },
   methods:{
+    toggleFloatingBar() {
+      this.isFloatingBarVisible = !this.isFloatingBarVisible;
+      localStorage.setItem('floatingBarVisible', this.isFloatingBarVisible);
+    },
+    
     openHomework() {
       this.currentView = 'homework-view';
       this.searchMode = false;
