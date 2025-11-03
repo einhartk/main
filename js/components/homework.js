@@ -14,30 +14,51 @@ Vue.component('homework-view', {
         <div v-else-if="characters.length > 0" class="character-list">
             <!-- 필터 옵션 -->
             <div class="mb-3">
-                <div class="btn-group">
-                    <button class="btn" :class="{'btn-primary': sortBy === 'level', 'btn-outline-primary': sortBy !== 'level'}"
-                            @click="sortBy = 'level'">레벨순</button>
-                    <button class="btn" :class="{'btn-primary': sortBy === 'name', 'btn-outline-primary': sortBy !== 'name'}"
-                            @click="sortBy = 'name'">이름순</button>
+                <div class="row g-2 align-items-center">
+                    <div class="col-auto">
+                        <div class="btn-group me-2">
+                            <button class="btn" :class="{'btn-primary': sortBy === 'level', 'btn-outline-primary': sortBy !== 'level'}"
+                                    @click="sortBy = 'level'">레벨순</button>
+                            <button class="btn" :class="{'btn-primary': sortBy === 'name', 'btn-outline-primary': sortBy !== 'name'}"
+                                    @click="sortBy = 'name'">이름순</button>
+                        </div>
+                        <button class="btn btn-outline-secondary" @click="fetchCharacters" :disabled="loading">
+                            <i class="bi bi-arrow-clockwise" :class="{'bi-spin': loading}"></i>
+                            새로고침
+                        </button>
+                    </div>
+                    <div class="col-12 col-sm-auto">
+                        <input type="text" class="form-control" 
+                               v-model="searchText" placeholder="캐릭터 검색...">
+                    </div>
                 </div>
-                <input type="text" class="form-control d-inline-block ms-2" style="width: 200px;" 
-                       v-model="searchText" placeholder="캐릭터 검색...">
             </div>
 
             <!-- 캐릭터 카드 목록 -->
-            <div class="row">
-                <div v-for="char in filteredCharacters" :key="char.CharacterName" class="col-md-6 col-lg-4 mb-3">
-                    <div class="card h-100">
+            <div class="row g-3">
+                <div v-for="char in filteredCharacters" :key="char.CharacterName" class="col-12 col-sm-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h5 class="card-title mb-0">{{ char.CharacterName }}</h5>
                                 <div class="text-end">
-                                    <div :class="getItemLevelClass(char.ItemMaxLevel)">
-                                        아이템 {{ char.ItemMaxLevel }}
+                                    <div>
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-1">아이템 레벨:</span>
+                                            <span :class="getItemLevelClass(char.ItemMaxLevel)">
+                                                {{ char.ItemMaxLevel || '0' }}
+                                            </span>
+                                        </div>
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-1">전투력:</span>
+                                            <span class="text-primary fw-bold">
+                                                {{ char.CombatPower ? char.CombatPower.toLocaleString() : '0' }}
+                                            </span>
+                                        </div>
+                                        <small class="text-muted">
+                                            Lv.{{ char.CombatLevel || '0' }}
+                                        </small>
                                     </div>
-                                    <small class="text-muted">
-                                        전투 {{ char.CombatLevel }}
-                                    </small>
                                 </div>
                             </div>
                             <div class="char-info">
@@ -154,10 +175,15 @@ Vue.component('homework-view', {
         }
     },
     created() {
+        // 로컬 스토리지에서 체크리스트 데이터 로드
         this.loadTasksFromStorage();
         this.checkResetTimes();
         // 매 분마다 리셋 시간 체크
         setInterval(this.checkResetTimes, 60000);
+        // 페이지 로드시 한 번만 데이터 로드
+        if (window.localStorage.getItem('lastCharacterName')) {
+            this.fetchCharacters();
+        }
     },
     methods: {
         getDailyResetTimeText() {
@@ -255,6 +281,43 @@ Vue.component('homework-view', {
             localStorage.setItem('weeklyTasks', JSON.stringify(this.weeklyTasks));
         },
 
+        // 캐릭터 정보 가져오기
+        async fetchCharacters() {
+            if (this.loading) return;
+            if (!this.$root.userIdInput) {
+                this.error = "대표 캐릭터 이름을 입력해주세요.";
+                return;
+            }
+            this.loading = true;
+            this.error = null;
+            
+            try {
+                // 1. 원정대 캐릭터 목록 조회
+                const siblings = await this.fetchCharacterFromAPI(
+                    `${ENDPOINTS.CHARACTERS}/${encodeURIComponent(this.$root.userIdInput)}/siblings`
+                );
+                
+                // 2. 각 캐릭터의 상세 정보를 병렬로 조회
+                const characterPromises = siblings.map(char => 
+                    this.fetchCharacterFromAPI(
+                        `${ENDPOINTS.ARMORIES}/${encodeURIComponent(char.CharacterName)}/profiles`
+                    ).catch(err => {
+                        console.warn('failed to fetch profile for', char.CharacterName, err);
+                        return null;
+                    })
+                );
+
+                const results = await Promise.all(characterPromises);
+                // normalize and filter out nulls
+                this.characters = results.filter(r => r).map(r => this._normalizeProfile(r));
+            } catch (err) {
+                this.error = err.message;
+                console.error('API 호출 에러:', err);
+            } finally {
+                this.loading = false;
+            }
+        },
+
         // helper: convert level string (maybe null) to number for sorting
         _safeLevelNumber(level) {
             if (!level && level !== 0) return 0;
@@ -267,19 +330,20 @@ Vue.component('homework-view', {
 
         // normalize API profile shape into expected fields
         _normalizeProfile(raw) {
-            // raw may be the object returned by /profiles endpoint or armory
-            // try common property names, fall back to safe defaults
-            const name = raw.CharacterName || raw.Name || raw.name || (raw.character && raw.character.name) || '';
-            const cls = raw.CharacterClassName || raw.Class || raw.CharacterClass || raw.characterClassName || '';
-            const server = raw.ServerName || raw.Server || raw.serverName || raw.server || '';
-            // ItemMaxLevel might be under ItemMaxLevel or different keys
-            const itemLevel = raw.ItemMaxLevel || raw.itemMaxLevel || raw.item_level || (raw.gear && raw.gear.itemMaxLevel) || '';
+            // 아이템 레벨 형식 변환 (소수점 제거)
+            const itemLevel = raw.ItemAvgLevel ? String(raw.ItemAvgLevel).replace('.0', '') : '';
+            // 전투력 (CombatPower) - 새로 추가된 시스템
+            const combatPower = raw.CombatPower || 0;
+            // 전투 레벨 (CharacterLevel)
+            const combatLevel = raw.CharacterLevel || '';
 
             return {
-                CharacterName: name,
-                CharacterClassName: cls,
-                ServerName: server,
-                ItemMaxLevel: itemLevel || '' ,
+                CharacterName: raw.CharacterName || '',
+                CharacterClassName: raw.CharacterClassName || '',
+                ServerName: raw.ServerName || '',
+                ItemMaxLevel: itemLevel,
+                CombatLevel: combatLevel,
+                CombatPower: combatPower,
                 // keep original for debugging
                 _raw: raw
             };

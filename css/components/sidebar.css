@@ -9,6 +9,22 @@
     transition: all 0.3s ease-in-out;
 }
 
+@media (max-width: 768px) {
+    .sidebar-container {
+        position: fixed;
+        left: -200px;
+        top: 70px;
+        bottom: 0;
+        z-index: 1030;
+        height: calc(100vh - 70px);
+        overflow-y: auto;
+    }
+
+    .sidebar-container.show {
+        left: 0;
+    }
+}
+
 .sidebar-container h3 {
     margin-top: 0;
     margin-bottom: 10px;

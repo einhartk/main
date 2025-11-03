@@ -153,7 +153,8 @@ new Vue({
     allTags:[],
     loading:false,
     userIdInput:'',
-    editUserId:false,
+    tempUserId: '',
+    editUserId: false,
     categories: defaultCategories,
     selectedCategory: null,
     selectedSubcategory: null,
@@ -180,6 +181,14 @@ new Vue({
           'https://rloa.gg/studio/my/characters'
         ];
       }
+    }
+  },
+  created() {
+    // Load userId from localStorage on app initialization
+    const savedUserId = localStorage.getItem('userId');
+    if (savedUserId) {
+      this.userIdInput = savedUserId;
+      this.tempUserId = savedUserId; // Also initialize tempUserId
     }
   },
   methods:{
@@ -496,8 +505,21 @@ new Vue({
       this.loading=false;
     },
     toggleEditUserId(){
-      if(this.editUserId){ this.userIdInput=this.userIdInput.trim(); localStorage.setItem('userId', this.userIdInput); }
-      this.editUserId=!this.editUserId;
+      if(this.editUserId) {
+        this.saveUserId();
+      } else {
+        this.tempUserId = this.userIdInput; // Initialize tempUserId with current userIdInput when starting to edit
+        this.editUserId = true;
+      }
+    },
+    saveUserId() {
+      this.userIdInput = this.tempUserId.trim();
+      localStorage.setItem('userId', this.userIdInput);
+      this.editUserId = false;
+      // Trigger any necessary updates that depend on userIdInput
+      if (this.currentView === 'homework-view') {
+        this.$children.find(c => c.$options._componentTag === 'homework-view').fetchCharacterInfo();
+      }
     },
 
     async viewWikiLink(title) {
