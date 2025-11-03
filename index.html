@@ -83,6 +83,10 @@
       <input v-model="tempUserId" :disabled="!editUserId" placeholder="캐릭터 ID" class="form-control form-control-sm mb-1" style="width:120px;" @keyup.enter="saveUserId" />
       <button @click="toggleEditUserId" class="btn btn-sm btn-outline-secondary">{{ editUserId ? '저장' : '수정' }}</button>
     </div>
+    <a @click="openHomework" class="d-flex align-items-center text-decoration-none mt-2" style="cursor: pointer;">
+      <img src="img/homework.png" alt="원정대 체크" class="me-1"/>
+      <span class="text-dark">원정대 체크</span>
+    </a>
     <a :href="floatingLinks[0]" target="_blank" class="d-flex align-items-center text-decoration-none">
       <img src="img/icon1.png" alt="icon1" class="me-1"/>
       <span class="text-dark">로펙</span>
@@ -98,10 +102,6 @@
     <a :href="floatingLinks[3]" target="_blank" class="d-flex align-items-center text-decoration-none">
       <img src="img/icon4.png" alt="icon4" class="me-1"/>
       <span class="text-dark">알로아</span>
-    </a>
-    <a @click="openHomework" class="d-flex align-items-center text-decoration-none mt-2" style="cursor: pointer;">
-      <img src="img/homework.png" alt="숙제 체크" class="me-1"/>
-      <span class="text-dark">원정대 체크</span>
     </a>
   </div>
 
