@@ -20,15 +20,25 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   
-  <!-- App Scripts -->
-  <script src="js/config/firebase-config.js"></script>
-  <script src="js/config/categories.js"></script>
-  <script src="js/config/api-config.js"></script>
-  <script src="js/services/documentService.js"></script>
-  <script src="js/components/sidebar.js"></script>
-  <script src="js/components/viewer.js"></script>
-  <script src="js/components/editor.js"></script>
-  <script src="js/components/homework.js"></script>
+  <!-- App Scripts with cache busting -->
+  <script src="js/config/firebase-config.js?v=1.0.0"></script>
+  <script src="js/config/categories.js?v=1.0.0"></script>
+  <script src="js/config/api-config.js?v=1.0.0"></script>
+  <script src="js/services/documentService.js?v=1.0.0"></script>
+  <script src="js/components/sidebar.js?v=1.0.0"></script>
+  <script src="js/components/viewer.js?v=1.0.0"></script>
+  <script src="js/components/editor.js?v=1.0.0"></script>
+  <script src="js/components/homework.js?v=1.0.0"></script>
+  <script src="js/app.js?v=1.0.0"></script>
+  <script>
+    // Add timestamp to prevent caching for future loads
+    const scripts = document.querySelectorAll('script[src*=".js"]');
+    scripts.forEach(script => {
+      if (script.src.includes('?')) return; // Skip already versioned scripts
+      if (script.src.includes('http')) return; // Skip CDN scripts
+      script.src = script.src + (script.src.includes('?') ? '&' : '?') + 'v=' + new Date().getTime();
+    });
+  </script>
 
   <!-- Summernote -->
   <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css" rel="stylesheet">

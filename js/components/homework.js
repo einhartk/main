@@ -204,15 +204,11 @@ Vue.component('homework-view', {
             }
 
             // 정렬
-            console.log('Before sorting:', result.map(c => `${c.CharacterName}: ${c.ItemMaxLevel} (${typeof c.ItemMaxLevel})`));
-            
             result.sort((a, b) => {
                 if (this.sortBy === 'level') {
                     // 아이템 레벨(ItemMaxLevel) 기준으로 정렬
                     const itemLevelA = this._safeLevelNumber(a.ItemMaxLevel);
                     const itemLevelB = this._safeLevelNumber(b.ItemMaxLevel);
-                    
-                    console.log(`Comparing ${a.CharacterName} (${itemLevelA}) vs ${b.CharacterName} (${itemLevelB})`);
                     
                     // 아이템 레벨이 같으면 전투력으로 정렬
                     if (itemLevelA === itemLevelB) {
@@ -221,9 +217,7 @@ Vue.component('homework-view', {
                         return powerB - powerA;
                     }
                     
-                    const sortResult = itemLevelB - itemLevelA;
-                    console.log(`  Sort result: ${sortResult}`);
-                    return sortResult; // 내림차순 정렬 (높은 아이템 레벨이 먼저 오도록)
+                    return itemLevelB - itemLevelA; // 내림차순 정렬 (높은 아이템 레벨이 먼저 오도록)
                 } else {
                     const na = (a.CharacterName || '').toString();
                     const nb = (b.CharacterName || '').toString();
@@ -411,9 +405,7 @@ Vue.component('homework-view', {
                 // Remove all non-digit characters (including commas and decimal points)
                 const cleanLevel = String(level).replace(/[^0-9]/g, '');
                 // Convert to number (will be integer since we removed all non-digits)
-                const num = parseInt(cleanLevel, 10) || 0;
-                console.log(`Converted ${level} to ${num}`);
-                return num;
+                return parseInt(cleanLevel, 10) || 0;
             } catch (e) {
                 console.error('Error converting level:', level, e);
                 return 0;
