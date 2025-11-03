@@ -149,21 +149,35 @@ Vue.component('homework-view', {
         filteredCharacters() {
             let result = [...this.characters];
             
-            // 검색어로 필터링
+            // 검색어로 필터링 (캐릭터 이름만 검색)
             if (this.searchText) {
                 const searchLower = this.searchText.toLowerCase();
                 result = result.filter(char => 
-                    char.CharacterName.toLowerCase().includes(searchLower) ||
-                    char.CharacterClassName.toLowerCase().includes(searchLower)
+                    char.CharacterName.toLowerCase().includes(searchLower)
                 );
             }
 
             // 정렬
+            console.log('Before sorting:', result.map(c => `${c.CharacterName}: ${c.ItemMaxLevel} (${typeof c.ItemMaxLevel})`));
+            
             result.sort((a, b) => {
                 if (this.sortBy === 'level') {
-                    const na = this._safeLevelNumber(a.ItemMaxLevel);
-                    const nb = this._safeLevelNumber(b.ItemMaxLevel);
-                    return nb - na;
+                    // 아이템 레벨(ItemMaxLevel) 기준으로 정렬
+                    const itemLevelA = this._safeLevelNumber(a.ItemMaxLevel);
+                    const itemLevelB = this._safeLevelNumber(b.ItemMaxLevel);
+                    
+                    console.log(`Comparing ${a.CharacterName} (${itemLevelA}) vs ${b.CharacterName} (${itemLevelB})`);
+                    
+                    // 아이템 레벨이 같으면 전투력으로 정렬
+                    if (itemLevelA === itemLevelB) {
+                        const powerA = this._safeLevelNumber(a.CombatPower);
+                        const powerB = this._safeLevelNumber(b.CombatPower);
+                        return powerB - powerA;
+                    }
+                    
+                    const sortResult = itemLevelB - itemLevelA;
+                    console.log(`  Sort result: ${sortResult}`);
+                    return sortResult; // 내림차순 정렬 (높은 아이템 레벨이 먼저 오도록)
                 } else {
                     const na = (a.CharacterName || '').toString();
                     const nb = (b.CharacterName || '').toString();
@@ -318,22 +332,36 @@ Vue.component('homework-view', {
             }
         },
 
-        // helper: convert level string (maybe null) to number for sorting
+        // helper: convert level string to integer for sorting (removes decimal points)
         _safeLevelNumber(level) {
-            if (!level && level !== 0) return 0;
+            if (level === null || level === undefined || level === '') return 0;
             try {
-                const s = String(level).replace(/,/g, '');
-                const n = parseFloat(s);
-                return isNaN(n) ? 0 : n;
-            } catch (e) { return 0; }
+                // Remove all non-digit characters (including commas and decimal points)
+                const cleanLevel = String(level).replace(/[^0-9]/g, '');
+                // Convert to number (will be integer since we removed all non-digits)
+                const num = parseInt(cleanLevel, 10) || 0;
+                console.log(`Converted ${level} to ${num}`);
+                return num;
+            } catch (e) {
+                console.error('Error converting level:', level, e);
+                return 0;
+            }
         },
 
         // normalize API profile shape into expected fields
         _normalizeProfile(raw) {
-            // 아이템 레벨 형식 변환 (소수점 제거)
-            const itemLevel = raw.ItemAvgLevel ? String(raw.ItemAvgLevel).replace('.0', '') : '';
-            // 전투력 (CombatPower) - 새로 추가된 시스템
-            const combatPower = raw.CombatPower || 0;
+            // 아이템 레벨 형식 변환 (소수점 및 소수점 이하 모두 제거)
+            let itemLevel = '';
+            if (raw.ItemAvgLevel) {
+                // 소수점을 포함한 모든 문자열을 정수 부분만 남기고 제거 (예: '1234.56' -> '1234')
+                itemLevel = String(raw.ItemAvgLevel).split('.')[0];
+            }
+            // 전투력 (CombatPower) - 소수점 제거
+            let combatPower = 0;
+            if (raw.CombatPower) {
+                // 소수점을 포함한 모든 문자열을 정수 부분만 남기고 제거 (예: '1234.56' -> '1234')
+                combatPower = String(raw.CombatPower).split('.')[0];
+            }
             // 전투 레벨 (CharacterLevel)
             const combatLevel = raw.CharacterLevel || '';
 
