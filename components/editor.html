@@ -1,7 +1,0 @@
-<div class="editor card p-3 mb-3">
-  <h2>{{ doc ? '문서 수정' : '새 문서 작성' }}</h2>
-  <input v-model="localDoc.title" placeholder="문서 제목 입력" class="form-control mb-2" />
-  <div ref="editor" class="mb-2"></div>
-  <input type="password" v-model="localDoc.password" placeholder="등록/수정 암호 입력" class="form-control mb-2" />
-  <button @click="save" class="btn btn-sm btn-primary">저장</button>
-</div>

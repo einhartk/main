@@ -15,12 +15,30 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-  <script src="js/firebase-config.js"></script>
+  
+  <!-- App Scripts -->
+  <script src="js/config/firebase-config.js"></script>
+  <script src="js/config/categories.js"></script>
+  <script src="js/services/documentService.js"></script>
+  <script src="js/components/sidebar.js"></script>
+  <script src="js/components/viewer.js"></script>
+  <script src="js/components/editor.js"></script>
 
   <!-- Summernote -->
   <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-lite.min.js"></script>
+
+  <!-- Marked.js for Markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  
+  <!-- DiffMatch.js for diff view -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/diff-match-patch/20121119/diff_match_patch.js"></script>
+
+  <!-- Prism.js for syntax highlighting -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markdown.min.js"></script>
 
   <!-- 커스텀 CSS -->
   <link rel="stylesheet" href="css/style.css">
@@ -48,22 +66,46 @@
       <input v-model="userIdInput" :disabled="!editUserId" placeholder="캐릭터 ID" class="form-control form-control-sm mb-1" style="width:120px;" />
       <button @click="toggleEditUserId" class="btn btn-sm btn-outline-secondary">{{ editUserId ? '저장' : '수정' }}</button>
     </div>
-    <a :href="floatingLinks[0]" target="_blank"><img src="img/icon1.png" alt="icon1"/></a>
-    <a :href="floatingLinks[1]" target="_blank"><img src="img/icon2.png" alt="icon2"/></a>
-    <a :href="floatingLinks[2]" target="_blank"><img src="img/icon3.png" alt="icon3"/></a>
-    <a :href="floatingLinks[3]" target="_blank"><img src="img/icon4.png" alt="icon4"/></a>
+    <a :href="floatingLinks[0]" target="_blank" class="d-flex align-items-center text-decoration-none">
+      <img src="img/icon1.png" alt="icon1" class="me-1"/>
+      <span class="text-dark">로펙</span>
+    </a>
+    <a :href="floatingLinks[1]" target="_blank" class="d-flex align-items-center text-decoration-none">
+      <img src="img/icon2.png" alt="icon2" class="me-1"/>
+      <span class="text-dark">로아와</span>
+    </a>
+    <a :href="floatingLinks[2]" target="_blank" class="d-flex align-items-center text-decoration-none">
+      <img src="img/icon3.png" alt="icon3" class="me-1"/>
+      <span class="text-dark">로아툴</span>
+    </a>
+    <a :href="floatingLinks[3]" target="_blank" class="d-flex align-items-center text-decoration-none">
+      <img src="img/icon4.png" alt="icon4" class="me-1"/>
+      <span class="text-dark">알로아</span>
+    </a>
   </div>
 
   <!-- 메인 -->
   <main class="container-fluid mt-3">
-    <sidebar-view v-if="!searchMode" :recent-docs="recentDocs" @view-doc="viewDoc"></sidebar-view>
+    <sidebar-view v-if="!searchMode" 
+                 :recent-docs="recentDocs" 
+                 :popular-docs="popularDocs"
+                 :all-tags="allTags"
+                 :categories="categories"
+                 @view-doc="viewDoc"
+                 @filter-category="filterByCategory"
+                 @filter-tag="filterByTag"
+                 @random-doc="randomDoc"></sidebar-view>
     <section id="content">
       <component :is="currentView"
                  :doc="currentDoc"
                  :search-results="searchResults"
+                 :prev-doc="prevDoc"
+                 :next-doc="nextDoc"
+                 :discussions="discussions"
                  :on-view="viewDoc"
                  :on-edit="editDoc"
-                 :on-save="saveDoc">
+                 :on-save="saveDoc"
+                 @refresh-discussions="refreshDiscussions">
       </component>
     </section>
   </main>
