@@ -857,8 +857,8 @@ Vue.component('homework-view', {
         },
         
         async fetchCharacterInfo() {
-            const characterName = this.$root.userIdInput;
-            if (!characterName) {
+            const characterNames = this.$root.userIdInput ? this.$root.userIdInput.split(',').map(name => name.trim()).filter(name => name) : [];
+            if (characterNames.length === 0) {
                 this.error = "대표 캐릭터 이름을 입력해주세요.";
                 return;
             }
@@ -867,31 +867,93 @@ Vue.component('homework-view', {
             this.error = null;
             
             try {
-                // 1. 원정대 캐릭터 목록 조회
-                const siblings = await this.fetchCharacterFromAPI(
-                    `${ENDPOINTS.CHARACTERS}/${encodeURIComponent(characterName)}/siblings`
+                // 1. 각 캐릭터의 원정대 캐릭터 목록 조회 (병렬 처리)
+                const allSiblings = [];
+                const processedCharacters = new Set(); // 중복 캐릭터 제거용
+                
+                // 각 캐릭터별로 원정대 조회
+                const siblingPromises = characterNames.map(characterName => 
+                    this.fetchCharacterFromAPI(
+                        `${ENDPOINTS.CHARACTERS}/${encodeURIComponent(characterName)}/siblings`
+                    ).then(siblings => {
+                        if (!Array.isArray(siblings)) {
+                            console.warn(`Invalid response for ${characterName}:`, siblings);
+                            return [];
+                        }
+                        return siblings;
+                    }).catch(err => {
+                        console.warn(`Failed to fetch siblings for ${characterName}:`, err);
+                        return [];
+                    })
                 );
                 
+                const siblingsResults = await Promise.all(siblingPromises);
+                
+                // 모든 원정대 캐릭터를 하나의 배열로 병합 (중복 제거)
+                siblingsResults.forEach(siblings => {
+                    if (Array.isArray(siblings)) {
+                        siblings.forEach(char => {
+                            if (char && char.CharacterName && !processedCharacters.has(char.CharacterName)) {
+                                allSiblings.push(char);
+                                processedCharacters.add(char.CharacterName);
+                            }
+                        });
+                    }
+                });
+                
+                console.log('Processed characters:', Array.from(processedCharacters));
+                
+                if (allSiblings.length === 0) {
+                    throw new Error('조회된 캐릭터가 없습니다. 캐릭터명을 확인해주세요.');
+                }
+                
                 // 2. 각 캐릭터의 상세 정보를 병렬로 조회 (profiles 엔드포인트 사용)
-                const characterPromises = siblings.map(char => 
+                const characterPromises = allSiblings.map(char => 
                     this.fetchCharacterFromAPI(
                         `${ENDPOINTS.ARMORIES}/${encodeURIComponent(char.CharacterName)}/profiles`
                     ).catch(err => {
-                        console.warn('failed to fetch profile for', char.CharacterName, err);
+                        console.warn('Failed to fetch profile for', char.CharacterName, err);
                         return null;
                     })
                 );
 
-                const results = await Promise.all(characterPromises);
-                // normalize and filter out nulls
-                const normalizedResults = [];
-                for (const result of results) {
-                    if (result) {
-                        const normalized = await this._normalizeProfile(result);
-                        normalizedResults.push(normalized);
+                // Process results in chunks to avoid overwhelming the API
+                const BATCH_SIZE = 5; // Process 5 characters at a time
+                const allNormalized = [];
+                
+                for (let i = 0; i < characterPromises.length; i += BATCH_SIZE) {
+                    const batch = characterPromises.slice(i, i + BATCH_SIZE);
+                    const batchResults = await Promise.all(batch);
+                    
+                    // Process each result in the batch
+                    for (const result of batchResults) {
+                        if (result) {
+                            try {
+                                const normalized = await this._normalizeProfile(result);
+                                allNormalized.push(normalized);
+                            } catch (err) {
+                                console.error('Error normalizing profile:', err);
+                            }
+                        }
+                    }
+                    
+                    // Update UI after each batch
+                    this.characters = [...allNormalized].sort((a, b) => 
+                        parseFloat(b.ItemMaxLevel) - parseFloat(a.ItemMaxLevel)
+                    );
+                    
+                    // Small delay between batches to avoid rate limiting
+                    if (i + BATCH_SIZE < characterPromises.length) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 }
-                this.characters = normalizedResults;
+                
+                // Final sort and update
+                this.characters = allNormalized.sort((a, b) => 
+                    parseFloat(b.ItemMaxLevel) - parseFloat(a.ItemMaxLevel)
+                );
+                
+                console.log('Final characters loaded:', this.characters.length);
             } catch (err) {
                 this.error = err.message;
                 console.error('API 호출 에러:', err);
