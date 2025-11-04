@@ -257,6 +257,9 @@ Vue.component('homework-view', {
         /**
          * 화면 캡처 및 텍스트 인식 실행
          */
+        /**
+         * 화면 캡처 및 텍스트 인식 실행
+         */
         async captureScreen() {
             if (this.capturing) return;
             
@@ -265,68 +268,41 @@ Vue.component('homework-view', {
             
             try {
                 // 화면 캡처 서비스 호출
-                const stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        cursor: 'never',
-                        displaySurface: 'window'
-                    },
-                    audio: false,
-                    preferCurrentTab: false
-                });
-
-                // 비디오 요소 생성 및 스트림 연결
-                const video = document.createElement('video');
-                video.srcObject = stream;
+                const result = await ScreenCaptureService.captureAndRecognize();
                 
-                // 비디오 재생 대기
-                await new Promise((resolve, reject) => {
-                    video.onloadedmetadata = () => {
-                        video.play().then(resolve).catch(reject);
-                    };
-                    video.onerror = reject;
-                });
-
-                // 캔버스에 그리기 (중심부만 캡처)
-                const canvas = document.createElement('canvas');
-                const centerX = video.videoWidth / 2;
-                const centerY = video.videoHeight / 2;
-                const cropWidth = Math.min(800, video.videoWidth);
-                const cropHeight = 200;
-                
-                canvas.width = cropWidth;
-                canvas.height = cropHeight;
-                const ctx = canvas.getContext('2d');
-                
-                // 화면 중앙에서 캡처
-                ctx.drawImage(
-                    video,
-                    centerX - cropWidth/2,
-                    centerY - cropHeight/2,
-                    cropWidth,
-                    cropHeight,
-                    0,
-                    0,
-                    cropWidth,
-                    cropHeight
-                );
-
-                // OCR로 텍스트 추출
-                const result = await Tesseract.recognize(
-                    canvas,
-                    'kor+eng',
-                    {
-                        logger: m => console.log(m),
-                        tessedit_char_whitelist: '0123456789/일주월화수목금토가디언토벌카오스던전에포나의뢰',
-                        preserve_interword_spaces: true
+                if (result.success) {
+                    // 캡처 성공 시 텍스트 처리
+                    const processResult = ScreenCaptureService.processCapturedText(
+                        result.centerText,
+                        result.topLeftText
+                    );
+                    
+                    if (processResult.success) {
+                        // 캐릭터명이 있는 경우 처리
+                        if (processResult.characterName) {
+                            this.handleCharacterMatch(processResult.characterName);
+                        } else {
+                            this.error = '캐릭터명을 인식하지 못했습니다. 다시 시도해주세요.';
+                        }
+                        
+                        // 카오스 던전 완료 처리
+                        if (processResult.hasChaos) {
+                            this.completeDailyTask('chaos');
+                        }
+                        
+                        // 가디언 토벌 완료 처리
+                        if (processResult.hasGuardian) {
+                            this.completeDailyTask('guardian');
+                        }
+                        
+                        // 변경사항 저장
+                        this.saveAllTasks();
+                    } else if (processResult.error) {
+                        this.error = processResult.error;
                     }
-                );
-
-                // 추출된 텍스트 처리
-                this.processCapturedText(result.data.text);
-
-                // 스트림 정리
-                stream.getTracks().forEach(track => track.stop());
-                
+                } else if (result.error) {
+                    this.error = result.error;
+                }
             } catch (error) {
                 console.error('화면 캡처 중 오류 발생:', error);
                 if (error.message.includes('스트림이 종료') || error.message.includes('permission')) {
@@ -342,53 +318,190 @@ Vue.component('homework-view', {
         },
         
         /**
-         * 캡처된 텍스트 처리
-         * @param {string} text - OCR로 추출된 텍스트
+         * 화면 캡처 중지
          */
-        processCapturedText(text) {
-            console.log('인식된 텍스트:', text);
-            
-            // 1. 현재 캐릭터명 추출 (화면 중앙에서 가장 큰 글자로 가정)
-            const lines = text.split('\n').filter(line => line.trim().length > 0);
-            let currentCharacter = null;
-            
-            // 중앙 라인에서 가장 긴 텍스트를 캐릭터명으로 추정
-            const centerLineIndex = Math.floor(lines.length / 2);
-            const centerLine = lines[centerLineIndex] || '';
-            
-            // 한글/영문/숫자로 구성된 2~12자리 문자열 찾기
-            const characterMatch = centerLine.match(/[가-힣a-zA-Z0-9]{2,12}/);
-            if (characterMatch) {
-                currentCharacter = characterMatch[0].trim();
-                console.log('감지된 캐릭터명:', currentCharacter);
-                this.highlightCurrentCharacter(currentCharacter);
+        stopCapture() {
+            this.capturing = false;
+            // 스트림 정리 로직이 필요하면 여기에 추가
+        },
+        
+        /**
+         * 캡처된 텍스트를 처리합니다.
+         * @param {string} centerText - 화면 중앙에서 추출된 텍스트
+         * @param {string} topLeftText - 화면 좌상단에서 추출된 텍스트
+         */
+        processCapturedText(centerText, topLeftText) {
+            console.warn('이 메서드는 더 이상 사용되지 않습니다. ScreenCaptureService.processCapturedText()를 사용하세요.');
+            return ScreenCaptureService.processCapturedText(centerText, topLeftText);
+        },
+        
+        /**
+         * 중앙 영역에서 캐릭터명을 처리합니다.
+         * @param {string} centerText - 중앙 영역 텍스트
+         */
+        processCharacterName(centerText) {
+            console.warn('이 메서드는 더 이상 사용되지 않습니다. ScreenCaptureService._processCharacterName()을 사용하세요.');
+            const characterName = ScreenCaptureService._processCharacterName(centerText);
+            if (characterName) {
+                this.handleCharacterMatch(characterName);
             } else {
-                console.log('캐릭터명을 찾을 수 없습니다.');
+                this.handleNoCharacterMatch(centerText.split('\n').filter(line => line.trim().length > 0));
             }
+        },
+        
+        /**
+         * 캐릭터명이 정규식에 매치된 경우 처리
+         * @param {string} currentCharacter - 추출된 캐릭터명
+         */
+        handleCharacterMatch(currentCharacter) {
+            console.log(`✅ 캐릭터명 감지: "${currentCharacter}"`);
             
-            // 2. 일일/주간 컨텐츠 인식
-            const guardianPattern = /가디언[\s]*토벌[\s]*\(\s*(\d+)\s*\/\s*(\d+)\s*\)/g;
+            // 등록된 캐릭터 목록에서 일치하는지 확인
+            const matchedChar = this.characters.find(char => 
+                char.CharacterName.includes(currentCharacter) || 
+                currentCharacter.includes(char.CharacterName)
+            );
+            
+            if (matchedChar) {
+                console.log(`✅ 등록된 캐릭터와 일치: ${matchedChar.CharacterName}`);
+                this.highlightCurrentCharacter(matchedChar.CharacterName);
+            } else {
+                console.log('⚠️ 등록된 캐릭터와 일치하지 않음');
+                console.log('등록된 캐릭터 목록:', this.characters.map(c => c.CharacterName).join(', '));
+            }
+        },
+        
+        /**
+         * 정규식에 매치되지 않은 경우 처리
+         * @param {string[]} centerLines - 중앙 영역 텍스트 라인 배열
+         */
+        handleNoCharacterMatch(centerLines) {
+            // 정규식에 매치되지 않으면 가장 긴 텍스트로 대체
+            const currentCharacter = centerLines
+                .reduce((longest, current) => 
+                    current.length > longest.length ? current : longest, ''
+                ).trim();
+                
+            if (currentCharacter) {
+                console.log(`ℹ️ 추출된 텍스트 (가장 긴 문자열): "${currentCharacter}"`);
+                
+                // 유사도가 높은 캐릭터 찾기
+                const similarChar = this.findSimilarCharacter(currentCharacter);
+                if (similarChar) {
+                    console.log(`✅ 유사한 캐릭터 발견: ${similarChar.CharacterName}`);
+                    this.highlightCurrentCharacter(similarChar.CharacterName);
+                }
+            } else {
+                console.log('❌ 캐릭터명을 찾을 수 없음');
+            }
+        },
+        
+        /**
+         * 게임 컨텐츠(카던/가토)를 확인합니다.
+         * @param {string} topLeftText - 좌상단 영역 텍스트
+         * @returns {Object} 확인 결과 (hasChaos, hasGuardian)
+         */
+        checkGameContent(topLeftText) {
+            console.warn('이 메서드는 더 이상 사용되지 않습니다. ScreenCaptureService._checkGameContent()를 사용하세요.');
+            return ScreenCaptureService._checkGameContent(topLeftText);
+            const checkKadun = this.checkContent(topLeftText, ['카던', '카오스던전'], '카오스 던전');
+            const checkGato = this.checkContent(topLeftText, ['가토', '가디언', '가디언토벌'], '가디언 토벌');
+            
+            console.log('=== 컨텐츠 인식 결과 ===');
+            console.log(`카오스 던전: ${checkKadun ? '✅' : '❌'}`);
+            console.log(`가디언 토벌: ${checkGato ? '✅' : '❌'}`);
+            
+            // 가디언 토벌 패턴 검색 (예: 0/2, 1/2 등)
+            const guardianPattern = /(\d+)\s*\/\s*(\d+)/g;
             let match;
             
-            while ((match = guardianPattern.exec(text)) !== null) {
+            while ((match = guardianPattern.exec(topLeftText)) !== null) {
                 const current = parseInt(match[1]);
                 const max = parseInt(match[2]);
                 
                 if (current < max) {
-                    // 미완료 상태로 간주
-                    // 여기에서 해당하는 캐릭터의 가디언 토벌 상태를 업데이트
                     console.log(`가디언 토벌 미완료 감지: ${current}/${max}`);
                     // this.updateCharacterGuardianStatus(characterName, false);
-                } else {
-                    // 완료 상태로 간주
-                    console.log(`가디언 토벌 완료 감지: ${current}/${max}`);
-                    // this.updateCharacterGuardianStatus(characterName, true);
                 }
             }
+        },
+        
+        /**
+         * 처리 결과를 요약하여 로그로 출력합니다.
+         */
+        logSummary() {
+            console.log('\n=== 요약 ===');
+            // 여기에 요약 로직 추가
+        },
+        
+        /**
+         * 텍스트에서 특정 컨텐츠가 있는지 확인합니다.
+         * @param {string} text - 검사할 텍스트
+         * @param {string[]} keywords - 검색할 키워드 배열
+         * @param {string} displayName - 표시할 이름
+         * @returns {boolean} - 키워드가 포함되어 있는지 여부
+         */
+        checkContent(text, keywords, displayName) {
+            const found = keywords.some(keyword => text.includes(keyword));
+            console.log(`🔍 ${displayName} 검사 (${keywords.join('/')}): ${found ? '✅' : '❌'}`);
+            return found;
+        },
+        
+        /**
+         * 유사한 캐릭터를 찾습니다.
+         * @param {string} text - 비교할 텍스트
+         * @returns {Object|null} - 가장 유사한 캐릭터 또는 null
+         */
+        findSimilarCharacter(text) {
+            if (!text || text.length < 2) return null;
             
-            // TODO: 다른 패턴들도 추가 (카오스 던전, 에포나 의뢰 등)
+            // 레벤슈타인 거리를 이용한 유사도 계산
+            const calculateDistance = (a, b) => {
+                if (a.length === 0) return b.length;
+                if (b.length === 0) return a.length;
+                
+                const matrix = [];
+                for (let i = 0; i <= b.length; i++) {
+                    matrix[i] = [i];
+                }
+                for (let j = 0; j <= a.length; j++) {
+                    matrix[0][j] = j;
+                }
+                
+                for (let i = 1; i <= b.length; i++) {
+                    for (let j = 1; j <= a.length; j++) {
+                        const cost = a[j-1] === b[i-1] ? 0 : 1;
+                        matrix[i][j] = Math.min(
+                            matrix[i-1][j] + 1,
+                            matrix[i][j-1] + 1,
+                            matrix[i-1][j-1] + cost
+                        );
+                    }
+                }
+                
+                return matrix[b.length][a.length];
+            };
             
-            // 변경사항 저장
+            let minDistance = Infinity;
+            let mostSimilar = null;
+            
+            this.characters.forEach(char => {
+                const distance = calculateDistance(text, char.CharacterName);
+                const similarity = 1 - (distance / Math.max(text.length, char.CharacterName.length));
+                
+                // 유사도가 0.6 이상이면 유사한 것으로 판단
+                if (similarity > 0.6 && similarity > (minDistance === Infinity ? 0 : 1 - (minDistance / Math.max(text.length, char.CharacterName.length)))) {
+                    minDistance = distance;
+                    mostSimilar = char;
+                    console.log(`🔍 유사한 캐릭터 후보: ${char.CharacterName} (유사도: ${(similarity * 100).toFixed(1)}%)`);
+                }
+            });
+            
+            return mostSimilar;
+        },
+        
+        // 변경사항 저장
+        saveChanges() {
             this.saveAllTasks();
         },
         
