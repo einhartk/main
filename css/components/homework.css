@@ -85,6 +85,17 @@
     }
 }
 
+/* 캐릭터 이미지 */
+.character-image {
+    width: 100%;
+    height: 200px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem 0.25rem 0 0;
+}
+
 /* 캐릭터 정보 영역 */
 .character-list .char-info {
     font-size: 0.9em;

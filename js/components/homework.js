@@ -6,6 +6,9 @@ Vue.component('homework-view', {
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="h4 mb-0">원정대 숙제 체크</h2>
             <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-success" @click="captureScreen" :disabled="capturing" title="화면 캡처로 자동 체크">
+                    <i class="bi" :class="{'bi-camera': !capturing, 'spinner-border spinner-border-sm': capturing}"></i> 자동 체크
+                </button>
                 <div class="btn-group">
                     <button class="btn btn-sm" :class="{'btn-primary': sortBy === 'level', 'btn-outline-primary': sortBy !== 'level'}"
                             @click="sortBy = 'level'" title="레벨순 정렬">
@@ -50,9 +53,13 @@ Vue.component('homework-view', {
         <!-- 캐릭터 목록 -->
         <div v-else-if="characters.length > 0" class="row g-4">
             <div v-for="char in filteredCharacters" :key="char.CharacterName" class="col-12 col-sm-6 col-lg-4">
-                <div class="card h-100 shadow-sm">
+                <div class="card h-100 shadow-sm" :class="{'border-primary border-2': char.isCurrent}" :data-character="char.CharacterName">
                     <div class="card-header bg-white p-0 overflow-hidden">
-                        <div class="character-image" :style="{'background-image': 'url(' + (char.CharacterImage || 'img/default-character.png') + ')'}"></div>
+                        <div class="character-image" :style="{'background-image': 'url(' + (char.CharacterImage || 'img/default-character.png') + ')'}" :title="char.CharacterName + ' 캐릭터 이미지'">
+                            <div v-if="!char.CharacterImage" class="d-flex align-items-center justify-content-center h-100 text-muted bg-light">
+                                <i class="bi bi-person-bounding-box fs-1"></i>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body">
                         <!-- 캐릭터 기본 정보 -->
@@ -180,15 +187,22 @@ Vue.component('homework-view', {
     `,
     data() {
         return {
-            loading: false,
-            error: null,
             characters: [],
+            loading: false,
+            capturing: false,
+            error: null,
             sortBy: 'level',
-            searchText: '',
+            lastUpdated: null,
+            showHelp: false,
+            dailyResetTime: '',
+            weeklyResetTime: '',
+            nextResetCheck: null,
+            lastResetCheck: null,
             dailyTasks: {},
             weeklyTasks: {},
             lastDailyReset: null,
-            lastWeeklyReset: null
+            lastWeeklyReset: null,
+            searchText: '' // 검색어를 저장할 속성 추가
         };
     },
     computed: {
@@ -240,6 +254,177 @@ Vue.component('homework-view', {
         }
     },
     methods: {
+        /**
+         * 화면 캡처 및 텍스트 인식 실행
+         */
+        async captureScreen() {
+            if (this.capturing) return;
+            
+            this.capturing = true;
+            this.error = null;
+            
+            try {
+                // 화면 캡처 서비스 호출
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        cursor: 'never',
+                        displaySurface: 'window'
+                    },
+                    audio: false,
+                    preferCurrentTab: false
+                });
+
+                // 비디오 요소 생성 및 스트림 연결
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                
+                // 비디오 재생 대기
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = () => {
+                        video.play().then(resolve).catch(reject);
+                    };
+                    video.onerror = reject;
+                });
+
+                // 캔버스에 그리기 (중심부만 캡처)
+                const canvas = document.createElement('canvas');
+                const centerX = video.videoWidth / 2;
+                const centerY = video.videoHeight / 2;
+                const cropWidth = Math.min(800, video.videoWidth);
+                const cropHeight = 200;
+                
+                canvas.width = cropWidth;
+                canvas.height = cropHeight;
+                const ctx = canvas.getContext('2d');
+                
+                // 화면 중앙에서 캡처
+                ctx.drawImage(
+                    video,
+                    centerX - cropWidth/2,
+                    centerY - cropHeight/2,
+                    cropWidth,
+                    cropHeight,
+                    0,
+                    0,
+                    cropWidth,
+                    cropHeight
+                );
+
+                // OCR로 텍스트 추출
+                const result = await Tesseract.recognize(
+                    canvas,
+                    'kor+eng',
+                    {
+                        logger: m => console.log(m),
+                        tessedit_char_whitelist: '0123456789/일주월화수목금토가디언토벌카오스던전에포나의뢰',
+                        preserve_interword_spaces: true
+                    }
+                );
+
+                // 추출된 텍스트 처리
+                this.processCapturedText(result.data.text);
+
+                // 스트림 정리
+                stream.getTracks().forEach(track => track.stop());
+                
+            } catch (error) {
+                console.error('화면 캡처 중 오류 발생:', error);
+                if (error.message.includes('스트림이 종료') || error.message.includes('permission')) {
+                    this.error = '화면 공유가 취소되었습니다.';
+                } else if (error.message.includes('처리 시간이 초과')) {
+                    this.error = '처리 시간이 초과되었습니다. 다시 시도해주세요.';
+                } else {
+                    this.error = '화면 캡처에 실패했습니다. 다시 시도해주세요.';
+                }
+            } finally {
+                this.capturing = false;
+            }
+        },
+        
+        /**
+         * 캡처된 텍스트 처리
+         * @param {string} text - OCR로 추출된 텍스트
+         */
+        processCapturedText(text) {
+            console.log('인식된 텍스트:', text);
+            
+            // 1. 현재 캐릭터명 추출 (화면 중앙에서 가장 큰 글자로 가정)
+            const lines = text.split('\n').filter(line => line.trim().length > 0);
+            let currentCharacter = null;
+            
+            // 중앙 라인에서 가장 긴 텍스트를 캐릭터명으로 추정
+            const centerLineIndex = Math.floor(lines.length / 2);
+            const centerLine = lines[centerLineIndex] || '';
+            
+            // 한글/영문/숫자로 구성된 2~12자리 문자열 찾기
+            const characterMatch = centerLine.match(/[가-힣a-zA-Z0-9]{2,12}/);
+            if (characterMatch) {
+                currentCharacter = characterMatch[0].trim();
+                console.log('감지된 캐릭터명:', currentCharacter);
+                this.highlightCurrentCharacter(currentCharacter);
+            } else {
+                console.log('캐릭터명을 찾을 수 없습니다.');
+            }
+            
+            // 2. 일일/주간 컨텐츠 인식
+            const guardianPattern = /가디언[\s]*토벌[\s]*\(\s*(\d+)\s*\/\s*(\d+)\s*\)/g;
+            let match;
+            
+            while ((match = guardianPattern.exec(text)) !== null) {
+                const current = parseInt(match[1]);
+                const max = parseInt(match[2]);
+                
+                if (current < max) {
+                    // 미완료 상태로 간주
+                    // 여기에서 해당하는 캐릭터의 가디언 토벌 상태를 업데이트
+                    console.log(`가디언 토벌 미완료 감지: ${current}/${max}`);
+                    // this.updateCharacterGuardianStatus(characterName, false);
+                } else {
+                    // 완료 상태로 간주
+                    console.log(`가디언 토벌 완료 감지: ${current}/${max}`);
+                    // this.updateCharacterGuardianStatus(characterName, true);
+                }
+            }
+            
+            // TODO: 다른 패턴들도 추가 (카오스 던전, 에포나 의뢰 등)
+            
+            // 변경사항 저장
+            this.saveAllTasks();
+        },
+        
+        highlightCurrentCharacter(characterName) {
+            // 모든 캐릭터의 강조 표시 제거
+            this.characters.forEach(char => {
+                this.$set(char, 'isCurrent', false);
+            });
+            
+            // 현재 캐릭터 찾아서 강조 표시
+            const currentChar = this.characters.find(char => 
+                char.CharacterName === characterName || 
+                char.CharacterName.includes(characterName) ||
+                characterName.includes(char.CharacterName)
+            );
+            
+            if (currentChar) {
+                this.$set(currentChar, 'isCurrent', true);
+                // 해당 캐릭터 카드로 스크롤
+                this.$nextTick(() => {
+                    const element = document.querySelector(`[data-character="${currentChar.CharacterName}"]`);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }
+        },
+        
+        saveAllTasks() {
+            // 모든 변경사항을 저장하는 로직
+            this.characters.forEach(character => {
+                this.saveDailyTask(character.CharacterName);
+                this.saveWeeklyTask(character.CharacterName);
+            });
+        },
+        
         getDailyResetTimeText() {
             const now = new Date();
             const nextReset = new Date(now);
@@ -281,26 +466,52 @@ Vue.component('homework-view', {
 
         checkResetTimes() {
             const now = new Date();
-            const todayReset = new Date(now);
-            todayReset.setHours(6, 0, 0, 0);
+            const today6AM = new Date(now);
+            today6AM.setHours(6, 0, 0, 0);  // 오늘 오전 6시
             
-            // 일일 초기화 체크
-            if (!this.lastDailyReset || now.getTime() >= this.lastDailyReset + 86400000) {
-                const nextReset = new Date(now);
-                nextReset.setHours(6, 0, 0, 0);
-                if (now.getHours() >= 6) {
-                    nextReset.setDate(nextReset.getDate() + 1);
+            // 현재 시간이 6시 이후인지 확인
+            const isAfter6AM = now.getHours() >= 6;
+            
+            // 일일 초기화 체크 (매일 오전 6시)
+            if (!this.lastDailyReset) {
+                // 첫 실행 시 현재 시간이 6시 이전이면 어제 6시, 이후면 오늘 6시로 설정
+                const lastReset = new Date(now);
+                lastReset.setHours(6, 0, 0, 0);
+                if (!isAfter6AM) {
+                    lastReset.setDate(lastReset.getDate() - 1);
                 }
-                this.lastDailyReset = nextReset.getTime();
-                this.dailyTasks = {};
+                this.lastDailyReset = lastReset.getTime();
                 localStorage.setItem('lastDailyReset', this.lastDailyReset);
-                localStorage.setItem('dailyTasks', JSON.stringify(this.dailyTasks));
+                
+                // 첫 실행 시 오늘 6시가 지났다면 초기화
+                if (isAfter6AM) {
+                    this.dailyTasks = {};
+                    localStorage.setItem('dailyTasks', JSON.stringify(this.dailyTasks));
+                }
+            } else {
+                // 마지막 초기화 날짜 가져오기
+                const lastResetDate = new Date(this.lastDailyReset);
+                lastResetDate.setHours(6, 0, 0, 0);
+                
+                // 오늘 6시가 지났고, 마지막 초기화가 오늘 6시 이전이면 초기화
+                if (isAfter6AM && lastResetDate < today6AM) {
+                    console.log('일일 숙제 초기화 실행 -', new Date().toLocaleString());
+                    this.dailyTasks = {};
+                    this.lastDailyReset = today6AM.getTime();
+                    localStorage.setItem('dailyTasks', JSON.stringify(this.dailyTasks));
+                    localStorage.setItem('lastDailyReset', this.lastDailyReset);
+                    
+                    // 화면 갱신을 위해 강제 업데이트
+                    this.$forceUpdate();
+                }
             }
 
             // 주간 초기화 체크 (수요일 06시)
-            if (!this.lastWeeklyReset || (now.getDay() === 3 && now.getHours() >= 6 && 
-                this.lastWeeklyReset < todayReset.getTime())) {
-                this.lastWeeklyReset = todayReset.getTime();
+            if (!this.lastWeeklyReset || 
+                (now.getDay() === 3 && now.getHours() >= 6 && 
+                 (now - new Date(this.lastWeeklyReset)) >= 7 * 24 * 60 * 60 * 1000)) {
+                
+                this.lastWeeklyReset = today6AM.getTime();
                 this.weeklyTasks = {};
                 localStorage.setItem('lastWeeklyReset', this.lastWeeklyReset);
                 localStorage.setItem('weeklyTasks', JSON.stringify(this.weeklyTasks));
@@ -413,7 +624,14 @@ Vue.component('homework-view', {
 
                 const results = await Promise.all(characterPromises);
                 // normalize and filter out nulls
-                this.characters = results.filter(r => r).map(r => this._normalizeProfile(r));
+                const normalizedResults = [];
+                for (const result of results) {
+                    if (result) {
+                        const normalized = await this._normalizeProfile(result);
+                        normalizedResults.push(normalized);
+                    }
+                }
+                this.characters = normalizedResults;
             } catch (err) {
                 this.error = err.message;
                 console.error('API 호출 에러:', err);
@@ -444,15 +662,19 @@ Vue.component('homework-view', {
                 // 소수점을 포함한 모든 문자열을 정수 부분만 남기고 제거 (예: '1234.56' -> '1234')
                 itemLevel = String(raw.ItemAvgLevel).split('.')[0];
             }
+            
             // 전투력 (CombatPower) - 소수점 제거
             let combatPower = 0;
             if (raw.CombatPower) {
-                // 소수점을 포함한 모든 문자열을 정수 부분만 남기고 제거 (예: '1234.56' -> '1234')
                 combatPower = String(raw.CombatPower).split('.')[0];
             }
-            // 전투 레벨 (CharacterLevel)
+            
+            // 캐릭터 레벨
             const combatLevel = raw.CharacterLevel || '';
-
+            
+            // 캐릭터 이미지 URL (API 응답에서 가져오거나 기본 이미지 사용)
+            const characterImage = raw.CharacterImage || 'img/default-character.png';
+            
             return {
                 CharacterName: raw.CharacterName || '',
                 CharacterClassName: raw.CharacterClassName || '',
@@ -460,7 +682,7 @@ Vue.component('homework-view', {
                 ItemMaxLevel: itemLevel,
                 CombatLevel: combatLevel,
                 CombatPower: combatPower,
-                // keep original for debugging
+                CharacterImage: characterImage,
                 _raw: raw
             };
         },
@@ -549,7 +771,14 @@ Vue.component('homework-view', {
 
                 const results = await Promise.all(characterPromises);
                 // normalize and filter out nulls
-                this.characters = results.filter(r => r).map(r => this._normalizeProfile(r));
+                const normalizedResults = [];
+                for (const result of results) {
+                    if (result) {
+                        const normalized = await this._normalizeProfile(result);
+                        normalizedResults.push(normalized);
+                    }
+                }
+                this.characters = normalizedResults;
             } catch (err) {
                 this.error = err.message;
                 console.error('API 호출 에러:', err);
