@@ -37,10 +37,18 @@ Vue.component('EditorView', {
       <!-- 편집 요약 및 비밀번호 -->
       <input v-model="editSummary" placeholder="편집 요약 (선택사항)" class="form-control mb-2" />
       <input type="password" v-model="localDoc.password" placeholder="등록/수정 암호 입력" class="form-control mb-2" />
+      <!-- 상태 메시지 -->
+      <div v-if="statusMessage" class="alert" :class="statusType" role="alert" style="padding: 5px 10px; margin-bottom: 10px;">
+        {{ statusMessage }}
+      </div>
+      
       <!-- 버튼 영역 -->
       <div class="d-flex gap-2">
-        <button @click="save" class="btn btn-primary">저장</button>
-        <button v-if="doc" @click="showHistory" class="btn btn-outline-secondary">히스토리</button>
+        <button @click.stop.prevent="save" class="btn btn-primary position-relative" :disabled="isSaving">
+          <span v-if="isSaving" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+          {{ isSaving ? '저장 중...' : '저장' }}
+        </button>
+        <button v-if="doc" @click.stop.prevent="showHistory" class="btn btn-outline-secondary" :disabled="isSaving">히스토리</button>
       </div>
       <!-- 히스토리 모달 -->
       <div v-if="showingHistory" class="modal">
@@ -76,11 +84,13 @@ Vue.component('EditorView', {
             tagInput: '',
             editSummary: '',
             isMarkdownMode: false,
-            markdownPreview: '',
+            isSaving: false,
             showingHistory: false,
             showingDiff: false,
             currentDiff: '',
-            docHistory: []
+            docHistory: [],
+            statusMessage: '',
+            statusType: 'alert-info'
         };
     },
     computed: {
@@ -91,21 +101,84 @@ Vue.component('EditorView', {
       }
     },
     methods: {
-        async save() {
-            const errors = this.validateBeforeSave();
-            if (errors.length > 0) {
-                alert(errors.join('\n'));
+        async save(event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            console.log('Save button clicked');
+            // Prevent multiple submissions
+            if (this.isSaving) {
+                console.log('Save already in progress');
                 return;
             }
-
-            if (this.isMarkdownMode) {
-                // 마크다운 모드에서는 이미 content가 업데이트되어 있음
-            } else {
-                this.localDoc.content = $(this.$refs.editor).summernote('code');
-            }
             
-            this.localDoc.editor = this.$root.userIdInput || '익명';
-            this.$emit('save', this.localDoc, this.editSummary);
+            try {
+                const errors = this.validateBeforeSave();
+                if (errors.length > 0) {
+                    this.statusMessage = errors.join('\n');
+                    this.statusType = 'alert-warning';
+                    return;
+                }
+
+                this.isSaving = true;
+                console.log('Starting save operation...');
+                this.statusMessage = '문서를 저장하고 있습니다...';
+                this.statusType = 'alert-info';
+                console.log('Save data:', {
+                    title: this.localDoc.title,
+                    category: this.localDoc.category,
+                    hasContent: !!this.localDoc.content
+                });
+                
+                if (!this.isMarkdownMode && this.$refs.editor) {
+                    this.localDoc.content = $(this.$refs.editor).summernote('code');
+                }
+                
+                this.localDoc.editor = this.$root.userIdInput || '익명';
+                
+                // Prepare document data
+                const docData = {
+                    ...this.localDoc,
+                    title: this.localDoc.title.trim(),
+                    category: this.localDoc.category || '',
+                    subcategory: this.localDoc.subcategory || '',
+                    tags: this.localDoc.tags || [],
+                    content: this.localDoc.content || ''
+                };
+
+                console.log('Emitting save event with data:', docData);
+                
+                // Emit the save event
+                try {
+                    await this.$root.saveDoc(docData, this.editSummary || '');
+                    
+                    // Save successful
+                    this.statusMessage = '문서가 성공적으로 저장되었습니다. 메인 화면으로 이동합니다...';
+                    this.statusType = 'alert-success';
+                    
+                    // Redirect to main page after a short delay
+                    setTimeout(() => {
+                        this.$root.goHome();
+                        
+                    }, 1000);
+                } catch (error) {
+                    console.error('Save failed:', error);
+                    throw error; // This will be caught by the outer try-catch
+                }
+                
+            } catch (error) {
+                console.error('저장 중 오류 발생:', error);
+                this.statusMessage = '저장 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류');
+                this.statusType = 'alert-danger';
+            } finally {
+                this.isSaving = false;
+                // 5초 후 상태 메시지 제거 (성공 메시지만)
+                if (this.statusType === 'alert-success') {
+                    setTimeout(() => {
+                        this.statusMessage = '';
+                    }, 3000);
+                }
+            }
         },
         switchToMarkdown() {
             if (!this.isMarkdownMode) {

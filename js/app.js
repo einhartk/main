@@ -15,6 +15,9 @@ async function hashPassword(pw){
   return Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+// Register EditorView component
+// EditorView component is loaded from external file
+
 Vue.component('sidebar-view', {
   props: ['recentDocs', 'categories', 'popularDocs', 'allTags'],
   data() {
@@ -197,6 +200,26 @@ new Vue({
     this.isFloatingBarVisible = floatingBarVisible === null ? true : JSON.parse(floatingBarVisible);
   },
   methods:{
+    async checkTitleExists(title, excludeId = null) {
+      try {
+        const snapshot = await db.collection('docs')
+          .where('title', '==', title)
+          .get();
+          
+        if (!snapshot.empty) {
+          // If we're editing a document, exclude it from the check
+          if (excludeId) {
+            return snapshot.docs.some(doc => doc.id !== excludeId);
+          }
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error('제목 확인 중 오류 발생:', error);
+        return false;
+      }
+    },
+    
     toggleFloatingBar() {
       this.isFloatingBarVisible = !this.isFloatingBarVisible;
       localStorage.setItem('floatingBarVisible', this.isFloatingBarVisible);
@@ -250,7 +273,23 @@ new Vue({
       }
     },
     goHome(){ this.currentView='home-view'; this.searchMode=false; this.currentDoc=null; this.searchResults=[]; },
-    editDoc(doc=null){ this.currentDoc=doc; this.currentView='EditorView'; },
+    editDoc(doc=null) {
+      this.currentDoc = doc || {
+        title: '',
+        content: '',
+        category: '',
+        subcategory: '',
+        tags: [],
+        password: ''
+      };
+      this.currentView = 'EditorView';
+      // Ensure the editor component is properly initialized
+      this.$nextTick(() => {
+        if (this.$refs.editor) {
+          this.$refs.editor.$el.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    },
     async viewDoc(doc){ 
       if (!doc || !doc.id) {
         alert('문서 정보가 올바르지 않습니다.');
@@ -299,34 +338,111 @@ new Vue({
         this.loading = false;
       }
     },
-    async saveDoc(doc){
-      this.loading=true;
-      try{
-        const hashed = await hashPassword(doc.password);
-        let ip='255.255.255.255';
-        try{ ip=maskIP(await getClientIP()); }catch(e){}
-        const isEdit = !!doc.id;
-        const data = { 
-          title: doc.title, 
-          content: doc.content, 
-          password: hashed, 
-          ip: ip,
-          category: doc.category,
-          subcategory: doc.subcategory,
-          createdAt: isEdit ? doc.createdAt : new Date(),
-          updatedAt: new Date(),
-          views: isEdit ? doc.views : 0,
-          creator: isEdit ? doc.creator : (this.userIdInput || '익명'),
-          contributors: isEdit ? 
-            [...new Set([...doc.contributors, this.userIdInput || '익명'])] : 
-            [this.userIdInput || '익명'],
-          tags: doc.tags || []
-        };
-        await db.collection('docs').add(data);
-        alert('저장 완료\nIP: '+ip);
-        this.goHome(); this.loadRecentDocs();
-      } catch(e){ console.error(e); alert('저장 실패'); }
-      finally{ this.loading=false; }
+    async saveDoc(doc, editSummary = '', onSuccess, onError) {
+        console.log('saveDoc called with:', { doc, editSummary });
+        console.log('Saving document:', doc);
+        this.loading = true;
+        
+        try {
+            // Check for duplicate title
+            console.log('Checking for duplicate title...');
+            const titleExists = await this.checkTitleExists(doc.title, doc.id);
+            if (titleExists) {
+                const error = new Error('이미 동일한 제목의 문서가 존재합니다. 다른 제목을 사용해주세요.');
+                console.error('Duplicate title error:', error);
+                if (onError) onError(error);
+                this.loading = false;
+                return;
+            }
+
+            const hashed = await hashPassword(doc.password);
+            let ip = '255.255.255.255';
+            try { 
+                ip = maskIP(await getClientIP()); 
+            } catch (e) {
+                console.warn('IP 가져오기 실패:', e);
+            }
+            
+            const isEdit = !!doc.id;
+            const docData = { 
+                title: doc.title.trim(), 
+                content: doc.content, 
+                password: hashed, 
+                ip: ip,
+                category: doc.category || '',
+                subcategory: doc.subcategory || '',
+                tags: doc.tags || [],
+                updatedAt: new Date()
+            };
+
+            console.log('No duplicate title found, proceeding with save...');
+            
+            // Save document
+            let docRef;
+            if (isEdit) {
+                // Update existing document
+                docRef = db.collection('docs').doc(doc.id);
+                await docRef.update({
+                    ...docData,
+                    views: doc.views || 0,
+                    contributors: [...new Set([...(doc.contributors || []), this.userIdInput || '익명'])]
+                });
+            } else {
+                // Create new document
+                docData.createdAt = new Date();
+                docData.views = 0;
+                docData.creator = this.userIdInput || '익명';
+                docData.contributors = [this.userIdInput || '익명'];
+                const result = await db.collection('docs').add(docData);
+                docData.id = result.id;
+                docRef = { id: result.id };
+            }
+
+            // Save history
+            if (docRef && docRef.id) {
+                console.log('Saving document history...');
+                try {
+                    await db.collection('docs').doc(docRef.id)
+                        .collection('history')
+                        .add({
+                            content: doc.content,
+                            title: doc.title,
+                            editor: this.userIdInput || '익명',
+                            summary: editSummary,
+                            timestamp: new Date()
+                        });
+                    console.log('Document history saved');
+                } catch (historyError) {
+                    console.error('Error saving document history:', historyError);
+                    // Don't fail the whole operation if history fails
+                }
+            }
+
+            // Refresh recent docs and return success
+            console.log('Document saved successfully, loading recent docs...');
+            await this.loadRecentDocs();
+            console.log('Save operation completed successfully');
+            
+            // Return the full document data with ID
+            const result = { 
+                success: true, 
+                id: docRef.id,
+                ...docData
+            };
+            
+            if (onSuccess) onSuccess(result);
+            return result;
+        } catch (error) {
+            console.error('문서 저장 중 오류 발생:', error);
+            if (onError) {
+                onError(error);
+            } else {
+                alert('문서 저장 중 오류가 발생했습니다: ' + (error.message || '알 수 없는 오류'));
+            }
+            throw error; // Re-throw the error to be caught by the caller
+        } finally {
+            this.loading = false;
+        }
     },
     
     async filterByCategory(category, subcategory) {
