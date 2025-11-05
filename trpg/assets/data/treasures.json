@@ -1,0 +1,37 @@
+{
+  "treasureChests": [
+    {
+      "name": "낡은 나무 상자",
+      "minGold": 10,
+      "maxGold": 50,
+      "items": [
+        {"name": "작은 회복 물약", "rarity": "common", "chance": 0.7},
+        {"name": "일반 무기", "rarity": "common", "chance": 0.5},
+        {"name": "희귀한 보석", "rarity": "uncommon", "chance": 0.3},
+        {"name": "마법의 반지", "rarity": "rare", "chance": 0.1}
+      ]
+    },
+    {
+      "name": "단단한 철제 상자",
+      "minGold": 50,
+      "maxGold": 200,
+      "items": [
+        {"name": "중간 회복 물약", "rarity": "common", "chance": 0.8},
+        {"name": "고급 무기", "rarity": "uncommon", "chance": 0.6},
+        {"name": "희귀한 방어구", "rarity": "uncommon", "chance": 0.5},
+        {"name": "전설의 검", "rarity": "legendary", "chance": 0.05}
+      ]
+    },
+    {
+      "name": "빛나는 황금 상자",
+      "minGold": 200,
+      "maxGold": 1000,
+      "items": [
+        {"name": "대형 회복 물약", "rarity": "uncommon", "chance": 0.9},
+        {"name": "전설의 방어구", "rarity": "legendary", "chance": 0.2},
+        {"name": "신비한 유물", "rarity": "legendary", "chance": 0.1},
+        {"name": "영웅의 검", "rarity": "mythic", "chance": 0.03}
+      ]
+    }
+  ]
+}

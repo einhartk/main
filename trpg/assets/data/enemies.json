@@ -1,0 +1,13 @@
+{
+  "enemies": [
+    { "id": "wolf", "name": "야생 늑대", "level": 1, "hp": 30, "exp": 15, "gold": "1d10+5", "attack": 8, "defense": 2, "agility": 12, "strength": 10, "drops": ["wolf_fang", "leather"], "spawnWeight": 30 },
+    { "id": "goblin", "name": "고블린 졸개", "level": 1, "hp": 35, "exp": 20, "gold": "2d6+5", "attack": 10, "defense": 1, "agility": 14, "strength": 8, "drops": ["crude_sword", "leather"], "spawnWeight": 25 },
+    { "id": "giant_rat", "name": "거대 쥐", "level": 1, "hp": 25, "exp": 12, "gold": "1d8+2", "attack": 6, "defense": 0, "agility": 16, "strength": 6, "drops": ["rat_tail"], "spawnWeight": 20 },
+    { "id": "bandit", "name": "산적", "level": 3, "hp": 50, "exp": 35, "gold": "2d10+10", "attack": 12, "defense": 4, "agility": 12, "strength": 12, "drops": ["short_sword", "leather_armor"], "spawnWeight": 15 },
+    { "id": "skeleton", "name": "해골 전사", "level": 3, "hp": 40, "exp": 30, "gold": "1d12+5", "attack": 14, "defense": 6, "agility": 8, "strength": 14, "drops": ["bone", "rusty_sword"], "spawnWeight": 15 },
+    { "id": "giant_spider", "name": "거대 거미", "level": 4, "hp": 45, "exp": 40, "gold": "1d8+5", "attack": 16, "defense": 3, "agility": 16, "strength": 10, "drops": ["spider_silk", "spider_venom"], "spawnWeight": 10 },
+    { "id": "orc_warrior", "name": "오크 전사", "level": 6, "hp": 80, "exp": 80, "gold": "3d10+15", "attack": 18, "defense": 8, "agility": 10, "strength": 18, "drops": ["battle_axe", "orc_tusk"], "spawnWeight": 8 },
+    { "id": "dark_elf", "name": "다크 엘프", "level": 7, "hp": 65, "exp": 90, "gold": "4d10+20", "attack": 20, "defense": 6, "agility": 20, "strength": 12, "drops": ["elven_dagger", "dark_cloak"], "spawnWeight": 5 },
+    { "id": "minotaur", "name": "미노타우로스", "level": 8, "hp": 120, "exp": 120, "gold": "5d10+25", "attack": 22, "defense": 12, "agility": 8, "strength": 20, "drops": ["great_axe", "minotaur_horn"], "spawnWeight": 2 }
+  ]
+}

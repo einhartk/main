@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TRPG Adventure</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+  <!-- 상단 상태 영역 -->
+  <header class="status-bar">
+    <div id="playerStatus"></div>
+    <div id="gameDay">지나간 날: 0일째</div>
+    <div class="save-controls">
+      <button id="saveGame">💾 저장하기</button>
+      <button id="loadGame">📂 불러오기</button>
+    </div>
+  </header>
+
+  <!-- 메인 콘텐츠 -->
+  <main>
+    <section id="leftPanel">
+      <h2>🎭 캐릭터 설정</h2>
+      <div id="characterSetup">
+        <label>이름 <input type="text" id="playerName" placeholder="이름 입력" /></label>
+        <label>직업 
+          <select id="playerClass">
+            <option value="전사">전사</option>
+            <option value="도적">도적</option>
+            <option value="마법사">마법사</option>
+          </select>
+        </label>
+        <button id="createCharacter">모험 시작</button>
+      </div>
+
+      <div id="playerInfo" class="hidden">
+        <div class="tab-navigation">
+          <button class="tab-button active" data-tab="character">캐릭터</button>
+          <button class="tab-button" data-tab="items">아이템</button>
+          <button class="tab-button" data-tab="skills">스킬</button>
+        </div>
+        
+        <!-- 캐릭터 정보 탭 -->
+        <div id="character-tab" class="tab-content active">
+          <h3>🧍 캐릭터 정보</h3>
+        <div class="character-stats">
+          <div class="stat-row">
+            <span class="stat-name">이름</span>
+            <span id="charName" class="stat-value">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">직업</span>
+            <span id="charJob" class="stat-value">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">레벨</span>
+            <span id="charLevel" class="stat-value">1</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">체력</span>
+            <span id="charHp" class="stat-value">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">경험치</span>
+            <span id="charExp" class="stat-value">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">골드</span>
+            <span id="charGold" class="stat-value">-</span>
+          </div>
+          <div class="stat-divider">스탯</div>
+          <div class="stat-row">
+            <span class="stat-name">💪 힘</span>
+            <span id="statStr" class="stat-value">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">🏃 민첩</span>
+            <span id="statAgi" class="stat-value">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">❤️ 체력</span>
+            <span id="statVit" class="stat-value">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">🧠 지능</span>
+            <span id="statInt" class="stat-value">-</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-name">🍀 행운</span>
+            <span id="statLuk" class="stat-value">-</span>
+          </div>
+        </div>
+          <div class="inventory-section">
+            <h4>🎒 인벤토리</h4>
+            <div id="inventory" class="inventory-items">비어 있음</div>
+          </div>
+        </div>
+        
+        <!-- 아이템 정보 탭 -->
+        <div id="items-tab" class="tab-content">
+          <div class="tab-header">
+            <h3>🎒 장비 관리</h3>
+            <button id="backToCharacter" class="back-button">← 돌아가기</button>
+          </div>
+          <div class="equipment-grid">
+            <div class="equipment-slot" data-slot="weapon">
+              <div class="slot-icon">⚔️</div>
+              <div class="slot-name">무기</div>
+              <div id="weapon-slot" class="item-name">-</div>
+            </div>
+            <div class="equipment-slot" data-slot="armor">
+              <div class="slot-icon">🛡️</div>
+              <div class="slot-name">방어구</div>
+              <div id="armor-slot" class="item-name">-</div>
+            </div>
+            <div class="equipment-slot" data-slot="accessory1">
+              <div class="slot-icon">💍</div>
+              <div class="slot-name">악세서리1</div>
+              <div id="accessory1-slot" class="item-name">-</div>
+            </div>
+            <div class="equipment-slot" data-slot="accessory2">
+              <div class="slot-icon">📿</div>
+              <div class="slot-name">악세서리2</div>
+              <div id="accessory2-slot" class="item-name">-</div>
+            </div>
+          </div>
+          <div class="inventory-list">
+            <h4>보유 아이템</h4>
+            <div id="item-list" class="item-list">
+              <!-- 아이템 목록이 여기에 동적으로 추가됩니다 -->
+            </div>
+          </div>
+        </div>
+        
+        <!-- 스킬 정보 탭 -->
+        <div id="skills-tab" class="tab-content">
+          <div class="tab-header">
+            <h3>✨ 스킬 목록</h3>
+            <button id="backToCharacter2" class="back-button">← 돌아가기</button>
+          </div>
+          <div class="skills-container">
+            <div id="active-skills" class="skill-category">
+              <h4>액티브 스킬</h4>
+              <div id="active-skills-list" class="skill-list">
+                <!-- 액티브 스킬 목록이 여기에 추가됩니다 -->
+              </div>
+            </div>
+            <div id="passive-skills" class="skill-category">
+              <h4>패시브 스킬</h4>
+              <div id="passive-skills-list" class="skill-list">
+                <!-- 패시브 스킬 목록이 여기에 추가됩니다 -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="centerPanel">
+      <h2>📜 이벤트</h2>
+      <div id="eventLog" class="event-box"></div>
+      <div id="actionButtons" class="action-buttons">
+        <!-- Action buttons will be added here dynamically -->
+      </div>
+    </section>
+
+    <section id="rightPanel">
+      <h2>📋 퀘스트</h2>
+      <div id="questBoard">진행 중인 퀘스트 없음</div>
+      <h2>📜 퀘스트 목록</h2>
+      <div id="availableQuests"></div>
+      <div id="questProgress"></div>
+    </section>
+  </main>
+
+  <!-- 하단 로그 -->
+  <footer>
+    <h3>🎲 로그</h3>
+    <div id="logContainer"></div>
+  </footer>
+
+  <!-- 외부 스크립트 (기존 파일들과 호환되는 순서) -->
+  <script src="assets/js/ui.js"></script>
+  <script>
+    // Initialize Combat module with UI
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOMContentLoaded - Initializing Combat module');
+      if (typeof Combat !== 'undefined' && typeof UI !== 'undefined') {
+        console.log('Initializing Combat with UI');
+        Combat.init(UI);
+      } else {
+        console.error('Combat or UI not found:', { Combat: typeof Combat, UI: typeof UI });
+      }
+    });
+  </script>
+  <script src="assets/js/combat.js"></script>
+  <script src="assets/js/dice.js"></script>
+  <script src="assets/js/player.js"></script>
+  <script src="assets/js/quest.js"></script>
+  <script src="assets/js/event.js"></script>
+  <script src="assets/js/tabs.js"></script> <!-- 탭 기능 스크립트 -->
+  <script src="assets/js/main.js"></script>
+
+  <!-- 저장/불러기능을 위한 전역 바인드 -->
+  <script>
+    (function(){
+      // 게임 상태 수집 함수
+      function gatherGameState() {
+        try {
+          console.log('게임 상태 수집 시작...');
+          
+          // 1. 플레이어 객체 찾기
+          let gamePlayer;
+          
+          // 다양한 방법으로 플레이어 객체 찾기
+          if (window.player) {
+            gamePlayer = window.player;
+            console.log('플레이어 객체를 window.player에서 찾았습니다.');
+          } else if (window.main && window.main.player) {
+            gamePlayer = window.main.player;
+            console.log('플레이어 객체를 window.main.player에서 찾았습니다.');
+          } else if (window.Player && window.Player.instance) {
+            gamePlayer = window.Player.instance;
+            console.log('플레이어 객체를 Player.instance에서 찾았습니다.');
+          } else {
+            // 마지막 시도: 전역 스코프에서 찾기
+            for (let key in window) {
+              if (window[key] && window[key].constructor && 
+                  window[key].constructor.name === 'Player') {
+                gamePlayer = window[key];
+                console.log(`플레이어 객체를 전역 변수 ${key}에서 찾았습니다.`);
+                break;
+              }
+            }
+          }
+          
+          if (!gamePlayer) {
+            console.error('저장 오류: 플레이어 객체를 찾을 수 없습니다.');
+            console.log('전역 객체 검색 결과:', Object.keys(window).filter(key => 
+              key.toLowerCase().includes('player') || 
+              (window[key] && window[key].constructor && 
+               window[key].constructor.name === 'Player')
+            ));
+            return null;
+          }
+          
+          // 플레이어 속성 확인
+          console.log('플레이어 속성:', {
+            name: gamePlayer.name,
+            job: gamePlayer.job,
+            hp: gamePlayer.hp,
+            level: gamePlayer.level,
+            exp: gamePlayer.exp,
+            gold: gamePlayer.gold,
+            inventory: gamePlayer.inventory,
+            quests: gamePlayer.quests
+          });
+          
+          // 게임 상태 구성
+          const state = {
+            player: {
+              name: gamePlayer.name || '이름 없음',
+              job: gamePlayer.job || '전사',
+              hp: typeof gamePlayer.hp === 'number' ? gamePlayer.hp : 100,
+              maxHp: typeof gamePlayer.maxHp === 'number' ? gamePlayer.maxHp : 100,
+              level: typeof gamePlayer.level === 'number' ? gamePlayer.level : 1,
+              exp: typeof gamePlayer.exp === 'number' ? gamePlayer.exp : 0,
+              gold: typeof gamePlayer.gold === 'number' ? gamePlayer.gold : 0,
+              inventory: Array.isArray(gamePlayer.inventory) ? [...gamePlayer.inventory] : [],
+              quests: gamePlayer.quests ? JSON.parse(JSON.stringify(gamePlayer.quests)) : []
+            },
+            gameDay: (document.getElementById('gameDay') && document.getElementById('gameDay').textContent) || '1일째',
+            eventLog: (document.getElementById('eventLog') && document.getElementById('eventLog').innerHTML) || '',
+            timestamp: new Date().toISOString()
+          };
+          
+          console.log('게임 상태 저장됨:', state);
+          return state;
+          
+        } catch (e) {
+          console.error('게임 상태 수집 중 오류 발생:', e);
+          console.error('스택 트레이스:', e.stack);
+          return null;
+        }
+      }
+
+      // 저장 기능
+      document.getElementById('saveGame').addEventListener('click', function saveGame() {
+        try {
+          console.log('=== 게임 저장 시작 ===');
+          
+          // 1. 게임 시작 여부 확인
+          const charSetup = document.getElementById('characterSetup');
+          if (!charSetup) {
+            const errorMsg = '캐릭터 설정 요소를 찾을 수 없습니다.';
+            console.error(errorMsg);
+            UI.showNotification(errorMsg, 'error');
+            return;
+          }
+          
+          const isGameStarted = charSetup.classList.contains('hidden');
+          console.log('게임 시작 여부:', isGameStarted);
+          
+          if (!isGameStarted) {
+            const msg = '게임을 먼저 시작해주세요. 캐릭터를 생성하세요.';
+            console.warn(msg);
+            UI.showNotification(msg, 'warning');
+            return;
+          }
+          
+          // 2. 플레이어 객체 확인
+          console.log('플레이어 객체 확인 중...');
+          const gamePlayer = window.player || (window.main && window.main.player);
+          
+          if (!gamePlayer) {
+            const errorMsg = '플레이어 객체를 찾을 수 없습니다. 게임을 다시 시작해주세요.';
+            console.error(errorMsg);
+            console.log('전역 객체 검색 결과:', Object.keys(window).filter(key => 
+              key.toLowerCase().includes('player') || 
+              (window[key] && window[key].constructor && 
+               window[key].constructor.name === 'Player')
+            ));
+            UI.showNotification(errorMsg, 'error');
+            return;
+          }
+          
+          console.log('플레이어 객체 확인됨:', {
+            name: gamePlayer.name,
+            job: gamePlayer.job,
+            hp: gamePlayer.hp,
+            level: gamePlayer.level,
+            exp: gamePlayer.exp,
+            gold: gamePlayer.gold
+          });
+          
+          // 3. 게임 상태 수집
+          console.log('게임 상태 수집 중...');
+          const state = {
+            player: {
+              name: gamePlayer.name || '이름 없음',
+              job: gamePlayer.job || '전사',
+              hp: typeof gamePlayer.hp === 'number' ? gamePlayer.hp : 100,
+              maxHp: typeof gamePlayer.maxHp === 'number' ? gamePlayer.maxHp : 100,
+              level: typeof gamePlayer.level === 'number' ? gamePlayer.level : 1,
+              exp: typeof gamePlayer.exp === 'number' ? gamePlayer.exp : 0,
+              gold: typeof gamePlayer.gold === 'number' ? gamePlayer.gold : 0,
+              inventory: Array.isArray(gamePlayer.inventory) ? [...gamePlayer.inventory] : [],
+              quests: gamePlayer.quests ? JSON.parse(JSON.stringify(gamePlayer.quests)) : []
+            },
+            gameDay: (document.getElementById('gameDay') && document.getElementById('gameDay').textContent) || '1일째',
+            eventLog: (document.getElementById('eventLog') && document.getElementById('eventLog').innerHTML) || '',
+            timestamp: new Date().toISOString()
+          };
+          
+          console.log('수집된 게임 상태:', state);
+          
+          // 4. 로컬 스토리지에 저장
+          console.log('로컬 스토리지에 저장 중...');
+          try {
+            localStorage.setItem('trpg_save', JSON.stringify(state));
+            console.log('로컬 스토리지 저장 완료');
+            
+            // 저장된 데이터 확인
+            const savedData = localStorage.getItem('trpg_save');
+            console.log('저장된 데이터 확인:', savedData ? '성공' : '실패');
+            
+            if (!savedData) {
+              throw new Error('저장된 데이터를 확인할 수 없습니다.');
+            }
+            
+            // 저장 성공 알림
+            const saveTime = new Date().toLocaleTimeString();
+            UI.addLog(`[${saveTime}] 게임이 저장되었습니다.`, 'success');
+            UI.showNotification('게임이 저장되었습니다!', 'success');
+            
+          } catch (storageError) {
+            console.error('로컬 스토리지 저장 오류:', storageError);
+            UI.showNotification('저장에 실패했습니다. 브라우저 설정을 확인해주세요.', 'error');
+          }
+          
+        } catch (e) { 
+          console.error('저장 처리 중 오류 발생:', e);
+          UI.showNotification(`저장 중 오류가 발생했습니다: ${e.message}`, 'error');
+        }
+      });
+
+      // 게임 초기화 함수
+      function initializeGame() {
+        console.log('게임 초기화 중...');
+        
+        // Player 클래스가 전역에 있는지 확인
+        if (typeof Player === 'undefined') {
+          console.error('Player 클래스를 찾을 수 없습니다. main.js가 제대로 로드되었는지 확인해주세요.');
+          UI.showNotification('게임 초기화에 실패했습니다. 페이지를 새로고침해주세요.', 'error');
+          return false;
+        }
+        return true;
+      }
+      
+      // 플레이어 객체 찾기
+      function findPlayerObject() {
+        console.log('플레이어 객체 검색 중...');
+        
+        // 1. window.player 확인
+        if (window.player) {
+          console.log('window.player에서 플레이어 객체를 찾았습니다.');
+          return window.player;
+        }
+        
+        // 2. window.main.player 확인
+        if (window.main && window.main.player) {
+          console.log('window.main.player에서 플레이어 객체를 찾았습니다.');
+          return window.main.player;
+        }
+        
+        // 3. 전역 스코프에서 Player 인스턴스 찾기
+        for (const key in window) {
+          try {
+            const obj = window[key];
+            if (obj && obj.constructor && obj.constructor.name === 'Player') {
+              console.log(`전역 변수 ${key}에서 Player 인스턴스를 찾았습니다.`);
+              window.player = obj; // 나중을 위해 저장
+              return obj;
+            }
+          } catch (e) {
+            // 접근할 수 없는 속성은 무시
+            continue;
+          }
+        }
+        
+        console.error('플레이어 객체를 찾을 수 없습니다.');
+        return null;
+      }
+
+      // 불러오기 기능
+      document.getElementById('loadGame').addEventListener('click', function() {
+        try {
+          console.log('=== 게임 불러오기 시작 ===');
+          
+          // 게임 초기화 확인
+          if (!initializeGame()) {
+            return;
+          }
+          
+          // 저장된 데이터 가져오기
+          console.log('저장된 데이터 로드 중...');
+          const raw = localStorage.getItem('trpg_save');
+          
+          if (!raw) {
+            const errorMsg = '저장된 게임 데이터를 찾을 수 없습니다.';
+            console.error(errorMsg);
+            UI.showNotification(errorMsg, 'warning');
+            return;
+          }
+          
+          // 데이터 파싱
+          console.log('데이터 파싱 중...');
+          let state;
+          try {
+            state = JSON.parse(raw);
+            console.log('불러온 게임 상태:', state);
+          } catch (e) {
+            console.error('저장된 데이터 파싱 실패:', e);
+            UI.showNotification('저장된 게임 데이터가 손상되었습니다.', 'error');
+            return;
+          }
+          
+          if (!state.player) {
+            const errorMsg = '저장된 플레이어 데이터가 없습니다.';
+            console.error(errorMsg);
+            UI.showNotification(errorMsg, 'error');
+            return;
+          }
+          
+          // 플레이어 객체 찾기 또는 생성
+          console.log('플레이어 객체 처리 중...');
+          let player = findPlayerObject();
+          
+          // 플레이어 객체가 없으면 새로 생성
+          if (!player) {
+            console.log('새 플레이어 객체를 생성합니다...');
+            try {
+              player = new Player(
+                state.player.name || '모험가',
+                state.player.job || '전사'
+              );
+              window.player = player; // 전역에 저장
+              console.log('새 플레이어 객체 생성 완료:', player);
+            } catch (e) {
+              console.error('플레이어 객체 생성 실패:', e);
+              UI.showNotification('플레이어를 생성할 수 없습니다. 게임을 다시 시작해주세요.', 'error');
+              return;
+            }
+          }
+          
+          // UI 업데이트
+          console.log('UI 업데이트 중...');
+          const charSetup = document.getElementById('characterSetup');
+          if (charSetup && !charSetup.classList.contains('hidden')) {
+            console.log('게임 시작 화면으로 전환 중...');
+            charSetup.classList.add('hidden');
+            const playerInfo = document.getElementById('playerInfo');
+            if (playerInfo) playerInfo.classList.remove('hidden');
+          }
+          
+          // 플레이어 상태 복원
+          console.log('플레이어 상태 복원 중...');
+          
+          // 기본 속성 복원
+          player.name = state.player.name || player.name;
+          player.job = state.player.job || player.job;
+          player.hp = typeof state.player.hp === 'number' ? state.player.hp : player.hp;
+          player.maxHp = typeof state.player.maxHp === 'number' ? state.player.maxHp : player.maxHp;
+          player.level = typeof state.player.level === 'number' ? state.player.level : player.level;
+          player.exp = typeof state.player.exp === 'number' ? state.player.exp : player.exp;
+          player.gold = typeof state.player.gold === 'number' ? state.player.gold : player.gold;
+          
+          // 인벤토리 복원
+          if (Array.isArray(state.player.inventory)) {
+            player.inventory = [...state.player.inventory];
+          }
+          
+          // 퀘스트 복원
+          if (state.player.quests && Array.isArray(state.player.quests)) {
+            player.quests = JSON.parse(JSON.stringify(state.player.quests));
+          }
+          
+          // UI 업데이트
+          console.log('UI 업데이트 중...');
+          UI.updatePlayerInfo(player);
+          
+          // 퀘스트 UI 업데이트
+          if (typeof QuestSystem !== 'undefined' && typeof QuestSystem.updateQuestUI === 'function') {
+            QuestSystem.updateQuestUI(player);
+          }
+          
+          // 게임 날짜 복원
+          if (state.gameDay) {
+            const gameDayEl = document.getElementById('gameDay');
+            if (gameDayEl) {
+              gameDayEl.textContent = state.gameDay;
+            }
+          }
+          
+          // 이벤트 로그 복원
+          if (state.eventLog) {
+            const eventLogEl = document.getElementById('eventLog');
+            if (eventLogEl) {
+              eventLogEl.innerHTML = state.eventLog;
+            }
+          }
+          
+          // 로그에 불러오기 알림 추가
+          const loadTime = state.timestamp ? new Date(state.timestamp).toLocaleString() : '알 수 없는 시간';
+          console.log('게임 불러오기 완료:', loadTime);
+          
+          UI.addLog(`[${new Date().toLocaleTimeString()}] ${loadTime}에 저장된 게임을 불러왔습니다.`, 'system');
+          UI.showNotification('게임을 불러왔습니다!', 'success');
+          
+        } catch (e) {
+          console.error('불러오기 실패:', e);
+          UI.showNotification('게임 불러오기에 실패했습니다: ' + (e.message || '알 수 없는 오류'), 'error');
+        }
+      });
+
+    })();
+  </script>
+</body>
+</html>

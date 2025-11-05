@@ -1,0 +1,90 @@
+{
+  "towns": [
+    {
+      "id": "starting_village",
+      "name": "시작의 마을",
+      "levelRange": [1, 5],
+      "description": "모험가들이 처음으로 발을 들이는 작은 마을. 초보자들을 위한 장비와 퀘스트가 가득하다.",
+      "actions": [
+        {
+          "id": "rest_inn",
+          "name": "여관에서 쉬기",
+          "cost": 50,
+          "description": "체력을 모두 회복합니다.",
+          "effect": "heal_full"
+        },
+        {
+          "id": "basic_shop",
+          "name": "기본 상점 방문",
+          "description": "기본적인 장비와 소모품을 판매합니다.",
+          "shopType": "basic"
+        },
+        {
+          "id": "quest_board",
+          "name": "의뢰 게시판",
+          "description": "마을 사람들의 의뢰를 확인합니다.",
+          "effect": "show_quests"
+        },
+        {
+          "id": "training_ground",
+          "name": "훈련장",
+          "description": "기본적인 전투 기술을 연마합니다.",
+          "effect": "train_skills"
+        }
+      ]
+    },
+    {
+      "id": "merchant_city",
+      "name": "상인의 도시",
+      "levelRange": [5, 15],
+      "description": "각종 상인들이 모여드는 번화한 도시. 희귀한 아이템을 구할 수 있다.",
+      "actions": [
+        {
+          "id": "luxury_inn",
+          "name": "고급 여관에서 쉬기",
+          "cost": 200,
+          "description": "체력을 모두 회복하고, 다음 전투에서 경험치 1.5배 보너스를 얻습니다.",
+          "effect": "heal_full_xp_boost"
+        },
+        {
+          "id": "black_market",
+          "name": "암시장 방문",
+          "description": "특별한 아이템을 거래합니다.",
+          "shopType": "rare"
+        },
+        {
+          "id": "arena",
+          "name": "투기장",
+          "description": "강한 적들과 싸워 보상을 얻으세요.",
+          "effect": "start_arena"
+        }
+      ]
+    },
+    {
+      "id": "wizard_tower",
+      "name": "마법사의 탑",
+      "levelRange": [10, 20],
+      "description": "강력한 마법사들이 모여 사는 신비로운 탑. 마법 아이템과 주문서를 구할 수 있다.",
+      "actions": [
+        {
+          "id": "arcane_library",
+          "name": "비전 도서관",
+          "description": "고대의 지식을 연구하여 새로운 마법을 배웁니다.",
+          "effect": "learn_spells"
+        },
+        {
+          "id": "enchanting",
+          "name": "마법 부여",
+          "description": "아이템에 마법을 부여합니다.",
+          "effect": "enchant_item"
+        },
+        {
+          "id": "dimension_gate",
+          "name": "차원의 문",
+          "description": "다른 차원으로 통하는 문을 엽니다.",
+          "effect": "dimension_travel"
+        }
+      ]
+    }
+  ]
+}

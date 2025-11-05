@@ -1,0 +1,262 @@
+[
+  {
+    "id": "warrior_power_strike",
+    "name": "강타",
+    "type": "active",
+    "class": "warrior",
+    "level": 1,
+    "power": 1.5,
+    "cost": 10,
+    "cooldown": 3,
+    "target": "enemy",
+    "description": "강력한 일격을 가해 공격력의 150% 피해를 줍니다.",
+    "icon": "💥"
+  },
+  {
+    "id": "warrior_whirlwind",
+    "name": "휠윈드",
+    "type": "active",
+    "class": "warrior",
+    "level": 5,
+    "power": 0.8,
+    "cost": 15,
+    "cooldown": 4,
+    "aoe": true,
+    "target": "all_enemies",
+    "description": "빠르게 회전하며 주변 모든 적에게 80%의 피해를 줍니다.",
+    "icon": "🌪️"
+  },
+  {
+    "id": "warrior_taunt",
+    "name": "도발",
+    "type": "active",
+    "class": "warrior",
+    "level": 3,
+    "cost": 5,
+    "cooldown": 3,
+    "target": "all_enemies",
+    "effect": {
+      "type": "taunt",
+      "duration": 3,
+      "chance": 90
+    },
+    "description": "적의 주의를 끌어 아군을 공격하지 못하게 만듭니다.",
+    "icon": "👊"
+  },
+  {
+    "id": "warrior_iron_will",
+    "name": "강인한 의지",
+    "type": "passive",
+    "class": "warrior",
+    "level": 1,
+    "description": "최대 체력이 20% 증가합니다.",
+    "icon": "🛡️"
+  },
+  {
+    "id": "thief_double_attack",
+    "name": "더블 어택",
+    "type": "active",
+    "class": "thief",
+    "level": 1,
+    "hits": 2,
+    "power": 0.7,
+    "cost": 12,
+    "cooldown": 4,
+    "target": "enemy",
+    "description": "빠르게 2회 공격합니다. (공격력의 70% × 2)",
+    "icon": "⚔️"
+  },
+  {
+    "id": "thief_poison_dagger",
+    "name": "독 묻은 단검",
+    "type": "active",
+    "class": "thief",
+    "level": 3,
+    "power": 0.6,
+    "cost": 10,
+    "cooldown": 3,
+    "target": "enemy",
+    "effect": {
+      "type": "poison",
+      "damage": 5,
+      "duration": 3,
+      "chance": 80
+    },
+    "description": "적을 독으로 중독시켜 3턴 동안 매 턴 5의 피해를 줍니다.",
+    "icon": "🗡️"
+  },
+  {
+    "id": "thief_evasion",
+    "name": "회피",
+    "type": "passive",
+    "class": "thief",
+    "level": 1,
+    "dodgeChance": 15,
+    "description": "적의 공격을 15% 확률로 회피합니다.",
+    "icon": "🌀"
+  },
+  {
+    "id": "mage_fireball",
+    "name": "파이어볼",
+    "type": "active",
+    "class": "mage",
+    "level": 1,
+    "power": 1.8,
+    "cost": 15,
+    "cooldown": 3,
+    "target": "enemy",
+    "element": "fire",
+    "description": "불덩이를 던져 적에게 화염 피해를 줍니다. (지능 × 1.8)",
+    "icon": "🔥"
+  },
+  {
+    "id": "mage_ice_nova",
+    "name": "아이스 노바",
+    "type": "active",
+    "class": "mage",
+    "level": 5,
+    "power": 1.2,
+    "cost": 20,
+    "cooldown": 4,
+    "aoe": true,
+    "target": "all_enemies",
+    "element": "ice",
+    "effect": {
+      "type": "freeze",
+      "chance": 30,
+      "duration": 1
+    },
+    "description": "주변 모든 적에게 냉기 피해를 주고 30% 확률로 1턴 동안 얼립니다.",
+    "icon": "❄️"
+  },
+  {
+    "id": "mage_mana_shield",
+    "name": "마나 실드",
+    "type": "active",
+    "class": "mage",
+    "level": 3,
+    "cost": 10,
+    "cooldown": 5,
+    "target": "self",
+    "effect": {
+      "type": "barrier",
+      "amount": 50,
+      "turns": 3
+    },
+    "description": "3턴 동안 50의 피해를 흡수하는 보호막을 생성합니다.",
+    "icon": "🔮"
+  },
+  {
+    "id": "mage_arcane_intellect",
+    "name": "비전 지능",
+    "type": "passive",
+    "class": "mage",
+    "level": 1,
+    "intelligenceBonus": 10,
+    "description": "지능이 10 증가합니다.",
+    "icon": "📚"
+  },
+  {
+    "id": "healer_heal",
+    "name": "치유",
+    "type": "active",
+    "class": "healer",
+    "level": 1,
+    "power": 1.2,
+    "cost": 10,
+    "cooldown": 2,
+    "target": "ally",
+    "healing": true,
+    "description": "아군의 체력을 지능의 120%만큼 회복시킵니다.",
+    "icon": "💚"
+  },
+  {
+    "id": "healer_revive",
+    "name": "부활",
+    "type": "active",
+    "class": "healer",
+    "level": 10,
+    "cost": 50,
+    "cooldown": 10,
+    "target": "dead_ally",
+    "description": "전투불능이 된 아군을 체력 30%로 부활시킵니다.",
+    "icon": "✨"
+  },
+  {
+    "id": "healer_protection_ward",
+    "name": "보호의 수호물",
+    "type": "active",
+    "class": "healer",
+    "level": 5,
+    "cost": 15,
+    "cooldown": 6,
+    "target": "all_allies",
+    "effect": {
+      "type": "damageReduction",
+      "amount": 20,
+      "turns": 3
+    },
+    "description": "모든 아군이 3턴 동안 받는 피해를 20% 감소시킵니다.",
+    "icon": "🛡️"
+  },
+  {
+    "id": "archer_rapid_shot",
+    "name": "연사",
+    "type": "active",
+    "class": "archer",
+    "level": 1,
+    "hits": 3,
+    "power": 0.5,
+    "cost": 12,
+    "cooldown": 3,
+    "target": "enemy",
+    "description": "빠르게 3발의 화살을 쏩니다. (공격력의 50% × 3)",
+    "icon": "🏹"
+  },
+  {
+    "id": "archer_poison_arrow",
+    "name": "독화살",
+    "type": "active",
+    "class": "archer",
+    "level": 3,
+    "power": 0.8,
+    "cost": 15,
+    "cooldown": 4,
+    "target": "enemy",
+    "effect": {
+      "type": "poison",
+      "damage": 4,
+      "duration": 4,
+      "chance": 75
+    },
+    "description": "적을 독으로 중독시켜 4턴 동안 매 턴 4의 피해를 줍니다.",
+    "icon": "💘"
+  },
+  {
+    "id": "archer_evasion",
+    "name": "회피",
+    "type": "passive",
+    "class": "archer",
+    "level": 1,
+    "dodgeChance": 10,
+    "description": "적의 공격을 10% 확률로 회피합니다.",
+    "icon": "🌀"
+  },
+  {
+    "id": "archer_sharpshooter",
+    "name": "명사수",
+    "type": "passive",
+    "class": "archer",
+    "level": 5,
+    "critChance": 10,
+    "critDamage": 20,
+    "description": "치명타 확률이 10%, 치명타 피해가 20% 증가합니다.",
+    "icon": "🎯"
+  },
+  {
+    "id": "warrior_defense_posture",
+    "name": "방어 자세",
+    "type": "buff",
+    "effect": "reduce_damage"
+  }
+]
