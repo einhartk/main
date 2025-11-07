@@ -15,7 +15,7 @@ async function hashPassword(pw){
   return Array.from(new Uint8Array(hashBuffer)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-// Register EditorView component
+// Components are registered globally via script tags
 // EditorView component is loaded from external file
 
 Vue.component('sidebar-view', {
@@ -230,6 +230,19 @@ new Vue({
       this.searchMode = false;
       this.currentDoc = null;
       this.searchResults = [];
+      this.toggleFloatingBar();
+    },
+    
+    openPartyCreation() {
+      // Dynamically register the party-creation component if not already registered
+      if (!Vue.options.components['party-creation']) {
+        Vue.component('party-creation', partyCreationComponent);
+      }
+      this.currentView = 'party-creation';
+      this.searchMode = false;
+      this.currentDoc = null;
+      this.searchResults = [];
+      this.toggleFloatingBar();
     },
     async loadComponent(path){
       const res=await fetch(path);
@@ -246,10 +259,11 @@ new Vue({
     async init(){
       this.loading = true;
       try {
-        // Register home-view and view-doc from HTML
-        await this.registerComponent('home-view','components/home.html',['searchResults','onView']);
-        await this.registerComponent('view-doc','components/view.html',['doc','onEdit','prevDoc','nextDoc','discussions']);
-        // editor-view는 editor.js에서 직접 등록
+        // Register components
+        await this.registerComponent('home-view', 'components/home.html', ['searchResults', 'onView']);
+        await this.registerComponent('view-doc', 'components/view.html', ['doc', 'onEdit', 'prevDoc', 'nextDoc', 'discussions']);
+        // editor-view is registered in editor.js
+        // party-creation is registered in party-creation.js
         // 데이터 로드
         await Promise.all([
           this.loadRecentDocs(),

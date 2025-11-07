@@ -23,12 +23,14 @@
 
   <!-- Vue -->
   <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.js"></script>
+  
+  <!-- Party Creation CSS -->
+  <link rel="stylesheet" href="css/components/party-creation.css">
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   
-  <!-- App Scripts with cache busting -->
   <!-- Config files -->
   <script src="js/config/firebase-config.js?v=1.0.0"></script>
   <script src="js/config/categories.js?v=1.0.0"></script>
@@ -39,6 +41,7 @@
   <script src="js/services/screen-capture-service.js?v=1.0.0"></script>
   
   <!-- Components -->
+  <script src="js/components/party-creation.js"></script>
   <script src="js/components/sidebar.js?v=1.0.0"></script>
   <script src="js/components/viewer.js?v=1.0.0"></script>
   <script src="js/components/editor.js?v=1.0.0"></script>
@@ -123,9 +126,13 @@
       <input v-model="tempUserId" :disabled="!editUserId" placeholder="캐릭터 ID" class="form-control form-control-sm mb-1" style="width:120px;" @keyup.enter="saveUserId" />
       <button @click="toggleEditUserId" class="btn btn-sm btn-outline-secondary">{{ editUserId ? '저장' : '수정' }}</button>
     </div>
-    <a @click="openHomework" class="d-flex align-items-center text-decoration-none mt-2" style="cursor: pointer;">
+    <a @click="openHomework" class="d-flex align-items-center text-decoration-none mt-2 mb-2" style="cursor: pointer;">
       <img src="img/homework.png" alt="원정대 체크" class="me-1"/>
       <span class="text-dark">원정대 체크</span>
+    </a>
+    <a @click="openPartyCreation" class="d-flex align-items-center text-decoration-none mb-2" style="cursor: pointer;">
+      <i class="bi bi-people-fill me-1"></i>
+      <span class="text-dark">공격대 생성</span>
     </a>
     <a :href="floatingLinks[0]" target="_blank" class="d-flex align-items-center text-decoration-none">
       <img src="img/icon1.png" alt="icon1" class="me-1"/>

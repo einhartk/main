@@ -1,5 +1,4 @@
 [
-  // 무기
   { "id": "w_iron_sword", "name": "철검", "type": "weapon", "subtype": "sword", "damage": 8, "price": 100, "stats": { "strength": 2 }, "description": "기본적인 철제 검이다." },
   { "id": "w_steel_sword", "name": "강철 검", "type": "weapon", "subtype": "sword", "damage": 12, "price": 250, "stats": { "strength": 4 }, "description": "튼튼한 강철로 만든 검이다." },
   { "id": "w_short_bow", "name": "숏보우", "type": "weapon", "subtype": "bow", "damage": 6, "price": 120, "stats": { "agility": 3 }, "description": "가볍고 빠르게 쏠 수 있는 활이다." },
@@ -7,39 +6,33 @@
   { "id": "w_oak_staff", "name": "오크 지팡이", "type": "weapon", "subtype": "staff", "magicDamage": 5, "price": 150, "stats": { "intelligence": 4 }, "description": "마법을 증폭시켜주는 오크 나무 지팡이." },
   { "id": "w_ancient_staff", "name": "고대의 지팡이", "type": "weapon", "subtype": "staff", "magicDamage": 12, "price": 400, "stats": { "intelligence": 8 }, "description": "고대의 마법이 서려있는 강력한 지팡이." },
   
-  // 방어구
   { "id": "a_leather_armor", "name": "가죽 갑옷", "type": "armor", "subtype": "light", "defense": 4, "price": 80, "stats": { "agility": 2 }, "description": "가벼운 가죽 갑옷이다." },
   { "id": "a_chain_mail", "name": "사슬 갑옷", "type": "armor", "subtype": "medium", "defense": 8, "price": 200, "stats": { "vitality": 3 }, "description": "유연한 사슬로 만든 중형 갑옷." },
   { "id": "a_plate_armor", "name": "플레이트 아머", "type": "armor", "subtype": "heavy", "defense": 15, "price": 500, "stats": { "vitality": 5, "agility": -2 }, "description": "강력한 방어력을 자랑하는 중갑." },
   
-  // 악세서리
   { "id": "ac_ring_strength", "name": "힘의 반지", "type": "accessory", "price": 150, "stats": { "strength": 3 }, "description": "착용자의 힘을 증가시켜주는 반지." },
   { "id": "ac_necklace_protection", "name": "보호의 목걸이", "type": "accessory", "price": 200, "stats": { "vitality": 4 }, "description": "소지자를 보호하는 마법이 깃든 목걸이." },
   { "id": "ac_earring_agility", "name": "민첩의 귀걸이", "type": "accessory", "price": 180, "stats": { "agility": 4 }, "description": "착용자의 움직임을 날렵하게 해주는 귀걸이." },
   
-  // 포션 및 소비 아이템
   { "id": "p_health_potion", "name": "체력 포션", "type": "potion", "effect": { "type": "heal", "value": 50 }, "price": 50, "consumable": true, "description": "체력을 50 회복시킨다." },
   { "id": "p_greater_health_potion", "name": "상급 체력 포션", "type": "potion", "effect": { "type": "heal", "value": 150 }, "price": 120, "consumable": true, "description": "체력을 150 회복시킨다." },
   { "id": "p_mana_potion", "name": "마나 포션", "type": "potion", "effect": { "type": "restoreMana", "value": 30 }, "price": 60, "consumable": true, "description": "마나를 30 회복시킨다." },
   { "id": "p_antidote", "name": "해독제", "type": "potion", "effect": { "type": "cureStatus", "status": "poison" }, "price": 40, "consumable": true, "description": "독 상태를 치료한다." },
   { "id": "p_scroll_identify", "name": "정찰의 두루마리", "type": "scroll", "effect": { "type": "revealArea" }, "price": 80, "consumable": true, "description": "주변 지역을 정찰한다." },
   
-  // 퀘스트 아이템
   { "id": "q_ancient_relic", "name": "고대 유물", "type": "quest", "price": 0, "questId": "quest_ancient_temple", "description": "고대 신전에서 발견한 수수께끼의 유물." },
   { "id": "q_dragon_scale", "name": "용의 비늘", "type": "quest", "price": 1000, "questId": "quest_dragon_slayer", "description": "드래곤의 강력한 비늘. 단단하고 아름답다." },
   
-  // 재료 아이템
   { "id": "m_iron_ore", "name": "철 광석", "type": "material", "price": 15, "description": "제련소에서 가공할 수 있는 철 광석." },
   { "id": "m_silver_ore", "name": "은 광석", "type": "material", "price": 30, "description": "희귀한 은 광석. 고급 장비 제작에 사용된다." },
   { "id": "m_herb_healing", "name": "치유의 허브", "type": "material", "price": 10, "description": "포션 제작에 사용되는 약초." },
   { "id": "m_monster_fang", "name": "몬스터의 송곳니", "type": "material", "price": 25, "description": "강력한 몬스터의 날카로운 송곳니. 무기 강화에 사용된다." },
   
-  // 특수 아이템
   { "id": "s_town_portal", "name": "귀환 스크롤", "type": "special", "effect": { "type": "teleport", "destination": "town" }, "price": 200, "consumable": true, "description": "마을로 순간이동하는 마법의 두루마리." },
   { "id": "s_resurrection_stone", "name": "부활의 돌", "type": "special", "effect": { "type": "resurrect" }, "price": 1000, "consumable": true, "description": "사망 시 자동으로 부활시켜주는 신비한 돌." },
   { "id": "s_treasure_map", "name": "보물 지도", "type": "special", "price": 500, "description": "숨겨진 보물의 위치를 알려주는 지도." },
   
-  // 원래 아이템
+
   { "id": "p_heal_small", "name": "포션", "type": "potion", "effect": { "type": "heal", "value": 30 }, "price": 20, "consumable": true, "description": "체력을 30 회복시킨다." },
   { "id": "p_heal_medium", "name": "강력 포션", "type": "potion", "effect": { "type": "heal", "value": 60 }, "price": 50, "consumable": true, "description": "체력을 60 회복시킨다." }
 ]

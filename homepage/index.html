@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Personal Space</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Custom JS -->
+    <script src="js/main.js"></script>
+</head>
+<body>
+    <div class="nav-container">
+        <nav class="navbar">
+            <div class="nav-logo">사이트 이름</div>
+            <ul class="nav-links">
+                <li data-menuanchor="home"><a href="#home">Home</a></li>
+                <li data-menuanchor="about"><a href="#about">About</a></li>
+                <li data-menuanchor="services"><a href="#services">Services</a></li>
+                <li data-menuanchor="contact"><a href="#contact">Contact</a></li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </nav>
+    </div>
+
+    <div id="sections-container">
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="content">
+                <h1 class="main-title">환영합니다</h1>
+                <p class="subtitle">더 나은 서비스를 위한 여정을 함께하세요</p>
+                <div class="scroll-down">
+                    <span>스크롤하여 더 보기</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section id="about" class="section">
+            <div class="content">
+                <h2>About Me</h2>
+                <h2 class="section-title">소개</h2>
+                <div class="about-container">
+                    <div class="about-text">
+                        <h3>우리에 대해서</h3>
+                        <p>저희는 고객 중심의 서비스를 제공하기 위해 노력하고 있습니다. 
+                        최신 기술과 트렌드를 반영한 솔루션으로 고객 여러분의 성공을 돕겠습니다.</p>
+                        
+                        <div class="features">
+                            <h4>주요 특징</h4>
+                            <ul class="features-list">
+                                <li>고품질 서비스 제공</li>
+                                <li>최신 기술 적용</li>
+                                <li>고객 맞춤형 솔루션</li>
+                                <li>신속한 대응</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Section -->
+        <section id="services" class="section">
+            <div class="content">
+                <h2>My Services</h2>
+                <h2 class="section-title">서비스</h2>
+                <div class="services-grid">
+                    <div class="service-card">
+                        <i class="fas fa-laptop-code"></i>
+                        <h3>웹 개발</h3>
+                        <p>최신 웹 기술을 활용한 반응형 웹사이트 제작</p>
+                    </div>
+                    <div class="service-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <h3>모바일 최적화</h3>
+                        <p>모든 기기에서 완벽하게 작동하는 반응형 디자인</p>
+                    </div>
+                    <div class="service-card">
+                        <i class="fas fa-search"></i>
+                        <h3>SEO 최적화</h3>
+                        <p>검색 엔진 최적화를 통한 높은 노출</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section id="contact" class="section">
+            <div class="content">
+                <h2>Contact</h2>
+                <h2 class="section-title">문의하기</h2>
+                <div class="contact-container">
+                    <div class="contact-info">
+                        <h3>연락처 정보</h3>
+                        <p><i class="fas fa-envelope"></i> email@example.com</p>
+                        <p><i class="fas fa-phone"></i> 010-1234-5678</p>
+                    </div>
+                    <form id="contactForm" class="contact-form">
+                        <input type="text" placeholder="이름" required>
+                        <input type="email" placeholder="이메일" required>
+                        <textarea placeholder="메시지를 입력하세요" required></textarea>
+                        <button type="submit" class="btn">문의하기</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

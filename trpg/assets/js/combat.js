@@ -359,9 +359,27 @@ const Combat = (() => {
       this.addToCombatLog('도망을 시도합니다...');
       
       // Roll for escape (DC 10 + enemy level + enemy's agility mod)
-      const enemyAgilityMod = Math.floor((this.currentEnemy.agility || 10 - 10) / 2);
-      const escapeDC = 10 + this.currentEnemy.level + enemyAgilityMod;
-      const agilityMod = Math.floor((window.player.agility - 10) / 2);
+      const enemyAgility = Number(this.currentEnemy.agility) || 10;
+      const enemyAgilityMod = Math.max(0, Math.floor((enemyAgility - 10) / 2));
+      const enemyLevel = Number(this.currentEnemy.level) || 1;
+      const escapeDC = 10 + enemyLevel + enemyAgilityMod;
+      
+      const playerAgility = Number(window.player.agility) || 10;
+      const agilityMod = Math.max(0, Math.floor((playerAgility - 10) / 2));
+      
+      console.log('Escape Attempt:', {
+        enemy: {
+          name: this.currentEnemy.name,
+          agility: enemyAgility,
+          agilityMod: enemyAgilityMod,
+          level: enemyLevel
+        },
+        player: {
+          agility: playerAgility,
+          agilityMod: agilityMod
+        },
+        escapeDC: escapeDC
+      });
       
       // Show dice roll
       const resultContainer = document.createElement('div');
