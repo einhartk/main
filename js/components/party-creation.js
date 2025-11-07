@@ -212,7 +212,7 @@ Vue.component('party-creation', {
                         </button>
                     </div>
                     <div>
-                        <button class="btn btn-success" @click="saveRaidSetup" :disabled="!isRaidComplete">
+                        <button class="btn btn-success" @click="saveRaidSetup" >
                             <i class="bi bi-save"></i> 공격대 저장
                         </button>
                     </div>
@@ -1076,20 +1076,36 @@ Vue.component('party-creation', {
                 // Only save non-empty inputs
                 const savedInputs = this.characterInputs.map(input => input?.trim() || '');
                 
-                // Prepare expedition data for saving
+                // Prepare expedition data for saving and update characters with their expedition names
                 const expeditionData = {};
+                const characterExpeditionMap = new Map();
+                
+                // Build expedition data and map characters to their expeditions
                 Object.entries(this.expeditions).forEach(([expName, chars]) => {
+                    // Save expedition data
                     expeditionData[expName] = chars.map(char => ({
                         CharacterName: char.CharacterName,
                         CharacterClassName: char.CharacterClassName,
                         ItemAvgLevel: char.ItemAvgLevel,
-                        ServerName: char.ServerName
+                        ServerName: char.ServerName,
+                        ExpeditionName: expName // Include expedition name in character data
                     }));
+                    
+                    // Map each character to its expedition
+                    chars.forEach(char => {
+                        characterExpeditionMap.set(char.CharacterName, expName);
+                    });
                 });
+                
+                // Update characters with their expedition names
+                const updatedCharacters = this.characters.map(char => ({
+                    ...char,
+                    ExpeditionName: characterExpeditionMap.get(char.CharacterName) || char.ExpeditionName || ''
+                }));
                 
                 const data = {
                     version: 2,
-                    characters: this.characters,
+                    characters: updatedCharacters, // Use the updated characters with ExpeditionName
                     characterInputs: savedInputs,
                     minLevel: this.minLevel,
                     raidParty1: this.raidParty1,
@@ -1153,8 +1169,13 @@ Vue.component('party-creation', {
                             );
                             
                             if (!exists) {
-                                this.expeditions[expeditionName].push(character);
-                                this.characters.push(character);
+                                // Add expedition name to character data
+                                const characterWithExpedition = {
+                                    ...character,
+                                    ExpeditionName: expeditionName
+                                };
+                                this.expeditions[expeditionName].push(characterWithExpedition);
+                                this.characters.push(characterWithExpedition);
                                 this.inputToExpedition[index] = expeditionName;
                             }
                         });
@@ -1175,8 +1196,13 @@ Vue.component('party-creation', {
                     );
                     
                     if (!exists) {
-                        this.expeditions[expeditionName].push(character);
-                        this.characters.push(character);
+                        // Add expedition name to character data for single character response
+                        const characterWithExpedition = {
+                            ...character,
+                            ExpeditionName: expeditionName
+                        };
+                        this.expeditions[expeditionName].push(characterWithExpedition);
+                        this.characters.push(characterWithExpedition);
                         this.inputToExpedition[index] = expeditionName;
                     }
                     
