@@ -1,0 +1,173 @@
+/* Container-specific styles */
+
+/* Guestbook Container */
+.guestbook {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.guestbook-form {
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: 'Nanum Gothic', sans-serif;
+}
+
+.guestbook-entries {
+  display: grid;
+  gap: 20px;
+}
+
+.entry {
+  background-color: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.entry-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.entry-name {
+  font-weight: bold;
+  color: #333;
+  font-family: 'Nanum Gothic', sans-serif;
+}
+
+.entry-date {
+  color: #777;
+  font-size: 0.9em;
+}
+
+.entry-message {
+  margin: 10px 0;
+  line-height: 1.5;
+  white-space: pre-line;
+  font-family: 'Nanum Gothic', sans-serif;
+}
+
+.entry-actions {
+  text-align: right;
+}
+
+/* Photo Gallery Container */
+.photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  padding: 15px;
+}
+
+.photo-item {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.photo-item:hover {
+  transform: translateY(-5px);
+}
+
+.gallery-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-caption {
+  padding: 10px;
+  text-align: center;
+  font-family: 'Hi Melody', cursive;
+  font-size: 16px;
+  color: #333;
+}
+
+.photo-upload {
+  text-align: center;
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .photo-gallery {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  
+  .guestbook {
+    padding: 10px;
+  }
+}
+
+/* Button Styles */
+button {
+  background-color: #5c3ccf;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Do Hyeon', sans-serif;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #4a2fb8;
+}
+
+.delete-btn {
+  background-color: #f44336;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.delete-btn:hover {
+  background-color: #d32f2f;
+}
+
+/* Form Elements */
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  padding: 10px;
+  margin: 5px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: 'Nanum Gothic', sans-serif;
+}
+
+textarea {
+  min-height: 100px;
+  resize: vertical;
+}

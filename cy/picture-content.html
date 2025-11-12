@@ -1,0 +1,151 @@
+  <div class="box content-box">
+    <div class="content-photo">
+      <div class="photo-title font-neo">일상♬</div>
+      <div class="photo-gallery">
+        <div class="photo-item">
+          <img src="image/img7.jpg" alt="일상 사진 1" class="gallery-img" />
+          <div class="photo-caption">일상의 추억</div>
+        </div>
+        <div class="photo-item">
+          <img src="image/img8.jpg" alt="일상 사진 2" class="gallery-img" />
+          <div class="photo-caption">즐거운 순간</div>
+        </div>
+        <div class="photo-item">
+          <img src="image/img1.jpg" alt="일상 사진 3" class="gallery-img" />
+          <div class="photo-caption">추억의 장소</div>
+        </div>
+      </div>
+      
+      <div class="photo-upload">
+        <input type="file" id="photo-upload" accept="image/*" style="display: none;">
+        <button onclick="document.getElementById('photo-upload').click()">사진 업로드</button>
+      </div>
+    </div>
+  </div>
+
+<style>
+.photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  padding: 15px;
+}
+
+.photo-item {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.photo-item:hover {
+  transform: translateY(-5px);
+}
+
+.gallery-img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.photo-caption {
+  padding: 10px;
+  text-align: center;
+  font-family: 'Hi Melody', cursive;
+  font-size: 16px;
+  color: #333;
+}
+
+.photo-upload {
+  text-align: center;
+  margin: 20px 0;
+}
+
+.photo-upload button {
+  background-color: #5c3ccf;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Do Hyeon', sans-serif;
+  font-size: 16px;
+  transition: background-color 0.3s;
+}
+
+.photo-upload button:hover {
+  background-color: #4a2fb8;
+}
+
+.photo-title {
+  text-align: center;
+  font-size: 24px;
+  color: #5c3ccf;
+  margin: 15px 0;
+  font-weight: bold;
+}
+</style>
+
+<script>
+// 사진 업로드 기능
+document.getElementById('photo-upload').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const gallery = document.querySelector('.photo-gallery');
+      const photoItem = document.createElement('div');
+      photoItem.className = 'photo-item';
+      photoItem.innerHTML = `
+        <img src="${event.target.result}" alt="업로드된 이미지" class="gallery-img" />
+        <div class="photo-caption">새로운 추억</div>
+      `;
+      gallery.prepend(photoItem);
+      
+      // 애니메이션 효과
+      photoItem.style.opacity = '0';
+      setTimeout(() => {
+        photoItem.style.transition = 'opacity 0.5s';
+        photoItem.style.opacity = '1';
+      }, 10);
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// 이미지 클릭 시 확대 보기 기능
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('gallery-img')) {
+    const imgSrc = e.target.src;
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      cursor: pointer;
+    `;
+    
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.style.maxWidth = '90%';
+    img.style.maxHeight = '90%';
+    img.style.borderRadius = '8px';
+    
+    modal.appendChild(img);
+    document.body.appendChild(modal);
+    
+    modal.addEventListener('click', function() {
+      document.body.removeChild(modal);
+    });
+  }
+});
+</script>

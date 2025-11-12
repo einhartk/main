@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2021 MINI HOMEPAGE</title>
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Main Styles -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/container-styles.css" />
+  <!-- Scripts -->
+  <script src="js/music-player.js"></script>
+  <script src="js/content/home-content.js"></script>
+</head>
+
+<body>
+  <div id="music-player"></div>
+  <div class="main-container">
+    <div class="content-wrapper">
+      <div class="bookcover">
+    <div class="bookdot">
+      <div class="page">
+
+        <div class="container1">
+          <div class="item1 box">TODAY <span class="highlight">11</span> | TOTAL 1206</div>
+          <div class="item2">
+            <div class="profile">
+              <!-- <img src="image/img2.jpg" class="profile-image" alt="프로필 이미지"> -->
+              <br><br>교동~♬
+            </div>
+            <div class="profile-dropdown">
+              <div class="dropdown-button">
+                <div class="dropdown-title">파도타기</div>
+                <div class="triangle-down"></div>
+              </div>
+              <div class="dropdown-content">
+                <a href="#" target="_blank">블로그 바로가기</a>
+                <a href="#" target="_blank">페이스북 바로가기</a>
+                <a href="#" target="_blank">인스타그램 바로가기</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="container2">
+          <div class="item3">미니홈피 <a href="https://github.com/einhartk/main"><span class="tab">https://github.com/einhartk/main</span></a></div>
+          <div class="item4">
+            <div class="updated_news">Updated news</div>
+            <div class="updated_news_content">
+              <div class="category">
+                <div class="category_box">
+                  <div class="category_box_photo">사진첩</div>
+                  <a href="#" onclick="loadContent('picture-content.html')">
+                    <div class="category_box_content">일상★<span class="new">N</span></div>
+                  </a>
+                </div>
+                <div class="category_box">
+                  <div class="category_box_board">다이어리</div>
+                  <a href="#" onclick="loadContent('diary-content.html')">
+                    <div class="category_box_content">자기소개★<span class="new">N</span></div>
+                  </a>
+                </div>
+                <div class="category_box">
+                  <div class="category_box_board">다이어리</div>
+                  <a href="#" onclick="loadContent('diary-content.html')">
+                    <div class="category_box_content">보유기술♬<span class="new">N</span></div>
+                  </a>
+                </div>
+                <div class="category_box">
+                  <div class="category_box_photo">사진첩</div>
+                  <a href="picture.html">
+                    <div class="category_box_content">여행★</div>
+                  </a>
+                </div>
+              </div>
+
+              <div class="summary">
+                <div class="summary_main">
+                  <div class="summary_main_content">
+                    <div class="summary_content_category">다이어리</div>
+                    <div class="summary_content_count">8/25</div>
+                  </div>
+                  <div class="summary_main_content">
+                    <div class="summary_content_category">사진첩</div>
+                    <div class="summary_content_count">8/25</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="Miniroom">Miniroom</div>
+            <div class="Miniroom_content">
+              <img src="image/mini.PNG" class="mini-image" alt="미니룸 이미지">
+            </div>
+            <div id="app">
+                <h2 class="Miniroom"> 일촌평 </h2>
+                <input v-model="nickname" id="nickname" placeholder="닉네임 입력">
+                <input v-model="password" type="password" class="pwd" placeholder="비밀번호 입력"><br>
+                <textarea v-model="comment" class="comment" rows="4" placeholder="일촌과 나누고 싶은 이야기를 남겨보세요~"></textarea>
+                <button @click="addComment" class="submit-btn">작성하기</button>
+            
+                <div class="comment-list">
+                  <div v-for="(item, index) in comments" :key="index" class="comment-item">
+                    <hr>
+                    <p><strong>{{ item.nickname }}</strong>: {{ item.comment }}</p>
+                  </div>
+                </div>
+              </div>
+              
+          </div>
+        </div>
+
+        <div class="menu-container">
+          <div class="menu-button">
+            <button onclick="event.preventDefault(); loadContent('banner-content.html');">홈</button>
+            <button onclick="event.preventDefault(); loadContent('diary-content.html');">다이어리</button>
+            <button onclick="event.preventDefault(); loadContent('picture-content.html');">사진첩</button>
+            <button onclick="event.preventDefault(); loadContent('guest-content.html');">방명록</button>
+          </div>
+        </div>
+
+
+        <div id="popup" class="popup">
+          <div class="popup-content">
+              <span class="close-btn" onclick="closePopup()">&times;</span>
+              <p>일촌평 기능을 추가했습니다!</p><br>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

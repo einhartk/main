@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>내방 꾸미기 업그레이드</title>
+  <style>
+    .help-box {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+      max-width: 250px;
+    }
+    .help-box h3 {
+      margin-top: 0;
+      color: #333;
+    }
+    .help-box ul {
+      padding-left: 20px;
+      margin: 10px 0 0 0;
+    }
+    .help-box li {
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    .help-box kbd {
+      background: #f0f0f0;
+      padding: 2px 5px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+      font-family: monospace;
+    }
+  </style>
+<style>
+  body { font-family: sans-serif; }
+  #room {
+    width: 600px; 
+    height: 400px;
+    border: 2px solid #ccc;
+    margin-bottom: 20px;
+    position: relative;
+    background-image:
+      url('https://images.unsplash.com/photo-1618220413524-3278482b36e0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxMjA3fDB8MHxzZWFyY2h8MXx8cm9vbXxlbnwwfHwwfHw%3D&ixlib=rb-4.0.3&q=80&w=600'),
+      linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px);
+    background-size: 40px 40px; /* 격자 크기 */
+    background-repeat: repeat;
+    overflow: hidden;
+    touch-action: none; /* for better touch support */
+  }
+  #item-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+  }
+  #item-palette img, #room img {
+    cursor: move;
+    width: 50px;
+    height: 50px;
+    user-select: none;
+    position: relative;
+    transition: transform 0.1s;
+  }
+  
+  #room img {
+    position: absolute;
+  }
+  
+  .resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border: 1px solid #000;
+    bottom: -5px;
+    right: -5px;
+    cursor: nwse-resize;
+    z-index: 10;
+  }
+  
+  .rotate-handle {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: #4CAF50;
+    border-radius: 50%;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: grab;
+    z-index: 10;
+  }
+  
+  .rotate-handle:active {
+    cursor: grabbing;
+  }
+  
+  .selected {
+    outline: 2px solid #4CAF50;
+  }
+  .selected {
+    outline: 2px dashed red;
+  }
+</style>
+</head>
+<body>
+
+<h3>아이템 팔레트</h3>
+<div id="item-palette">
+  <img src="image/room/048183735ef90d502c9a2718043b757e58ada1e7.png" class="item" data-type="item1" alt="가구1">
+  <img src="image/room/0a708dc6043e25030e343cd8647c151b1174a78b.png" class="item" data-type="item2" alt="가구2">
+  <img src="image/room/0ca04c7768525c876c6285894205021c2a28875c.png" class="item" data-type="item3" alt="가구3">
+  <img src="image/room/0cf935626878105589793ecb928e228cf6fe0cea.png" class="item" data-type="item4" alt="가구4">
+  <img src="image/room/2c7837ac138340ef523c1ea5133864f30f2620c7.png" class="item" data-type="item5" alt="가구5">
+  <img src="image/room/3b8070d6ea978c6d83f83caf66c2511af278208b.png" class="item" data-type="item6" alt="가구6">
+  <img src="image/room/44db7cb7dfb4340867ad0cf2a031fd7e1e320b12.png" class="item" data-type="item7" alt="가구7">
+  <img src="image/room/543e254be5a68b23ad921b7073a7a4b2e6eeced6.png" class="item" data-type="item8" alt="가구8">
+  <img src="image/room/561b1618097ab9d2a611016f9b6671c191949c84.png" class="item" data-type="item9" alt="가구9">
+  <img src="image/room/5766c01dad43266d30db6a964f67f2f873d5be9f.png" class="item" data-type="item10" alt="가구10">
+  <img src="image/room/5dda7016628062f99bf3c181dd0e577945d7dad5.png" class="item" data-type="item11" alt="가구11">
+  <img src="image/room/6335aa1471911cf1290fa64afccab8fc9532e918.png" class="item" data-type="item12" alt="가구12">
+  <img src="image/room/7d49127297dc0147f39d003558359b0c36258160.png" class="item" data-type="item13" alt="가구13">
+  <img src="image/room/7eee561966a316f2949f745575c223db1dbb45c8.png" class="item" data-type="item14" alt="가구14">
+  <img src="image/room/82a5aa14f1d794a374efe1fd37014290e540c6ba.png" class="item" data-type="item15" alt="가구15">
+  <img src="image/room/8737e31618d7fba6d91ab32b683709c75bc26c4a.png" class="item" data-type="item16" alt="가구16">
+  <img src="image/room/8f7f0f48586d8f85a975c9652502ece201d1522f.png" class="item" data-type="item17" alt="가구17">
+  <img src="image/room/9999820ae64fe3b63ea0c206f0e5990f6b635e3e.png" class="item" data-type="item18" alt="가구18">
+  <img src="image/room/9bbbcd174c2c8deed47c153a53463660a61c694c.png" class="item" data-type="item19" alt="가구19">
+  <img src="image/room/a24292627f89491fa1d654ad06fd49ef95e26da2.png" class="item" data-type="item20" alt="가구20">
+  <img src="image/room/a336f8d67036ba451cd1fa3feee46c1a1acbe777.png" class="item" data-type="item21" alt="가구21">
+  <img src="image/room/aa6109883c1295043e98738dd9b52c54bb029041.png" class="item" data-type="item22" alt="가구22">
+  <img src="image/room/b8af601fe1cb4583da34305f65fca03e6baaf712.png" class="item" data-type="item23" alt="가구23">
+  <img src="image/room/c097e2f07a2653b7d7a9cbf3266e017ed499d772.png" class="item" data-type="item24" alt="가구24">
+  <img src="image/room/c1336ebbf12dabbd67e956c94fe3d6b065d21e38.png" class="item" data-type="item25" alt="가구25">
+  <img src="image/room/da1af40cc1b9c8de3af123a40229bfd21ab57cb2.png" class="item" data-type="item26" alt="가구26">
+  <img src="image/room/dd3d58bc180894c21c9661caf3a4218492b3ebfd.png" class="item" data-type="item27" alt="가구27">
+  <img src="image/room/f4f71438067982ad8c93ccd9bd62aacf515c735d.png" class="item" data-type="item28" alt="가구28">
+  <img src="image/room/fd28e29f9240c87ede58e10afe14c087d1681fc5.png" class="item" data-type="item29" alt="가구29">
+  <img src="image/room/ffb5f1946c73af0c6873fc4e80cd3492f5fcd7db.png" class="item" data-type="item30" alt="가구30">
+</div>
+
+<h3>내방</h3>
+<div id="controls">
+  <button id="saveBtn">저장</button>
+  <button id="loadBtn">불러오기</button>
+</div>
+
+<div id="room"></div>
+
+<div class="help-box">
+  <h3>키보드 단축키</h3>
+  <ul>
+    <li><kbd>Delete</kbd> - 선택한 아이템 삭제</li>
+    <li><kbd>+</kbd>/<kbd>-</kbd> - 아이템 크기 조절</li>
+    <li><kbd>←</kbd>/<kbd>→</kbd> - 아이템 회전 (Shift+방향: 45°씩)</li>
+    <li><kbd>Space</kbd> - 아이템 배치 완료</li>
+    <li><kbd>ESC</kbd> - 선택 취소</li>
+  </ul>
+</div>
+
+<script>
+const room = document.getElementById('room');
+const items = document.querySelectorAll('#item-palette .item');
+let selectedItem = null;
+let selectedHandle = null;
+let offsetX, offsetY;
+let isDragging = false;
+let isResizing = false;
+let isRotating = false;
+let startAngle = 0;
+let startRotation = 0;
+let currentMoveHandler = null;
+let currentUpHandler = null;
+
+// Global move handler for dragging items
+function moveHandler(eMove) {
+  if (!draggedItem) return;
+  draggedItem.style.left = eMove.pageX - room.offsetLeft - draggedItem.width/2 + 'px';
+  draggedItem.style.top = eMove.pageY - room.offsetTop - draggedItem.height/2 + 'px';
+}
+
+// Global up handler for dropping items
+function upHandler(e) {
+  e.preventDefault();
+  if (currentMoveHandler) {
+    document.removeEventListener('mousemove', currentMoveHandler);
+    document.removeEventListener('mouseup', currentUpHandler);
+    currentMoveHandler = null;
+    currentUpHandler = null;
+  }
+  if (draggedItem) {
+    // Add event listeners for the newly placed item
+    draggedItem.addEventListener('mousedown', itemMouseDown);
+    draggedItem = null;
+  }
+}
+
+// 팔레트에서 방으로 드래그
+items.forEach(item => {
+  item.addEventListener('mousedown', e => {
+    // Create a deep clone of the item and set initial styles
+    draggedItem = item.cloneNode(true);
+    draggedItem.style.cssText = `
+      position: absolute;
+      left: ${e.pageX - room.offsetLeft - 25}px;
+      top: ${e.pageY - room.offsetTop - 25}px;
+      width: 50px;
+      height: 50px;
+      transform: rotate(0deg);
+      z-index: 1;
+    `;
+    
+    // Add the new item to the room
+    room.appendChild(draggedItem);
+    
+    // Select the new item
+    selectItem(draggedItem);
+    
+    // Add the item to the event listeners
+    addItemEventListeners();
+
+    // Set up the move and up handlers
+    currentMoveHandler = moveHandler;
+    currentUpHandler = upHandler;
+    
+    document.addEventListener('mousemove', currentMoveHandler);
+    document.addEventListener('mouseup', currentUpHandler);
+  });
+});
+
+// 방 안 아이템 선택/이동
+room.addEventListener('mousedown', e => {
+  const handle = e.target.closest('.resize-handle, .rotate-handle');
+  const item = e.target.closest('.item');
+  
+  if (handle) {
+    e.stopPropagation();
+    selectedHandle = handle.className;
+    
+    if (handle.classList.contains('resize-handle')) {
+      isResizing = true;
+    } else if (handle.classList.contains('rotate-handle')) {
+      isRotating = true;
+      const rect = selectedItem.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+      startRotation = parseFloat(selectedItem.getAttribute('data-rotate') || '0');
+    }
+    return;
+  }
+  
+  if (item) {
+    selectItem(item);
+    const rect = item.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    isDragging = true;
+  } else {
+    deselectItem();
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  if (!selectedItem) return;
+  
+  const roomRect = room.getBoundingClientRect();
+  
+  if (isResizing && selectedHandle === 'resize-handle') {
+    // Resize logic
+    const width = e.clientX - parseFloat(selectedItem.style.left) - roomRect.left;
+    const height = e.clientY - parseFloat(selectedItem.style.top) - roomRect.top;
+    
+    if (width > 30) selectedItem.style.width = width + 'px';
+    if (height > 30) selectedItem.style.height = height + 'px';
+    
+  } else if (isRotating && selectedHandle === 'rotate-handle') {
+    // Rotation logic
+    const rect = selectedItem.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * 180 / Math.PI;
+    const rotation = startRotation + angle - startAngle;
+    
+    selectedItem.style.transform = `rotate(${rotation}deg)`;
+    selectedItem.setAttribute('data-rotate', rotation);
+    
+  } else if (isDragging) {
+    // Dragging logic
+    const left = e.clientX - offsetX - roomRect.left;
+    const top = e.clientY - offsetY - roomRect.top;
+    
+    // Keep item within room bounds
+    if (left >= 0 && left + selectedItem.offsetWidth <= roomRect.width) {
+      selectedItem.style.left = left + 'px';
+    }
+    if (top >= 0 && top + selectedItem.offsetHeight <= roomRect.height) {
+      selectedItem.style.top = top + 'px';
+    }
+  }
+});
+
+// 선택 아이템 표시
+function selectItem(item) {
+  deselectItem();
+  selectedItem = item;
+  item.classList.add('selected');
+  
+  // Add resize handle if not exists
+  if (!item.querySelector('.resize-handle')) {
+    const resizeHandle = document.createElement('div');
+    resizeHandle.className = 'resize-handle';
+    item.appendChild(resizeHandle);
+    
+    // Add rotate handle if not exists
+    const rotateHandle = document.createElement('div');
+    rotateHandle.className = 'rotate-handle';
+    item.appendChild(rotateHandle);
+  }
+}
+
+function deselectItem() {
+  if (selectedItem) {
+    selectedItem.classList.remove('selected');
+    // Remove all handles when deselecting
+    const handles = selectedItem.querySelectorAll('.resize-handle, .rotate-handle');
+    handles.forEach(handle => handle.remove());
+  }
+  selectedItem = null;
+  selectedHandle = null;
+}
+
+// 키 이벤트: 삭제, 회전, 크기 조절
+// 아이템 마우스 다운 핸들러
+function itemMouseDown(e) {
+  e.stopPropagation();
+  const item = e.target.closest('.item');
+  if (item) {
+    selectItem(item);
+    const rect = item.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    isDragging = true;
+  }
+}
+
+// 모든 아이템에 이벤트 리스너 추가
+function addItemEventListeners() {
+  document.querySelectorAll('.item').forEach(item => {
+    // Remove existing listeners to prevent duplicates
+    item.removeEventListener('mousedown', itemMouseDown);
+    item.addEventListener('mousedown', itemMouseDown);
+  });
+}
+
+// 초기 아이템에 이벤트 리스너 추가
+addItemEventListeners();
+
+document.addEventListener('keydown', e => {
+  // Space or Enter 키로 아이템 배치 완료
+  if ((e.key === ' ' || e.key === 'Enter') && draggedItem) {
+    e.preventDefault();
+    if (currentMoveHandler) {
+      document.removeEventListener('mousemove', currentMoveHandler);
+      document.removeEventListener('mouseup', currentUpHandler);
+      currentMoveHandler = null;
+      currentUpHandler = null;
+    }
+    draggedItem = null;
+    return;
+  }
+  
+  // ESC 키로 선택 취소
+  if (e.key === 'Escape') {
+    deselectItem();
+    return;
+  }
+  
+  if(!selectedItem) return;
+  
+  // Delete item
+  if(e.key === 'Delete') {
+    if (confirm('정말 이 아이템을 삭제하시겠습니까?')) {
+      selectedItem.remove();
+      selectedItem = null;
+    }
+  }
+  
+  // 크기 조절
+  if(e.key === '+' || e.key === '=') {
+    const scale = parseFloat(selectedItem.getAttribute('data-scale') || '1');
+    const newScale = Math.min(scale + 0.1, 3); // 최대 3배까지
+    const rotation = selectedItem.getAttribute('data-rotate') || '0';
+    selectedItem.style.transform = `rotate(${rotation}deg) scale(${newScale})`;
+    selectedItem.setAttribute('data-scale', newScale);
+  }
+  
+  if(e.key === '-' || e.key === '_') {
+    const scale = parseFloat(selectedItem.getAttribute('data-scale') || '1');
+    const newScale = Math.max(scale - 0.1, 0.5); // 최소 0.5배까지
+    const rotation = selectedItem.getAttribute('data-rotate') || '0';
+    selectedItem.style.transform = `rotate(${rotation}deg) scale(${newScale})`;
+    selectedItem.setAttribute('data-scale', newScale);
+  }
+  
+  // 화살표 키로 회전 (Shift 키와 함께 누르면 45도씩 회전)
+  if(e.key === 'ArrowRight') {
+    const currentRotation = parseFloat(selectedItem.getAttribute('data-rotate') || '0');
+    const newRotation = e.shiftKey ? currentRotation + 45 : currentRotation + 5;
+    const scale = selectedItem.getAttribute('data-scale') || '1';
+    selectedItem.style.transform = `rotate(${newRotation}deg) scale(${scale})`;
+    selectedItem.setAttribute('data-rotate', newRotation);
+  }
+  
+  if(e.key === 'ArrowLeft') {
+    const currentRotation = parseFloat(selectedItem.getAttribute('data-rotate') || '0');
+    const newRotation = e.shiftKey ? currentRotation - 45 : currentRotation - 5;
+    const scale = selectedItem.getAttribute('data-scale') || '1';
+    selectedItem.style.transform = `rotate(${newRotation}deg) scale(${scale})`;
+    selectedItem.setAttribute('data-rotate', newRotation);
+  }
+});
+
+// 저장
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const state = Array.from(room.children)
+    .filter(el => el.classList.contains('item'))
+    .map(el => ({
+      type: el.dataset.type,
+      src: el.src,
+      left: el.style.left,
+      top: el.style.top,
+      width: el.style.width,
+      height: el.style.height,
+      rotate: el.getAttribute('data-rotate') || '0',
+      scale: el.getAttribute('data-scale') || '1'
+    }));
+  localStorage.setItem('roomState', JSON.stringify(state));
+  alert('저장 완료!');
+});
+
+// 불러오기
+document.getElementById('loadBtn').addEventListener('click', () => {
+  room.innerHTML = '';
+  const state = JSON.parse(localStorage.getItem('roomState') || '[]');
+  state.forEach(item => {
+    const el = document.createElement('img');
+    el.src = item.src;
+    el.dataset.type = item.type;
+    el.className = 'item';
+    el.style.position = 'absolute';
+    el.style.left = item.left;
+    el.style.top = item.top;
+    el.style.width = item.width;
+    el.style.height = item.height;
+    el.setAttribute('data-rotate', item.rotate || '0');
+    el.setAttribute('data-scale', item.scale || '1');
+    el.style.transform = `rotate(${item.rotate || '0'}deg) scale(${item.scale || '1'})`;
+    room.appendChild(el);
+  });
+});
+</script>
+
+</body>
+</html>

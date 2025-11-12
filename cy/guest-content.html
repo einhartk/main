@@ -1,0 +1,85 @@
+  <div class="guestbook-scrollbox">
+    <div class="guestbook-box">
+      <div class="guestbook-title">No. 1
+        <span style="color :#5c3ccf"> 교동</span>
+        <i class="fas fa-home"></i>
+        <div class="guestbook-date"> (2025.02.17)</div>
+      </div>
+    </div>
+    <div class="guestbook-contents">
+      <div class="guestbook-image background-1">
+        <img src="image/img9.jpg" alt="프로필 사진" width="100px" height="100px" />
+      </div>
+      <div class="guestbook-text">
+        ㄴr는야 한교동
+      </div>
+    </div>
+    <div class="textbox">
+      <input type="text" placeholder="방명록을 남겨주세요">
+      <button>작성</button>
+    </div>
+  </div>
+
+<script>
+// 방명록 작성 기능
+const guestbookForm = document.querySelector('.textbox');
+const guestbookInput = guestbookForm.querySelector('input');
+const guestbookButton = guestbookForm.querySelector('button');
+const guestbookContainer = document.querySelector('.guestbook-scrollbox');
+
+// 방명록 추가 함수
+function addGuestbookEntry(text) {
+  const now = new Date();
+  const dateString = `(${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')})`;
+  
+  const entryHTML = `
+    <div class="guestbook-box">
+      <div class="guestbook-title">
+        No. ${document.querySelectorAll('.guestbook-box').length + 1}
+        <span style="color:#5c3ccf"> 익명</span>
+        <i class="fas fa-user"></i>
+        <div class="guestbook-date"> ${dateString}</div>
+      </div>
+    </div>
+    <div class="guestbook-contents">
+      <div class="guestbook-text">
+        ${text}
+      </div>
+    </div>
+    <hr>
+  `;
+  
+  // 새 방명록을 기존 내용 위에 추가
+  guestbookContainer.insertAdjacentHTML('afterbegin', entryHTML);
+}
+
+// 방명록 작성 이벤트 리스너
+guestbookForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const text = guestbookInput.value.trim();
+  if (text) {
+    addGuestbookEntry(text);
+    guestbookInput.value = ''; // 입력 필드 초기화
+  }
+});
+
+guestbookButton.addEventListener('click', () => {
+  const text = guestbookInput.value.trim();
+  if (text) {
+    addGuestbookEntry(text);
+    guestbookInput.value = ''; // 입력 필드 초기화
+  }
+});
+
+// 엔터 키로도 작성 가능
+guestbookInput.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const text = guestbookInput.value.trim();
+    if (text) {
+      addGuestbookEntry(text);
+      guestbookInput.value = ''; // 입력 필드 초기화
+    }
+  }
+});
+</script>
