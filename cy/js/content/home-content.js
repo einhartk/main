@@ -1,3 +1,15 @@
+// Function to load CSS
+async function loadCSS(href) {
+  return new Promise((resolve, reject) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    link.onload = resolve;
+    link.onerror = reject;
+    document.head.appendChild(link);
+  });
+}
+
 // Function to load content into container
 async function loadContent(page) {
   try {
@@ -7,12 +19,23 @@ async function loadContent(page) {
       return;
     }
     
+    // Ensure required CSS is loaded and applied
+    await Promise.all([
+      loadCSS('css/style.css'),
+      loadCSS('css/container-styles.css')
+    ]);
+    
+    // Force a reflow to ensure styles are applied
+    document.body.offsetHeight;
+    
     container.innerHTML = '<div style="text-align: center; padding: 50px;">로딩 중...</div>';
     
     const response = await fetch(page);
     if (!response.ok) throw new Error('페이지를 불러오지 못했습니다.');
     
     const html = await response.text();
+    // Add a small delay to ensure styles are applied
+    await new Promise(resolve => setTimeout(resolve, 50));
     container.innerHTML = html;
     
     // If loading diary content, initialize the calendar
@@ -59,26 +82,49 @@ async function loadContent(page) {
 }
 
 // Load content based on URL hash on page load
-window.addEventListener('DOMContentLoaded', () => {
-  const hash = window.location.hash.replace('#', '');
+function handleInitialLoad() {
+  let hash = window.location.hash.replace('#', '');
   const defaultPage = 'banner-content.html';
   
-  if (hash) {
-    loadContent(`${hash}.html`).catch(() => loadContent(defaultPage));
-  } else {
-    // Move the original container2 content to banner-content.html
-    const container2 = document.querySelector('.container2');
-    container2.innerHTML = '';
-    loadContent(defaultPage);
+  // If no hash, set default and update URL
+  if (!hash) {
+    hash = 'banner-content';
+    window.location.hash = hash;
   }
-});
+  
+  // Clear container2 for initial load
+  const container2 = document.querySelector('.item4');
+  if (container2) container2.innerHTML = '';
+  
+  // Load the content
+  loadContent(`${hash}.html`).catch(error => {
+    console.error('Error loading content:', error);
+    // Fallback to default if there's an error
+    if (hash !== 'banner-content') {
+      window.location.hash = 'banner-content';
+      loadContent(defaultPage);
+    }
+  });
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', handleInitialLoad);
+} else {
+  handleInitialLoad();
+}
 
 // Handle browser back/forward buttons
 window.addEventListener('popstate', () => {
   const hash = window.location.hash.replace('#', '');
   if (hash) {
-    loadContent(`${hash}.html`);
+    loadContent(`${hash}.html`).catch(error => {
+      console.error('Error loading content from history:', error);
+      window.location.hash = 'banner-content';
+      loadContent('banner-content.html');
+    });
   } else {
+    window.location.hash = 'banner-content';
     loadContent('banner-content.html');
   }
 });
