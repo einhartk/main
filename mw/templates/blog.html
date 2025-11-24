@@ -1,0 +1,15 @@
+<section class="p-8 bg-gray-50">
+  <h2 class="text-3xl font-bold mb-6 text-center">Blog</h2>
+  <div class="grid grid-cols-3 gap-6">
+    <div v-for="i in 6" :key="i" class="bg-white rounded shadow overflow-hidden">
+      <div class="h-40 bg-gray-300 flex items-center justify-center">
+        <span class="text-gray-700 font-bold text-xl">Blog Img {{i}}</span>
+      </div>
+      <div class="p-4">
+        <h3 class="font-bold mb-1">Blog Title {{i}}</h3>
+        <p class="text-sm text-gray-600 mb-2">블로그 요약 내용</p>
+        <button class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">Read More</button>
+      </div>
+    </div>
+  </div>
+</section>

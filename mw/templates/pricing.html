@@ -1,0 +1,15 @@
+<section class="p-8 bg-gray-50">
+  <h2 class="text-3xl font-bold mb-6 text-center">Pricing Plans</h2>
+  <div class="grid grid-cols-3 gap-6">
+    <div v-for="i in 3" :key="i" class="bg-white border rounded shadow p-6 text-center">
+      <h3 class="font-bold text-xl mb-2">Plan {{i}}</h3>
+      <p class="text-4xl font-extrabold mb-4">{{i*10}}만원</p>
+      <ul class="text-sm text-gray-600 mb-4 space-y-1">
+        <li>Feature A</li>
+        <li>Feature B</li>
+        <li>Feature C</li>
+      </ul>
+      <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Select</button>
+    </div>
+  </div>
+</section>

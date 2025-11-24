@@ -13,6 +13,10 @@
   <!-- Scripts -->
   <script src="js/music-player.js"></script>
   <script src="js/content/home-content.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="js/firebase-config.js"></script>
 </head>
 
 <body>
@@ -117,6 +121,7 @@
             <button onclick="event.preventDefault(); loadContent('diary-content.html');">다이어리</button>
             <button onclick="event.preventDefault(); loadContent('picture-content.html');">사진첩</button>
             <button onclick="event.preventDefault(); loadContent('guest-content.html');">방명록</button>
+            <button onclick="event.preventDefault(); loadContent('room-content.html');">내방 꾸미기</button>
           </div>
         </div>
 

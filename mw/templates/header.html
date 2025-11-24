@@ -1,0 +1,103 @@
+<header class="bg-gray-900 text-white sticky top-0 z-50 shadow-md">
+  <div class="container mx-auto px-4 py-3 sm:py-4">
+    <div class="flex justify-between items-center">
+      <h1 class="text-xl sm:text-2xl md:text-3xl font-bold">
+        <a href="#" class="flex items-center">
+          <span class="text-blue-400">Site</span>Logo
+        </a>
+      </h1>
+      
+      <!-- Desktop Navigation -->
+      <nav class="hidden md:flex space-x-1 lg:space-x-6">
+        <a href="#" class="px-2 sm:px-3 py-2 text-sm sm:text-base hover:text-blue-400 transition-colors">Home</a>
+        <a href="#" class="px-2 sm:px-3 py-2 text-sm sm:text-base hover:text-blue-400 transition-colors">About</a>
+        <a href="#" class="px-2 sm:px-3 py-2 text-sm sm:text-base hover:text-blue-400 transition-colors">Services</a>
+        <a href="#" class="px-2 sm:px-3 py-2 text-sm sm:text-base hover:text-blue-400 transition-colors">Contact</a>
+      </nav>
+
+      <!-- Mobile menu button -->
+      <div class="md:hidden">
+        <button id="mobile-menu-button" class="p-2 text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 rounded-lg transition-colors">
+          <span class="sr-only">메뉴 열기</span>
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="mobile-menu" class="md:hidden hidden mt-2 py-2 border-t border-gray-800">
+      <a href="#" class="block px-4 py-3 text-base hover:bg-gray-800/50 rounded-lg transition-colors">
+        <span class="flex items-center">
+          <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+          </svg>
+          Home
+        </span>
+      </a>
+      <a href="#" class="block px-4 py-3 text-base hover:bg-gray-800/50 rounded-lg transition-colors">
+        <span class="flex items-center">
+          <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          About
+        </span>
+      </a>
+      <a href="#" class="block px-4 py-3 text-base hover:bg-gray-800/50 rounded-lg transition-colors">
+        <span class="flex items-center">
+          <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          Services
+        </span>
+      </a>
+      <a href="#" class="block px-4 py-3 text-base hover:bg-gray-800/50 rounded-lg transition-colors">
+        <span class="flex items-center">
+          <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+          Contact
+        </span>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Mobile menu toggle with animation
+    document.addEventListener('DOMContentLoaded', function() {
+      const menuButton = document.getElementById('mobile-menu-button');
+      const mobileMenu = document.getElementById('mobile-menu');
+      
+      menuButton.addEventListener('click', function() {
+        const isExpanded = mobileMenu.classList.toggle('hidden');
+        menuButton.setAttribute('aria-expanded', !isExpanded);
+        
+        // Toggle animation class
+        if (isExpanded) {
+          mobileMenu.style.maxHeight = '0';
+          mobileMenu.style.opacity = '0';
+        } else {
+          mobileMenu.style.maxHeight = mobileMenu.scrollHeight + 'px';
+          mobileMenu.style.opacity = '1';
+        }
+      });
+      
+      // Close menu when clicking outside
+      document.addEventListener('click', function(event) {
+        if (!menuButton.contains(event.target) && !mobileMenu.contains(event.target) && !mobileMenu.classList.contains('hidden')) {
+          mobileMenu.classList.add('hidden');
+          menuButton.setAttribute('aria-expanded', 'false');
+          mobileMenu.style.maxHeight = '0';
+          mobileMenu.style.opacity = '0';
+        }
+      });
+      
+      // Initialize menu state
+      mobileMenu.style.transition = 'max-height 0.3s ease, opacity 0.3s ease';
+      mobileMenu.style.overflow = 'hidden';
+      mobileMenu.style.maxHeight = '0';
+      mobileMenu.style.opacity = '0';
+    });
+  </script>
+</header>

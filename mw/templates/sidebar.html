@@ -1,0 +1,15 @@
+<div class="bg-gray-100 h-full relative transition-all duration-300 ease-in-out" :style="{ width: localCollapsed ? '48px' : '256px' }">
+  <!-- Sidebar Content -->
+  <div class="h-full w-full">
+    <h2 class="font-bold text-lg text-gray-700 p-4">메뉴</h2>
+    <ul class="space-y-2 px-2">
+      <li v-for="i in 6" :key="i" class="p-2 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-200 flex items-center">
+        <span class="w-5 h-5 bg-blue-100 text-blue-600 text-sm rounded-full flex items-center justify-center mr-2">{{i}}</span>
+        <span class="text-sm whitespace-nowrap">메뉴 항목 {{i}}</span>
+      </li>
+    </ul>
+  </div>
+  <script>
+  export default {};
+  </script>
+</div>

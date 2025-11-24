@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>포트폴리오 갤러리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .gallery-item {
+      transition: all 0.3s ease;
+      background-size: 200% 200%;
+    }
+    
+    .gallery-item:hover {
+      transform: scale(1.05);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    .gallery-item.active {
+      outline: 4px solid #3b82f6;
+      outline-offset: 2px;
+    }
+    
+    @media (max-width: 768px) {
+      .gallery-item {
+        height: 200px;
+      }
+    }
+    
+    @media (max-width: 640px) {
+      .gallery-item {
+        height: 180px;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <section class="p-4 sm:p-8">
+    <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-center">포트폴리오 갤러리</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" id="gallery-container">
+      <div class="gallery-item h-64 bg-gradient-to-br from-blue-400 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl cursor-pointer shadow-lg" 
+           :class="{'active': selectedProject === 'A'}"
+           @click="selectProject('A')">
+        프로젝트 A
+      </div>
+      <div class="gallery-item h-64 bg-gradient-to-br from-green-400 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
+           :class="{'active': selectedProject === 'B'}"
+           @click="selectProject('B')">
+        프로젝트 B
+      </div>
+      <div class="gallery-item h-64 bg-gradient-to-br from-pink-400 to-red-600 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
+           :class="{'active': selectedProject === 'C'}"
+           @click="selectProject('C')">
+        프로젝트 C
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Vue component for the gallery
+    const Gallery = {
+      data() {
+        return {
+          selectedProject: null
+        };
+      },
+      methods: {
+        selectProject(projectId) {
+          this.selectedProject = projectId;
+          // Emit event to parent component if needed
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'projectSelected', projectId }, '*');
+          }
+        }
+      },
+      mounted() {
+        // Initialize mobile preview if in iframe
+        if (window.self !== window.top) {
+          document.body.classList.add('mobile-preview');
+        }
+      }
+    };
+    
+    // Mount the Vue app to the gallery container
+    const app = Vue.createApp(Gallery);
+    app.mount('#gallery-container');
+  </script>
+</body>
+</html>

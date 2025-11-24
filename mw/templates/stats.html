@@ -1,0 +1,9 @@
+<section class="p-12 bg-gray-50 text-center">
+  <h2 class="text-3xl font-bold mb-10">Our Stats</h2>
+  <div class="grid grid-cols-4 gap-6 max-w-4xl mx-auto">
+    <div v-for="i in 4" :key="i">
+      <p class="text-4xl font-extrabold text-blue-500">{{i*25}}</p>
+      <p class="text-gray-600">항목 {{i}}</p>
+    </div>
+  </div>
+</section>

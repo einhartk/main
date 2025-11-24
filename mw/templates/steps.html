@@ -1,0 +1,12 @@
+<section class="p-12 bg-gray-100">
+  <h2 class="text-3xl font-bold mb-8 text-center">How It Works</h2>
+  <div class="grid gap-6 max-w-2xl mx-auto">
+    <div v-for="i in 4" :key="i" class="bg-white p-6 rounded shadow flex items-center">
+      <div class="h-12 w-12 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold mr-4">{{i}}</div>
+      <div>
+        <h3 class="font-bold mb-1">Step {{i}}</h3>
+        <p class="text-sm text-gray-600">설명 내용</p>
+      </div>
+    </div>
+  </div>
+</section>

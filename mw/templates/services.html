@@ -1,0 +1,10 @@
+<section class="p-12 bg-white">
+  <h2 class="text-3xl font-bold mb-8 text-center">Our Services</h2>
+  <div class="grid grid-cols-3 gap-6">
+    <div v-for="i in 3" :key="i" class="bg-gray-50 p-6 rounded shadow text-center">
+      <div class="h-16 w-16 bg-gray-300 rounded mx-auto mb-3"></div>
+      <h3 class="font-bold mb-1">Service {{i}}</h3>
+      <p class="text-sm text-gray-600">서비스 설명</p>
+    </div>
+  </div>
+</section>
