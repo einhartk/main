@@ -183,7 +183,7 @@ const templateConfigs = [
   { id: 14, name: 'services', displayName: 'Services', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
   { id: 15, name: 'steps', displayName: 'Steps', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
   { id: 16, name: 'sidebar', displayName: 'Sidebar', category: 'Layout', applied: true, isSidebar: true, isSidebarCollapsed: false, props: { textColor: '#000000' }},
-  { id: 17, name: 'floating-bar', displayName: 'Floating Bar', category: 'Layout', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 17, name: 'floating-bar', displayName: 'Floating Bar', category: 'Layout', applied: true, props: { textColor: '#3b82f6' }, isSidebar: false },
   { id: 18, name: 'newsletter', displayName: 'Newsletter', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
   { id: 19, name: 'product-grid', displayName: 'Product Grid', category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
   { id: 20, name: 'cover', displayName: 'Cover', category: 'Layout', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false }
