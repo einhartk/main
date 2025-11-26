@@ -5,6 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Mobile Preview</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // 테마 파라미터 가져오기
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentTheme = urlParams.get('theme') || 'theme-1';
+    
+    // 동적 테마 CSS 로드
+    const themeLink = document.createElement('link');
+    themeLink.rel = 'stylesheet';
+    themeLink.href = `assets/css/themes/${currentTheme}.css`;
+    document.head.appendChild(themeLink);
+  </script>
   <style>
     :root {
       --device-width: 375px;

@@ -1,11 +1,11 @@
-<section class="p-4 sm:p-8 bg-gray-50">
-  <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-center">Card Section</h2>
+<section class="p-4 sm:p-8" style="background-color: var(--background-color, #f9fafb);">
+  <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">Card Section</h2>
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-    <div v-for="i in 6" :key="i" class="bg-white border rounded shadow p-4 flex flex-col items-center">
-      <div class="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 bg-gray-300 rounded-full mb-3 sm:mb-4"></div>
-      <h3 class="font-bold text-sm sm:text-base mb-1">Card {{i}}</h3>
-      <p class="text-xs sm:text-sm text-gray-600 text-center">카드 설명 내용</p>
-      <button class="mt-2 sm:mt-3 bg-blue-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded text-sm sm:text-base hover:bg-blue-600 transition-colors">자세히</button>
+    <div v-for="i in 6" :key="i" class="border rounded shadow p-4 flex flex-col items-center" style="background-color: var(--surface-color, #ffffff); border-color: var(--border-color, #e5e7eb);">
+      <div class="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 rounded-full mb-3 sm:mb-4" style="background-color: var(--border-color, #e5e7eb);"></div>
+      <h3 class="font-bold text-sm sm:text-base mb-1" style="color: var(--text-color, #1f2937);">Card {{i}}</h3>
+      <p class="text-xs sm:text-sm text-center" style="color: var(--text-secondary, #6b7280);">카드 설명 내용</p>
+      <button class="mt-2 sm:mt-3 px-3 sm:px-4 py-1.5 sm:py-2 rounded text-sm sm:text-base transition-colors" style="color: var(--text-color, #ffffff); background-color: var(--primary-color, #3b82f6);" onmouseover="this.style.backgroundColor='var(--primary-hover, #2563eb)'" onmouseout="this.style.backgroundColor='var(--primary-color, #3b82f6)'">자세히</button>
     </div>
   </div>
 </section>

@@ -1,10 +1,10 @@
-<section class="p-8 bg-white">
-  <h2 class="text-3xl font-bold mb-6 text-center">Team</h2>
+<section class="p-8" style="background-color: var(--surface-color, #ffffff);">
+  <h2 class="text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">Team</h2>
   <div class="grid grid-cols-4 gap-6">
-    <div v-for="i in 4" :key="i" class="text-center bg-gray-50 p-4 rounded shadow">
-      <div class="h-32 w-32 bg-gray-300 rounded-full mx-auto mb-4"></div>
-      <h3 class="font-bold mb-1">Member {{i}}</h3>
-      <p class="text-sm text-gray-600">직책 / 역할</p>
+    <div v-for="i in 4" :key="i" class="text-center p-4 rounded shadow" style="background-color: var(--background-color, #f9fafb);">
+      <div class="h-32 w-32 rounded-full mx-auto mb-4" style="background-color: var(--border-color, #e5e7eb);"></div>
+      <h3 class="font-bold mb-1" style="color: var(--text-color, #1f2937);">Member {{i}}</h3>
+      <p class="text-sm" style="color: var(--text-secondary, #6b7280);">직책 / 역할</p>
     </div>
   </div>
 </section>

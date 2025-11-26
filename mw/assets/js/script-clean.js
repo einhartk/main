@@ -232,6 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           isMainSidebarOpen: localStorage.getItem('mainSidebarCollapsed') !== 'true',
           isPreviewSidebarOpen: true,
           showMobilePreview: false,
+          currentTheme: localStorage.getItem('selectedTheme') || 'theme-1',
           dragOptions: {
             animation: 200,
             ghostClass: 'ghost',
@@ -246,11 +247,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
       },
       computed: {
-        mobilePreviewUrl() {
-          const baseUrl = window.location.href.replace(/\/[^/]*$/, '');
-          return `${baseUrl}/mobile-preview.html`;
-        },
-        appliedTemplates() {
+                appliedTemplates() {
           return this.templates.filter(t => t.applied);
         },
         mainContentTemplates: {
@@ -372,6 +369,83 @@ document.addEventListener('DOMContentLoaded', async () => {
           ];
         },
         
+        getCurrentThemeCSS() {
+          // Get current theme CSS from the theme CSS file
+          const themeCSSLink = document.getElementById('theme-css');
+          if (themeCSSLink) {
+            // Get the CSS content from the current theme
+            const themeName = this.currentTheme || 'theme-1';
+            
+            // Theme CSS variables based on current theme
+            const themeVariables = {
+              'theme-1': {
+                '--text-color': '#1f2937',
+                '--primary-color': '#3b82f6',
+                '--primary-hover': '#2563eb',
+                '--secondary-color': '#8b5cf6',
+                '--success-color': '#10b981',
+                '--warning-color': '#f59e0b',
+                '--danger-color': '#ef4444',
+                '--surface-color': '#ffffff',
+                '--background-color': '#f9fafb',
+                '--border-color': '#e5e7eb',
+                '--text-secondary': '#6b7280'
+              },
+              'theme-2': {
+                '--text-color': '#064e3b',
+                '--primary-color': '#059669',
+                '--primary-hover': '#047857',
+                '--secondary-color': '#0d9488',
+                '--success-color': '#059669',
+                '--warning-color': '#d97706',
+                '--danger-color': '#dc2626',
+                '--surface-color': '#ffffff',
+                '--background-color': '#ecfdf5',
+                '--border-color': '#a7f3d0',
+                '--text-secondary': '#047857'
+              },
+              'theme-3': {
+                '--text-color': '#111827',
+                '--primary-color': '#1f2937',
+                '--primary-hover': '#111827',
+                '--secondary-color': '#6b7280',
+                '--success-color': '#059669',
+                '--warning-color': '#d97706',
+                '--danger-color': '#dc2626',
+                '--surface-color': '#ffffff',
+                '--background-color': '#f9fafb',
+                '--border-color': '#e5e7eb',
+                '--text-secondary': '#6b7280'
+              },
+              'theme-4': {
+                '--text-color': '#f3f4f6',
+                '--primary-color': '#3b82f6',
+                '--primary-hover': '#2563eb',
+                '--secondary-color': '#8b5cf6',
+                '--success-color': '#10b981',
+                '--warning-color': '#f59e0b',
+                '--danger-color': '#ef4444',
+                '--surface-color': '#1f2937',
+                '--background-color': '#111827',
+                '--border-color': '#374151',
+                '--text-secondary': '#9ca3af'
+              }
+            };
+            
+            const currentVars = themeVariables[themeName] || themeVariables['theme-1'];
+            
+            // Generate CSS string
+            let cssString = '<style>\n:root {\n';
+            for (const [key, value] of Object.entries(currentVars)) {
+              cssString += `  ${key}: ${value};\n`;
+            }
+            cssString += '}\n</style>\n';
+            
+            return cssString;
+          }
+          return '';
+        },
+        
         async downloadHTML() {
           try {
             // Helper function to render a template component to HTML
@@ -448,6 +522,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 .map(template => renderTemplate(template))
             );
 
+            // Get current theme CSS
+            const currentThemeCSS = this.getCurrentThemeCSS();
+            
             // Generate the complete HTML document
             const htmlContent = `<!DOCTYPE html>
 <html lang="ko">
@@ -457,6 +534,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   <title>${orderedTemplates.find(t => t.name === 'header')?.props?.title || '다운로드된 페이지'}</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  ${currentThemeCSS}
   <style>
     * {
       box-sizing: border-box;
@@ -467,8 +545,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     body {
       font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
       line-height: 1.6;
-      color: #333;
-      background-color: #f9fafb;
+      color: var(--text-color, #333);
+      background-color: var(--background-color, #f9fafb);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
@@ -490,9 +568,47 @@ document.addEventListener('DOMContentLoaded', async () => {
       border: 1px solid #fca5a5;
       border-radius: 0.375rem;
     }
+    
+    .floating-bar {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: var(--primary-color, #3b82f6);
+      color: var(--text-color, #ffffff);
+      padding: 12px 16px;
+      border-radius: 50px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 1000;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .floating-bar:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      background-color: var(--primary-hover, #2563eb);
+    }
+    
+    .floating-bar .animate-pulse {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
   </style>
 </head>
-<body class="bg-white">
+<body style="background-color: var(--background-color, #ffffff);">
   ${orderedTemplates.find(t => t.name === 'header') ? `
   <header class="template-wrapper">
     ${renderedTemplates[orderedTemplates.findIndex(t => t.name === 'header')]}
@@ -501,13 +617,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   <div class="flex flex-col md:flex-row min-h-screen">
     ${orderedTemplates.find(t => t.isSidebar) ? `
-    <aside id="sidebar" class="w-full md:w-1/4 bg-white shadow-lg relative z-10">
+    <aside id="sidebar" class="w-full md:w-1/4 shadow-lg relative z-10 flex flex-col h-screen" style="background-color: var(--surface-color, #ffffff); border-right: 1px solid var(--border-color, #e5e7eb);">
       <button onclick="document.getElementById('sidebar').classList.add('hidden'); 
                      document.getElementById('menu-button').classList.remove('hidden');" 
-              class="absolute right-2 top-2 bg-gray-200 hover:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center text-gray-600">
+              class="absolute right-2 top-2 rounded-full w-8 h-8 flex items-center justify-center transition-colors flex-shrink-0" 
+              style="background-color: var(--border-color, #e5e7eb); color: var(--text-color, #1f2937);"
+              onmouseover="this.style.backgroundColor='var(--text-secondary, #6b7280)'"
+              onmouseout="this.style.backgroundColor='var(--border-color, #e5e7eb)'">
         ✕
       </button>
-      <div class="p-4 pt-12">
+      <div class="p-4 pt-12 flex-1 overflow-auto">
         ${renderedTemplates[orderedTemplates.findIndex(t => t.isSidebar)]}
       </div>
       <style>
@@ -524,7 +643,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       </style>
     </aside>
     <button id="menu-button" onclick="document.getElementById('sidebar').classList.remove('hidden'); this.classList.add('hidden');" 
-            class="hidden fixed left-4 top-4 bg-blue-500 text-white p-2 rounded z-50">
+            class="hidden fixed left-4 top-4 p-2 rounded z-50 transition-colors"
+            style="background-color: var(--primary-color, #3b82f6); color: var(--text-color, #ffffff);"
+            onmouseover="this.style.backgroundColor='var(--primary-hover, #2563eb)'"
+            onmouseout="this.style.backgroundColor='var(--primary-color, #3b82f6)'">
       ☰ 메뉴
     </button>
     ` : ''}
@@ -544,11 +666,43 @@ document.addEventListener('DOMContentLoaded', async () => {
   </footer>
   ` : ''}
 
+  <!-- Floating Bar -->
+  ${orderedTemplates.find(t => t.name === 'floating-bar') ? `
+  ${renderedTemplates[orderedTemplates.findIndex(t => t.name === 'floating-bar')]}
+  ` : ''}
+
   <script src="https://cdn.jsdelivr.net/npm/vue@3.2.31/dist/vue.global.min.js"><\/script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Initialize any client-side JavaScript here
       console.log('Page loaded successfully');
+      
+      // Floating Bar functionality
+      const floatingBar = document.querySelector('.floating-bar');
+      if (floatingBar) {
+        floatingBar.addEventListener('click', function() {
+          alert('채팅 기능은 준비 중입니다!');
+        });
+      }
+      
+      // Mobile menu toggle
+      const menuButton = document.getElementById('menu-button');
+      const sidebar = document.getElementById('sidebar');
+      
+      if (menuButton && sidebar) {
+        menuButton.addEventListener('click', function() {
+          sidebar.classList.toggle('hidden');
+          menuButton.classList.toggle('hidden');
+        });
+      }
+      
+      // Sidebar close button
+      const closeButton = document.querySelector('#sidebar button');
+      if (closeButton) {
+        closeButton.addEventListener('click', function() {
+          sidebar.classList.add('hidden');
+          if (menuButton) menuButton.classList.remove('hidden');
+        });
+      }
     });
   <\/script>
 </body>
@@ -655,6 +809,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         togglePreviewSidebar() {
           this.isPreviewSidebarOpen = !this.isPreviewSidebarOpen;
+        },
+        changeTheme() {
+          const themeLink = document.getElementById('theme-css');
+          if (themeLink) {
+            themeLink.href = `assets/css/themes/${this.currentTheme}.css`;
+            localStorage.setItem('selectedTheme', this.currentTheme);
+          }
         },
         toggleMobilePreview() {
           this.showMobilePreview = !this.showMobilePreview;

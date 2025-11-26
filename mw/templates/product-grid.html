@@ -1,13 +1,13 @@
-<section class="p-8 bg-white">
-  <h2 class="text-3xl font-bold mb-6 text-center">Products</h2>
+<section class="p-8" style="background-color: var(--surface-color, #ffffff);">
+  <h2 class="text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">Products</h2>
   <div class="grid grid-cols-3 gap-6">
-    <div v-for="i in 6" :key="i" class="border rounded shadow overflow-hidden hover:scale-105 transform transition">
-      <div class="h-40 bg-gray-300 flex items-center justify-center">
-        <span class="text-gray-700 font-bold">Product {{i}}</span>
+    <div v-for="i in 6" :key="i" class="border rounded shadow overflow-hidden hover:scale-105 transform transition" style="border-color: var(--border-color, #e5e7eb);">
+      <div class="h-40 flex items-center justify-center" style="background-color: var(--border-color, #e5e7eb);">
+        <span class="font-bold" style="color: var(--text-color, #1f2937);">Product {{i}}</span>
       </div>
       <div class="p-4">
-        <h3 class="font-bold mb-1">Product {{i}}</h3>
-        <p class="text-sm text-gray-600">상품 설명</p>
+        <h3 class="font-bold mb-1" style="color: var(--text-color, #1f2937);">Product {{i}}</h3>
+        <p class="text-sm" style="color: var(--text-secondary, #6b7280);">상품 설명</p>
       </div>
     </div>
   </div>

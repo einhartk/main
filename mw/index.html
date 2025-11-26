@@ -8,17 +8,18 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vuedraggable@next/dist/vuedraggable.umd.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/themes/theme-1.css" id="theme-css">
   <link rel="stylesheet" href="assets/css/app.css">
 </head>
-<body class="bg-gray-100">
+<body style="background-color: var(--background-color, #f9fafb);">
 <div id="app" class="flex h-screen">
 
   <!-- 좌측 3칸: 채팅, 템플릿 선택, 커스터마이저 -->
-  <div class="relative bg-white flex flex-col transition-all duration-300 ease-in-out" 
-       :class="isMainSidebarOpen ? 'w-1/4' : 'w-12'">
+  <div class="relative flex flex-col transition-all duration-300 ease-in-out" 
+       :class="isMainSidebarOpen ? 'w-1/4' : 'w-12'"
+       style="background-color: var(--surface-color, #ffffff); border-right: 1px solid var(--border-color, #e5e7eb);">
     <div class="absolute right-2 top-2 z-10">
-      <button @click="toggleMainSidebar" class="p-1 rounded-full hover:bg-gray-200">
+      <button @click="toggleMainSidebar" class="p-1 rounded-full transition-colors" style="color: var(--text-color, #1f2937);" onmouseover="this.style.backgroundColor='var(--border-color, #e5e7eb)'" onmouseout="this.style.backgroundColor='transparent'">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path v-if="isMainSidebarOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -27,53 +28,67 @@
     </div>
     <div v-if="isMainSidebarOpen" class="p-4 overflow-auto flex-1 flex flex-col gap-4">
       <!-- 채팅 -->
-      <div class="flex flex-col flex-1 border rounded p-2 bg-gray-50 overflow-auto">
+      <div class="flex flex-col flex-1 border rounded p-2 overflow-auto" style="background-color: var(--background-color, #f9fafb); border-color: var(--border-color, #e5e7eb);">
         <div v-for="msg in chatHistory" :key="msg.id" class="mb-2">
-          <div v-if="msg.type==='user'" class="text-right text-blue-600">{{ msg.text }}</div>
-          <div v-else class="text-left text-gray-700 font-semibold">{{ msg.text }}</div>
+          <div v-if="msg.type==='user'" class="text-right font-semibold" style="color: var(--primary-color, #3b82f6);">{{ msg.text }}</div>
+          <div v-else class="text-left font-semibold" style="color: var(--text-color, #1f2937);">{{ msg.text }}</div>
         </div>
       </div>
     <div class="flex gap-2">
       <input v-model="chatInput" @keyup.enter="sendChat" type="text" placeholder="메시지 입력"
-             class="flex-1 border p-2 rounded">
-      <button @click="sendChat" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">전송</button>
+             class="flex-1 border p-2 rounded" style="border-color: var(--border-color, #e5e7eb); background-color: var(--surface-color, #ffffff); color: var(--text-color, #1f2937);">
+      <button @click="sendChat" class="px-4 py-2 rounded transition-colors" style="color: var(--text-color, #ffffff); background-color: var(--primary-color, #3b82f6);" onmouseover="this.style.backgroundColor='var(--primary-hover, #2563eb)'" onmouseout="this.style.backgroundColor='var(--primary-color, #3b82f6)'">전송</button>
+    </div>
+
+    <!-- 테마 선택기 -->
+    <div class="border rounded p-3" style="background-color: var(--background-color, #f9fafb); border-color: var(--border-color, #e5e7eb);">
+      <h3 class="font-bold mb-2 text-sm" style="color: var(--text-color, #1f2937);">테마 선택</h3>
+      <select v-model="currentTheme" @change="changeTheme" class="w-full border p-2 rounded text-sm" style="border-color: var(--border-color, #e5e7eb); background-color: var(--surface-color, #ffffff); color: var(--text-color, #1f2937);">
+        <option value="theme-1">테마 1 - 파란색</option>
+        <option value="theme-2">테마 2 - 초록색</option>
+        <option value="theme-3">테마 3 - 미니멀</option>
+        <option value="theme-4">테마 4 - 다크모드</option>
+      </select>
     </div>
 
     <!-- 카테고리 필터 -->
-    <select v-model="categoryFilter" class="border p-2 rounded">
+    <select v-model="categoryFilter" class="border p-2 rounded" style="border-color: var(--border-color, #e5e7eb); background-color: var(--surface-color, #ffffff); color: var(--text-color, #1f2937);">
       <option value="">전체</option>
       <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
     </select>
 
     <!-- 템플릿 리스트 -->
     <div class="flex-1 overflow-auto">
-      <h3 class="font-bold mb-2">템플릿</h3>
+      <h3 class="font-bold mb-2" style="color: var(--text-color, #1f2937);">템플릿</h3>
       <div v-for="tpl in filteredTemplates" :key="tpl.id"
-           class="border rounded p-2 mb-2 flex justify-between items-center bg-gray-50 cursor-pointer hover:bg-gray-100"
-           @click="toggleTemplate(tpl)">
-        <span>{{ tpl.name }}</span>
-        <span class="text-sm text-gray-500">{{ tpl.applied ? 'ON' : 'OFF' }}</span>
+           class="border rounded p-2 mb-2 flex justify-between items-center cursor-pointer transition-colors"
+           style="background-color: var(--background-color, #f9fafb); border-color: var(--border-color, #e5e7eb);"
+           @click="toggleTemplate(tpl)"
+           onmouseover="this.style.backgroundColor='var(--border-color, #e5e7eb)'"
+           onmouseout="this.style.backgroundColor='var(--background-color, #f9fafb)'">
+        <span style="color: var(--text-color, #1f2937);">{{ tpl.name }}</span>
+        <span class="text-sm" style="color: var(--text-secondary, #6b7280);">{{ tpl.applied ? 'ON' : 'OFF' }}</span>
       </div>
     </div>
 
     <!-- 커스터마이저 -->
     <div>
-      <h3 class="font-bold mb-2">커스터마이저</h3>
-      <input type="color" v-model="textColor" class="w-full h-8 border rounded mb-2">
-      <button @click="applyColors" class="w-full bg-green-500 text-white py-1 rounded hover:bg-green-600">적용</button>
-      <button @click="downloadHTML" class="w-full mt-2 bg-yellow-500 text-white py-1 rounded hover:bg-yellow-600">HTML 다운로드</button>
+      <h3 class="font-bold mb-2" style="color: var(--text-color, #1f2937);">커스터마이저</h3>
+      <input type="color" v-model="textColor" class="w-full h-8 border rounded mb-2" style="border-color: var(--border-color, #e5e7eb);">
+      <button @click="applyColors" class="w-full py-1 rounded transition-colors" style="color: var(--text-color, #ffffff); background-color: var(--success-color, #10b981);" onmouseover="this.style.backgroundColor='#059669'" onmouseout="this.style.backgroundColor='var(--success-color, #10b981)'">적용</button>
+      <button @click="downloadHTML" class="w-full mt-2 py-1 rounded transition-colors" style="color: var(--text-color, #ffffff); background-color: var(--warning-color, #f59e0b);" onmouseover="this.style.backgroundColor='#d97706'" onmouseout="this.style.backgroundColor='var(--warning-color, #f59e0b)'">HTML 다운로드</button>
     </div>
 
     </div>
   </div>
 
   <!-- 우측 9칸: 미리보기 -->
-  <div class="flex-1 p-4 bg-gray-100 flex flex-col h-screen transition-all duration-300 ease-in-out">
+  <div class="flex-1 p-4 flex flex-col h-screen transition-all duration-300 ease-in-out" style="background-color: var(--background-color, #f9fafb);">
     <div class="mb-4">
       <div class="flex justify-between items-center">
-        <h3 class="font-bold text-lg">미리보기</h3>
+        <h3 class="font-bold text-lg" style="color: var(--text-color, #1f2937);">미리보기</h3>
         <div class="flex space-x-2">
-          <button @click="toggleMobilePreview" class="flex items-center px-3 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
+          <button @click="toggleMobilePreview" class="flex items-center px-3 py-1.5 rounded-md transition-colors" style="color: var(--text-color, #ffffff); background-color: var(--primary-color, #3b82f6);" onmouseover="this.style.backgroundColor='var(--primary-hover, #2563eb)'" onmouseout="this.style.backgroundColor='var(--primary-color, #3b82f6)'">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
@@ -82,9 +97,9 @@
         </div>
       </div>
       
-      <div class="mt-2 bg-white rounded-lg shadow overflow-auto flex-1">
+      <div class="mt-2 rounded-lg shadow overflow-auto flex-1" style="background-color: var(--surface-color, #ffffff);">
         <!-- Preview Header with Header Template -->
-        <div class="border-b border-gray-200 bg-white">
+        <div class="border-b" style="border-color: var(--border-color, #e5e7eb); background-color: var(--surface-color, #ffffff);">
           <template v-for="tpl in templates" :key="'header-'+tpl.id">
             <div v-if="tpl && tpl.alwaysVisible && tpl.applied && tpl.component" class="w-full">
               <component
@@ -103,7 +118,7 @@
                  class="preview-sidebar"
                  :class="isPreviewSidebarOpen ? 'open' : 'closed'">
               <div class="preview-sidebar-toggle">
-                <button @click="togglePreviewSidebar" class="p-1 rounded-full hover:bg-gray-200">
+                <button @click="togglePreviewSidebar" class="p-1 rounded-full transition-colors" style="color: var(--text-color, #1f2937);" onmouseover="this.style.backgroundColor='var(--border-color, #e5e7eb)'" onmouseout="this.style.backgroundColor='transparent'">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path v-if="isPreviewSidebarOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -175,7 +190,7 @@
   
   <!-- Download HTML Button -->
   <div class="fixed bottom-4 right-4 z-40">
-    <button @click="downloadHTML" class="bg-green-500 text-white p-3 rounded-full shadow-lg hover:bg-green-600 transition-colors" title="HTML 다운로드">
+    <button @click="downloadHTML" class="p-3 rounded-full shadow-lg transition-colors" style="color: var(--text-color, #ffffff); background-color: var(--success-color, #10b981);" onmouseover="this.style.backgroundColor='#059669'" onmouseout="this.style.backgroundColor='var(--success-color, #10b981)'" title="HTML 다운로드">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
       </svg>
@@ -183,12 +198,12 @@
   </div>
 
   <!-- Mobile Preview Modal -->
-  <div v-if="showMobilePreview" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="toggleMobilePreview">
+  <div v-if="showMobilePreview" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background-color: rgba(0, 0, 0, 0.5);" @click.self="toggleMobilePreview">
     <div class="relative w-full max-w-md mx-auto my-8">
       <!-- Smartphone Frame -->
-      <div class="relative mx-auto bg-black rounded-[40px] p-2 border-[14px] border-gray-900 shadow-2xl overflow-hidden" style="width: 100%; max-width: 375px; height: 700px; max-height: 90vh;">
+      <div class="relative mx-auto rounded-[40px] p-2 border-[14px] shadow-2xl overflow-hidden" style="width: 100%; max-width: 375px; height: 700px; max-height: 90vh; background-color: var(--surface-color, #000000); border-color: var(--surface-color, #000000);">
         <!-- Status Bar -->
-        <div class="flex justify-between items-center px-6 py-2 bg-black text-white">
+        <div class="flex justify-between items-center px-6 py-2" style="background-color: var(--surface-color, #000000); color: var(--text-color, #ffffff);">
           <div class="text-sm font-medium">{{ getCurrentTime() }}</div>
           <div class="flex items-center space-x-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -203,14 +218,13 @@
         </div>
         
         <!-- Device Screen Content -->
-        <div class="mobile-device-screen-content">
+        <div class="mobile-device-screen-content" style="background-color: var(--background-color, #ffffff);">
           <!-- Scrollable content with hidden scrollbar -->
           <div class="mobile-preview-scrollable">
             <!-- Main Content Container -->
             <div class="mobile-preview-main-content">
-          <!-- Templates in current order -->
-          <div v-for="tpl in mainContentTemplates" :key="'mobile-'+tpl.id" class="w-full">
-            <!-- Header -->
+          <!-- Header - Rendered separately -->
+          <template v-for="tpl in templates" :key="'mobile-header-'+tpl.id">
             <template v-if="tpl.name === 'header' && tpl.applied && tpl.component">
               <component
                 :is="tpl.component"
@@ -218,25 +232,30 @@
                 :class="{ 'border-b-0': true }"
               ></component>
             </template>
-            
+          </template>
+          
+          <!-- Templates in current order -->
+          <div v-for="tpl in mainContentTemplates" :key="'mobile-'+tpl.id" class="w-full">
             <!-- Main Content -->
-            <div v-else-if="!tpl.isSidebar && !tpl.alwaysVisible && tpl.name !== 'footer' && tpl.applied && tpl.component" class="w-full">
+            <template v-if="!tpl.isSidebar && !tpl.alwaysVisible && tpl.name !== 'footer' && tpl.applied && tpl.component">
               <component
                 :is="tpl.component"
                 v-bind="tpl.props || {}"
                 :class="{ 'border-b-0': true }"
               ></component>
-            </div>
-            
-            <!-- Footer -->
-            <template v-else-if="tpl.name === 'footer' && tpl.applied && tpl.component">
+            </template>
+          </div>
+          
+          <!-- Footer - Rendered separately -->
+          <template v-for="tpl in templates" :key="'mobile-footer-'+tpl.id">
+            <template v-if="tpl.name === 'footer' && tpl.applied && tpl.component">
               <component
                 :is="tpl.component"
                 v-bind="tpl.props || {}"
                 class="mt-auto border-t-0"
               ></component>
             </template>
-          </div>
+          </template>
           
           <!-- Empty State -->
           <div v-if="!appliedTemplates.length" class="flex items-center justify-center h-full text-gray-500 p-4">
@@ -254,7 +273,10 @@
       <!-- Close Button -->
       <button 
         @click="toggleMobilePreview" 
-        class="absolute -top-10 right-0 bg-white p-2 rounded-full shadow-lg text-gray-700 hover:bg-gray-100 transition-colors"
+        class="absolute -top-10 right-0 p-2 rounded-full shadow-lg transition-colors"
+        style="background-color: var(--surface-color, #ffffff); color: var(--text-color, #1f2937);"
+        onmouseover="this.style.backgroundColor='var(--border-color, #e5e7eb)'"
+        onmouseout="this.style.backgroundColor='var(--surface-color, #ffffff)'"
         aria-label="Close preview"
       >
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

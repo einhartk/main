@@ -17,7 +17,7 @@
     }
     
     .gallery-item.active {
-      outline: 4px solid #3b82f6;
+      outline: 4px solid var(--primary-color, #3b82f6);
       outline-offset: 2px;
     }
     
@@ -34,23 +34,26 @@
     }
   </style>
 </head>
-<body class="bg-gray-100">
+<body style="background-color: var(--background-color, #f9fafb);">
   <section class="p-4 sm:p-8">
-    <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-center">포트폴리오 갤러리</h2>
+    <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">포트폴리오 갤러리</h2>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" id="gallery-container">
-      <div class="gallery-item h-64 bg-gradient-to-br from-blue-400 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl cursor-pointer shadow-lg" 
+      <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg" 
            :class="{'active': selectedProject === 'A'}"
-           @click="selectProject('A')">
+           @click="selectProject('A')"
+           style="background: linear-gradient(135deg, var(--primary-color, #3b82f6), var(--secondary-color, #8b5cf6)); color: var(--text-color, #ffffff);">
         프로젝트 A
       </div>
-      <div class="gallery-item h-64 bg-gradient-to-br from-green-400 to-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
+      <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
            :class="{'active': selectedProject === 'B'}"
-           @click="selectProject('B')">
+           @click="selectProject('B')"
+           style="background: linear-gradient(135deg, var(--success-color, #10b981), var(--primary-color, #3b82f6)); color: var(--text-color, #ffffff);">
         프로젝트 B
       </div>
-      <div class="gallery-item h-64 bg-gradient-to-br from-pink-400 to-red-600 rounded-lg flex items-center justify-center text-white font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
+      <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
            :class="{'active': selectedProject === 'C'}"
-           @click="selectProject('C')">
+           @click="selectProject('C')"
+           style="background: linear-gradient(135deg, var(--warning-color, #f59e0b), var(--danger-color, #ef4444)); color: var(--text-color, #ffffff);">
         프로젝트 C
       </div>
     </div>

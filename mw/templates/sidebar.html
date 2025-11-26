@@ -1,13 +1,15 @@
-<div class="bg-gray-100 h-full relative transition-all duration-300 ease-in-out" :style="{ width: localCollapsed ? '48px' : '256px' }">
+<div class="relative" style="background-color: var(--surface-color, #ffffff); height: 100vh; width: 100%; display: flex; flex-direction: column;">
   <!-- Sidebar Content -->
-  <div class="h-full w-full">
-    <h2 class="font-bold text-lg text-gray-700 p-4">메뉴</h2>
+  <div style="flex: 1; width: 100%; overflow: auto;">
+    <h2 class="font-bold text-lg p-4" style="color: var(--text-color, #1f2937);">메뉴</h2>
     <ul class="space-y-2 px-2">
-      <li v-for="i in 6" :key="i" class="p-2 rounded hover:bg-gray-200 cursor-pointer transition-colors duration-200 flex items-center">
-        <span class="w-5 h-5 bg-blue-100 text-blue-600 text-sm rounded-full flex items-center justify-center mr-2">{{i}}</span>
+      <li v-for="i in 6" :key="i" class="p-2 rounded cursor-pointer transition-colors duration-200 flex items-center" style="color: var(--text-color, #1f2937);" onmouseover="this.style.backgroundColor='var(--border-color, #e5e7eb)'" onmouseout="this.style.backgroundColor='transparent'">
+        <span class="w-5 h-5 text-sm rounded-full flex items-center justify-center mr-2" style="background-color: var(--primary-color, #3b82f6); color: var(--text-color, #ffffff);">{{i}}</span>
         <span class="text-sm whitespace-nowrap">메뉴 항목 {{i}}</span>
       </li>
     </ul>
+    <!-- 내용물과 무관하게 화면 전체 크기를 유지하기 위한 공간 -->
+    <div style="flex: 1; min-height: 200px;"></div>
   </div>
   <script>
   export default {};

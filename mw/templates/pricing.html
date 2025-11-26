@@ -1,15 +1,15 @@
-<section class="p-8 bg-gray-50">
-  <h2 class="text-3xl font-bold mb-6 text-center">Pricing Plans</h2>
+<section class="p-8" style="background-color: var(--background-color, #f9fafb);">
+  <h2 class="text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">Pricing Plans</h2>
   <div class="grid grid-cols-3 gap-6">
-    <div v-for="i in 3" :key="i" class="bg-white border rounded shadow p-6 text-center">
-      <h3 class="font-bold text-xl mb-2">Plan {{i}}</h3>
-      <p class="text-4xl font-extrabold mb-4">{{i*10}}만원</p>
-      <ul class="text-sm text-gray-600 mb-4 space-y-1">
+    <div v-for="i in 3" :key="i" class="border rounded shadow p-6 text-center" style="background-color: var(--surface-color, #ffffff); border-color: var(--border-color, #e5e7eb);">
+      <h3 class="font-bold text-xl mb-2" style="color: var(--text-color, #1f2937);">Plan {{i}}</h3>
+      <p class="text-4xl font-extrabold mb-4" style="color: var(--primary-color, #3b82f6);">{{i*10}}만원</p>
+      <ul class="text-sm mb-4 space-y-1" style="color: var(--text-secondary, #6b7280);">
         <li>Feature A</li>
         <li>Feature B</li>
         <li>Feature C</li>
       </ul>
-      <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Select</button>
+      <button class="px-4 py-2 rounded transition-colors" style="color: var(--text-color, #ffffff); background-color: var(--primary-color, #3b82f6);" onmouseover="this.style.backgroundColor='var(--primary-hover, #2563eb)'" onmouseout="this.style.backgroundColor='var(--primary-color, #3b82f6)'">Select</button>
     </div>
   </div>
 </section>

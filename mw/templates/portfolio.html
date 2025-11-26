@@ -1,13 +1,13 @@
-<section class="p-8 bg-white">
-  <h2 class="text-3xl font-bold mb-6 text-center">Portfolio</h2>
+<section class="p-8" style="background-color: var(--surface-color, #ffffff);">
+  <h2 class="text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">Portfolio</h2>
   <div class="grid grid-cols-3 gap-6">
     <div v-for="i in 6" :key="i" class="overflow-hidden rounded shadow hover:scale-105 transform transition">
-      <div class="h-40 bg-gray-300 flex items-center justify-center">
-        <span class="font-bold text-gray-700">Project {{i}}</span>
+      <div class="h-40 flex items-center justify-center" style="background-color: var(--border-color, #e5e7eb);">
+        <span class="font-bold" style="color: var(--text-color, #1f2937);">Project {{i}}</span>
       </div>
-      <div class="p-4 bg-white">
-        <h3 class="font-bold mb-1">프로젝트 {{i}}</h3>
-        <p class="text-sm text-gray-600">상세 설명</p>
+      <div class="p-4" style="background-color: var(--surface-color, #ffffff);">
+        <h3 class="font-bold mb-1" style="color: var(--text-color, #1f2937);">프로젝트 {{i}}</h3>
+        <p class="text-sm" style="color: var(--text-secondary, #6b7280);">상세 설명</p>
       </div>
     </div>
   </div>

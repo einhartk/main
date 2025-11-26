@@ -1,0 +1,75 @@
+/* 테마 3: 미니멀/흑백 테마 */
+:root {
+  --primary-color: #000000;
+  --primary-hover: #333333;
+  --secondary-color: #666666;
+  --background-color: #ffffff;
+  --surface-color: #fafafa;
+  --text-color: #000000;
+  --text-secondary: #666666;
+  --border-color: #e0e0e0;
+  --shadow-color: rgba(0, 0, 0, 0.05);
+  --success-color: #000000;
+  --warning-color: #666666;
+  --error-color: #cc0000;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-weight: 400;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #cccccc;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+a {
+  color: var(--text-color);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border-color);
+}
+
+button {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: none;
+  border: 1px solid var(--text-color);
+  padding: 6px 12px;
+  border-radius: 2px;
+}
+
+/* 테마 3 특정 스타일 */
+.btn-primary {
+  background-color: var(--text-color);
+  color: var(--background-color);
+  border: 1px solid var(--text-color);
+  padding: 8px 16px;
+  border-radius: 2px;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+}
+
+.card {
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.card:hover {
+  border-color: var(--text-color);
+}

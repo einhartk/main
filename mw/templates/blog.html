@@ -1,14 +1,14 @@
-<section class="p-8 bg-gray-50">
-  <h2 class="text-3xl font-bold mb-6 text-center">Blog</h2>
+<section class="p-8" style="background-color: var(--background-color, #f9fafb);">
+  <h2 class="text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">Blog</h2>
   <div class="grid grid-cols-3 gap-6">
-    <div v-for="i in 6" :key="i" class="bg-white rounded shadow overflow-hidden">
-      <div class="h-40 bg-gray-300 flex items-center justify-center">
-        <span class="text-gray-700 font-bold text-xl">Blog Img {{i}}</span>
+    <div v-for="i in 6" :key="i" class="rounded shadow overflow-hidden" style="background-color: var(--surface-color, #ffffff);">
+      <div class="h-40 flex items-center justify-center" style="background-color: var(--border-color, #e5e7eb);">
+        <span class="font-bold text-xl" style="color: var(--text-color, #1f2937);">Blog Img {{i}}</span>
       </div>
       <div class="p-4">
-        <h3 class="font-bold mb-1">Blog Title {{i}}</h3>
-        <p class="text-sm text-gray-600 mb-2">블로그 요약 내용</p>
-        <button class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm">Read More</button>
+        <h3 class="font-bold mb-1" style="color: var(--text-color, #1f2937);">Blog Title {{i}}</h3>
+        <p class="text-sm mb-2" style="color: var(--text-secondary, #6b7280);">블로그 요약 내용</p>
+        <button class="px-3 py-1 rounded text-sm transition-colors" style="color: var(--text-color, #ffffff); background-color: var(--primary-color, #3b82f6);" onmouseover="this.style.backgroundColor='var(--primary-hover, #2563eb)'" onmouseout="this.style.backgroundColor='var(--primary-color, #3b82f6)'">Read More</button>
       </div>
     </div>
   </div>

@@ -1,12 +1,12 @@
-<section class="p-8 bg-gray-100">
-  <h2 class="text-3xl font-bold mb-6 text-center">Testimonials</h2>
+<section class="p-8" style="background-color: var(--background-color, #f9fafb);">
+  <h2 class="text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">Testimonials</h2>
   <div class="grid grid-cols-3 gap-6">
-    <div v-for="i in 3" :key="i" class="bg-white p-6 rounded shadow text-center">
-      <p class="text-gray-700 mb-4">"고객 후기 {{i}} 내용"</p>
+    <div v-for="i in 3" :key="i" class="p-6 rounded shadow text-center" style="background-color: var(--surface-color, #ffffff);">
+      <p class="mb-4" style="color: var(--text-color, #1f2937);">"고객 후기 {{i}} 내용"</p>
       <div class="flex flex-col items-center">
-        <div class="h-16 w-16 bg-gray-300 rounded-full mb-2"></div>
-        <h3 class="font-bold">Customer {{i}}</h3>
-        <p class="text-sm text-gray-600">직업/포지션</p>
+        <div class="h-16 w-16 rounded-full mb-2" style="background-color: var(--border-color, #e5e7eb);"></div>
+        <h3 class="font-bold" style="color: var(--text-color, #1f2937);">Customer {{i}}</h3>
+        <p class="text-sm" style="color: var(--text-secondary, #6b7280);">직업/포지션</p>
       </div>
     </div>
   </div>

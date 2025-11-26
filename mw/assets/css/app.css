@@ -199,8 +199,8 @@
 /* Preview Sidebar Styles */
 .preview-sidebar {
   position: relative;
-  background: white;
-  border-right: 1px solid #e5e7eb;
+  background: var(--surface-color, #ffffff);
+  border-right: 1px solid var(--border-color, #e5e7eb);
   transition: all 0.3s ease-in-out;
   display: flex;
   flex-direction: column;
@@ -228,6 +228,8 @@
   overflow: hidden;
   padding: 0;
   width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Hide content when sidebar is closed but keep toggle visible */
@@ -241,7 +243,9 @@
 /* Override sidebar template styles for preview context */
 .preview-sidebar-content > div {
   width: 100%;
-  height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-sidebar-content .bg-gray-100 {
@@ -612,7 +616,36 @@ div.floating-bar:hover .animate-pulse {
   max-height: 90vh;
   overflow: hidden;
   border-radius: 32px;
-  background: #fff;
+  background: var(--surface-color, #fff);
+}
+
+/* Mobile preview modal theme support */
+.mobile-device-screen-content {
+  background-color: var(--background-color, #ffffff);
+  color: var(--text-color, #1f2937);
+}
+
+.mobile-preview-main-content {
+  background-color: var(--background-color, #ffffff);
+  color: var(--text-color, #1f2937);
+}
+
+.mobile-preview-scrollable {
+  background-color: var(--background-color, #ffffff);
+}
+
+/* Mobile preview text colors */
+.mobile-preview-main-content .text-gray-500 {
+  color: var(--text-secondary, #6b7280) !important;
+}
+
+.mobile-preview-main-content .text-center {
+  color: var(--text-secondary, #6b7280) !important;
+}
+
+/* Mobile preview borders */
+.mobile-device-screen-content {
+  border-color: var(--border-color, #e5e7eb);
 }
 
 @media (max-width: 479px) {
