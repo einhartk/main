@@ -12,18 +12,121 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
-    <!-- Custom JS -->
-    <script src="js/main.js"></script>
+    <style>
+        .language-switcher {
+            display: flex;
+            gap: 10px;
+            margin-left: 20px;
+            align-items: center;
+        }
+        .lang-btn {
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            transition: all 0.2s;
+            border: 1px solid #ddd;
+            background: white;
+        }
+        .lang-btn:hover {
+            background-color: #f0f0f0;
+        }
+        .lang-btn.active {
+            background-color: #4a6cf7;
+            color: white;
+            border-color: #4a6cf7;
+        }
+        @media (max-width: 768px) {
+            .language-switcher {
+                margin: 10px 0 0 0;
+                justify-content: center;
+                width: 100%;
+            }
+        }
+
+        /* Language Switcher */
+        .lang-btn {
+            cursor: pointer;
+            padding: 5px 10px;
+            margin: 0 2px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        .lang-btn:hover {
+            background: #f0f0f0;
+        }
+        .lang-btn.active {
+            background-color: #4a6cf7;
+            color: white;
+            border-color: #4a6cf7;
+        }
+        @media (max-width: 768px) {
+            .language-switcher {
+                margin: 10px 0 0 0;
+                justify-content: center;
+                width: 100%;
+            }
+        }
+
+        /* Loading Indicator */
+        .language-loader {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+        }
+        .language-loader.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .language-loader::after {
+            content: '';
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            margin-left: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+    <!-- Loading Indicator -->
+    <div class="language-loader">
+        <span data-key="loading">번역 중...</span>
+    </div>
+    <!-- Custom JS will be loaded at the end of body -->
 </head>
 <body>
     <div class="nav-container">
         <nav class="navbar">
-            <div class="nav-logo">사이트 이름</div>
+            <div class="nav-logo" data-key="site.name">사이트 이름</div>
             <ul class="nav-links">
-                <li data-menuanchor="home"><a href="#home">Home</a></li>
-                <li data-menuanchor="about"><a href="#about">About</a></li>
-                <li data-menuanchor="services"><a href="#services">Services</a></li>
-                <li data-menuanchor="contact"><a href="#contact">Contact</a></li>
+                <li data-menuanchor="home"><a href="#home" data-key="nav.home">홈</a></li>
+                <li data-menuanchor="about"><a href="#about" data-key="nav.about">소개</a></li>
+                <li data-menuanchor="services"><a href="#services" data-key="nav.services">서비스</a></li>
+                <li data-menuanchor="contact"><a href="#contact" data-key="nav.contact">문의</a></li>
+                <li class="language-switcher">
+                    <span class="lang-btn active" data-lang="ko">한국어</span>
+                    <span class="lang-btn" data-lang="en">English</span>
+                    <span class="lang-btn" data-lang="ja">日本語</span>
+                    <span class="lang-btn" data-lang="zh-CN">中文</span>
+                </li>
             </ul>
             <div class="hamburger">
                 <span></span>
@@ -37,10 +140,10 @@
         <!-- Home Section -->
         <section id="home" class="section active">
             <div class="content">
-                <h1 class="main-title">환영합니다</h1>
-                <p class="subtitle">더 나은 서비스를 위한 여정을 함께하세요</p>
+                <h1 class="main-title" data-key="home.title">환영합니다</h1>
+                <p class="subtitle" data-key="home.subtitle">더 나은 서비스를 위한 여정을 함께하세요</p>
                 <div class="scroll-down">
-                    <span>스크롤하여 더 보기</span>
+                    <span data-key="home.scroll">스크롤하여 더 보기</span>
                     <i class="fas fa-chevron-down"></i>
                 </div>
             </div>
@@ -49,21 +152,21 @@
         <!-- About Section -->
         <section id="about" class="section">
             <div class="content">
-                <h2>About Me</h2>
-                <h2 class="section-title">소개</h2>
+                <!-- <h2>About Me</h2> -->
+                <h2 class="section-title" data-key="about.title">소개</h2>
                 <div class="about-container">
                     <div class="about-text">
-                        <h3>우리에 대해서</h3>
-                        <p>저희는 고객 중심의 서비스를 제공하기 위해 노력하고 있습니다. 
+                        <h3 data-key="about.subtitle">우리에 대해서</h3>
+                        <p data-key="about.text">저희는 고객 중심의 서비스를 제공하기 위해 노력하고 있습니다. 
                         최신 기술과 트렌드를 반영한 솔루션으로 고객 여러분의 성공을 돕겠습니다.</p>
                         
                         <div class="features">
-                            <h4>주요 특징</h4>
+                            <h4 data-key="about.features">주요 특징</h4>
                             <ul class="features-list">
-                                <li>고품질 서비스 제공</li>
-                                <li>최신 기술 적용</li>
-                                <li>고객 맞춤형 솔루션</li>
-                                <li>신속한 대응</li>
+                                <li data-key="about.feature1">고품질 서비스 제공</li>
+                                <li data-key="about.feature2">최신 기술 적용</li>
+                                <li data-key="about.feature3">고객 맞춤형 솔루션</li>
+                                <li data-key="about.feature4">신속한 대응</li>
                             </ul>
                         </div>
                     </div>
@@ -74,23 +177,23 @@
         <!-- Services Section -->
         <section id="services" class="section">
             <div class="content">
-                <h2>My Services</h2>
-                <h2 class="section-title">서비스</h2>
+                <!-- <h2>My Services</h2> -->
+                <h2 class="section-title" data-key="services.title">서비스</h2>
                 <div class="services-grid">
                     <div class="service-card">
                         <i class="fas fa-laptop-code"></i>
-                        <h3>웹 개발</h3>
-                        <p>최신 웹 기술을 활용한 반응형 웹사이트 제작</p>
+                        <h3 data-key="service1.title">웹 개발</h3>
+                        <p data-key="service1.desc">최신 웹 기술을 활용한 반응형 웹사이트 제작</p>
                     </div>
                     <div class="service-card">
                         <i class="fas fa-mobile-alt"></i>
-                        <h3>모바일 최적화</h3>
-                        <p>모든 기기에서 완벽하게 작동하는 반응형 디자인</p>
+                        <h3 data-key="service2.title">모바일 최적화</h3>
+                        <p data-key="service2.desc">모든 기기에서 완벽하게 작동하는 반응형 디자인</p>
                     </div>
                     <div class="service-card">
                         <i class="fas fa-search"></i>
-                        <h3>SEO 최적화</h3>
-                        <p>검색 엔진 최적화를 통한 높은 노출</p>
+                        <h3 data-key="service3.title">SEO 최적화</h3>
+                        <p data-key="service3.desc">검색 엔진 최적화를 통한 높은 노출</p>
                     </div>
                 </div>
             </div>
@@ -99,23 +202,29 @@
         <!-- Contact Section -->
         <section id="contact" class="section">
             <div class="content">
-                <h2>Contact</h2>
-                <h2 class="section-title">문의하기</h2>
+                <h2 class="section-title" data-key="contact.title">문의하기</h2>
                 <div class="contact-container">
                     <div class="contact-info">
-                        <h3>연락처 정보</h3>
+                        <h3 data-key="contact.info">연락처 정보</h3>
                         <p><i class="fas fa-envelope"></i> email@example.com</p>
                         <p><i class="fas fa-phone"></i> 010-1234-5678</p>
                     </div>
                     <form id="contactForm" class="contact-form">
-                        <input type="text" placeholder="이름" required>
-                        <input type="email" placeholder="이메일" required>
-                        <textarea placeholder="메시지를 입력하세요" required></textarea>
-                        <button type="submit" class="btn">문의하기</button>
+                        <input type="text" placeholder="이름" data-key="contact.name" required>
+                        <input type="email" placeholder="이메일" data-key="contact.email" required>
+                        <textarea placeholder="메시지를 입력하세요" data-key="contact.message" required></textarea>
+                        <button type="submit" class="btn" data-key="contact.submit">문의하기</button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+    <!-- Custom JS -->
+    <script src="js/translations.js"></script>
+    <script>
+        window.addEventListener('error', function(event) {
+            console.error('Error occurred:', event);
+        });
+    </script>
 </body>
 </html>

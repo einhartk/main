@@ -1,10 +1,4 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>포트폴리오 갤러리</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<section class="p-4 sm:p-8">
   <style>
     .gallery-item {
       transition: all 0.3s ease;
@@ -33,60 +27,51 @@
       }
     }
   </style>
-</head>
-<body style="background-color: var(--background-color, #f9fafb);">
-  <section class="p-4 sm:p-8">
-    <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">포트폴리오 갤러리</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" id="gallery-container">
-      <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg" 
-           :class="{'active': selectedProject === 'A'}"
-           @click="selectProject('A')"
-           style="background: linear-gradient(135deg, var(--primary-color, #3b82f6), var(--secondary-color, #8b5cf6)); color: var(--text-color, #ffffff);">
-        프로젝트 A
-      </div>
-      <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
-           :class="{'active': selectedProject === 'B'}"
-           @click="selectProject('B')"
-           style="background: linear-gradient(135deg, var(--success-color, #10b981), var(--primary-color, #3b82f6)); color: var(--text-color, #ffffff);">
-        프로젝트 B
-      </div>
-      <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
-           :class="{'active': selectedProject === 'C'}"
-           @click="selectProject('C')"
-           style="background: linear-gradient(135deg, var(--warning-color, #f59e0b), var(--danger-color, #ef4444)); color: var(--text-color, #ffffff);">
-        프로젝트 C
-      </div>
+  
+  <h2 class="text-2xl sm:text-3xl font-bold mb-6 text-center" style="color: var(--text-color, #1f2937);">포트폴리오 갤러리</h2>
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+    <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg" 
+         :class="{'active': selectedProject === 'A'}"
+         @click="selectProject('A')"
+         style="background: linear-gradient(135deg, var(--primary-color, #3b82f6), var(--secondary-color, #8b5cf6)); color: var(--text-color, #ffffff);">
+      프로젝트 A
     </div>
-  </section>
+    <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
+         :class="{'active': selectedProject === 'B'}"
+         @click="selectProject('B')"
+         style="background: linear-gradient(135deg, var(--success-color, #10b981), var(--primary-color, #3b82f6)); color: var(--text-color, #ffffff);">
+      프로젝트 B
+    </div>
+    <div class="gallery-item h-64 rounded-lg flex items-center justify-center font-bold text-lg sm:text-xl cursor-pointer shadow-lg"
+         :class="{'active': selectedProject === 'C'}"
+         @click="selectProject('C')"
+         style="background: linear-gradient(135deg, var(--warning-color, #f59e0b), var(--danger-color, #ef4444)); color: var(--text-color, #ffffff);">
+      프로젝트 C
+    </div>
+  </div>
+</section>
 
-  <script>
-    // Vue component for the gallery
-    const Gallery = {
-      data() {
-        return {
-          selectedProject: null
-        };
-      },
-      methods: {
-        selectProject(projectId) {
-          this.selectedProject = projectId;
-          // Emit event to parent component if needed
-          if (window.parent && window.parent !== window) {
-            window.parent.postMessage({ type: 'projectSelected', projectId }, '*');
-          }
-        }
-      },
-      mounted() {
-        // Initialize mobile preview if in iframe
-        if (window.self !== window.top) {
-          document.body.classList.add('mobile-preview');
-        }
-      }
+<script>
+export default {
+  data() {
+    return {
+      selectedProject: null
     };
-    
-    // Mount the Vue app to the gallery container
-    const app = Vue.createApp(Gallery);
-    app.mount('#gallery-container');
-  </script>
-</body>
-</html>
+  },
+  methods: {
+    selectProject(projectId) {
+      this.selectedProject = projectId;
+      // Emit event to parent component if needed
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'projectSelected', projectId }, '*');
+      }
+    }
+  },
+  mounted() {
+    // Initialize mobile preview if in iframe
+    if (window.self !== window.top) {
+      document.body.classList.add('mobile-preview');
+    }
+  }
+};
+</script>

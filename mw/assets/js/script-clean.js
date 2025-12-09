@@ -165,28 +165,28 @@ async function loadTemplate(templateName) {
   }
 }
 
-// Template configuration
+// Template configuration with Korean names for natural language processing
 const templateConfigs = [
-  { id: 1, name: 'header', displayName: 'Header', category: 'Layout', applied: true, alwaysVisible: true, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 2, name: 'gallery', displayName: 'Gallery', category: 'Layout', applied: true, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 3, name: 'form', displayName: 'Form', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 4, name: 'card', displayName: 'Card', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 5, name: 'portfolio', displayName: 'Portfolio', category: 'Portfolio', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 6, name: 'blog', displayName: 'Blog', category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 7, name: 'team', displayName: 'Team', category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 8, name: 'pricing', displayName: 'Pricing', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 9, name: 'faq', displayName: 'FAQ', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 10, name: 'testimonial', displayName: 'Testimonial', category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 11, name: 'footer', displayName: 'Footer', category: 'Layout', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 12, name: 'hero', displayName: 'Hero', category: 'Layout', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 13, name: 'stats', displayName: 'Stats', category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 14, name: 'services', displayName: 'Services', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 15, name: 'steps', displayName: 'Steps', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 16, name: 'sidebar', displayName: 'Sidebar', category: 'Layout', applied: true, isSidebar: true, isSidebarCollapsed: false, props: { textColor: '#000000' }},
-  { id: 17, name: 'floating-bar', displayName: 'Floating Bar', category: 'Layout', applied: true, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 18, name: 'newsletter', displayName: 'Newsletter', category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 19, name: 'product-grid', displayName: 'Product Grid', category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
-  { id: 20, name: 'cover', displayName: 'Cover', category: 'Layout', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false }
+  { id: 1, name: 'header', displayName: 'Header', koreanNames: ['헤더', '머리말', '상단'], category: 'Layout', applied: true, alwaysVisible: true, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 2, name: 'gallery', displayName: 'Gallery', koreanNames: ['갤러리', '사진첩', '이미지'], category: 'Layout', applied: true, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 3, name: 'form', displayName: 'Form', koreanNames: ['폼', '양식', '입력폼', '서식'], category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 4, name: 'card', displayName: 'Card', koreanNames: ['카드', '카드형', '카드뷰'], category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 5, name: 'portfolio', displayName: 'Portfolio', koreanNames: ['포트폴리오', '작품집', '작품소개'], category: 'Portfolio', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 6, name: 'blog', displayName: 'Blog', koreanNames: ['블로그', '글', '게시글', '포스트'], category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 7, name: 'team', displayName: 'Team', koreanNames: ['팀', '팀원', '구성원', '팀소개'], category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 8, name: 'pricing', displayName: 'Pricing', koreanNames: ['가격', '요금', '가격표', '플랜'], category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 9, name: 'faq', displayName: 'FAQ', koreanNames: ['faq', '자주묻는질문', '질문답변', '문의'], category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 10, name: 'testimonial', displayName: 'Testimonial', koreanNames: ['후기', '추천', '리뷰', '의견'], category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 11, name: 'footer', displayName: 'Footer', koreanNames: ['푸터', '꼬리말', '하단', '바닥'], category: 'Layout', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 12, name: 'hero', displayName: 'Hero', koreanNames: ['히어로', '메인', '메인화면', '첫화면'], category: 'Layout', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 13, name: 'stats', displayName: 'Stats', koreanNames: ['통계', '수치', '데이터', '현황'], category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 14, name: 'services', displayName: 'Services', koreanNames: ['서비스', '서비스소개', '제공'], category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 15, name: 'steps', displayName: 'Steps', koreanNames: ['단계', '과정', '스텝', '순서'], category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 16, name: 'sidebar', displayName: 'Sidebar', koreanNames: ['사이드바', '측면', '옆면', '메뉴'], category: 'Layout', applied: true, isSidebar: true, isSidebarCollapsed: false, props: { textColor: '#000000' }},
+  { id: 17, name: 'floating-bar', displayName: 'Floating Bar', koreanNames: ['플로팅바', '플로팅', '고정바', '띄워쓰기'], category: 'Layout', applied: true, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 18, name: 'newsletter', displayName: 'Newsletter', koreanNames: ['뉴스레터', '소식지', '메일링', '구독'], category: 'Component', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 19, name: 'product-grid', displayName: 'Product Grid', koreanNames: ['상품', '제품', '상품목록', '제품소개'], category: 'Content', applied: false, props: { textColor: '#3b82f6' }, isSidebar: false },
+  { id: 20, name: 'cover', displayName: 'Cover', koreanNames: ['커버', '표지', '덮개', '배경'] }
 ];
 
 // Initialize the app
@@ -429,6 +429,58 @@ document.addEventListener('DOMContentLoaded', async () => {
                 '--background-color': '#111827',
                 '--border-color': '#374151',
                 '--text-secondary': '#9ca3af'
+              },
+              'theme-5': {
+                '--text-color': '#fef3c7',
+                '--primary-color': '#f59e0b',
+                '--primary-hover': '#d97706',
+                '--secondary-color': '#dc2626',
+                '--success-color': '#059669',
+                '--warning-color': '#f59e0b',
+                '--danger-color': '#dc2626',
+                '--surface-color': '#78350f',
+                '--background-color': '#451a03',
+                '--border-color': '#92400e',
+                '--text-secondary': '#fbbf24'
+              },
+              'theme-6': {
+                '--text-color': '#1e293b',
+                '--primary-color': '#7c3aed',
+                '--primary-hover': '#6d28d9',
+                '--secondary-color': '#ec4899',
+                '--success-color': '#10b981',
+                '--warning-color': '#f59e0b',
+                '--danger-color': '#ef4444',
+                '--surface-color': '#faf5ff',
+                '--background-color': '#f3e8ff',
+                '--border-color': '#e9d5ff',
+                '--text-secondary': '#6b7280'
+              },
+              'theme-7': {
+                '--text-color': '#fef2f2',
+                '--primary-color': '#ef4444',
+                '--primary-hover': '#dc2626',
+                '--secondary-color': '#f97316',
+                '--success-color': '#22c55e',
+                '--warning-color': '#eab308',
+                '--danger-color': '#ef4444',
+                '--surface-color': '#7f1d1d',
+                '--background-color': '#450a0a',
+                '--border-color': '#991b1b',
+                '--text-secondary': '#fca5a5'
+              },
+              'theme-8': {
+                '--text-color': '#0f172a',
+                '--primary-color': '#14b8a6',
+                '--primary-hover': '#0d9488',
+                '--secondary-color': '#06b6d4',
+                '--success-color': '#22c55e',
+                '--warning-color': '#f59e0b',
+                '--danger-color': '#ef4444',
+                '--surface-color': '#f0fdfa',
+                '--background-color': '#ccfbf1',
+                '--border-color': '#5eead4',
+                '--text-secondary': '#0d9488'
               }
             };
             
@@ -813,9 +865,285 @@ document.addEventListener('DOMContentLoaded', async () => {
         changeTheme() {
           const themeLink = document.getElementById('theme-css');
           if (themeLink) {
-            themeLink.href = `assets/css/themes/${this.currentTheme}.css`;
+            // For themes 5-8, use inline CSS since CSS files don't exist
+            if (['theme-5', 'theme-6', 'theme-7', 'theme-8'].includes(this.currentTheme)) {
+              const root = document.documentElement;
+              const themeVariables = {
+                'theme-5': {
+                  '--text-color': '#fef3c7',
+                  '--primary-color': '#f59e0b',
+                  '--primary-hover': '#d97706',
+                  '--secondary-color': '#dc2626',
+                  '--success-color': '#059669',
+                  '--warning-color': '#f59e0b',
+                  '--danger-color': '#dc2626',
+                  '--surface-color': '#78350f',
+                  '--background-color': '#451a03',
+                  '--border-color': '#92400e',
+                  '--text-secondary': '#fbbf24'
+                },
+                'theme-6': {
+                  '--text-color': '#1e293b',
+                  '--primary-color': '#7c3aed',
+                  '--primary-hover': '#6d28d9',
+                  '--secondary-color': '#ec4899',
+                  '--success-color': '#10b981',
+                  '--warning-color': '#f59e0b',
+                  '--danger-color': '#ef4444',
+                  '--surface-color': '#faf5ff',
+                  '--background-color': '#f3e8ff',
+                  '--border-color': '#e9d5ff',
+                  '--text-secondary': '#6b7280'
+                },
+                'theme-7': {
+                  '--text-color': '#fef2f2',
+                  '--primary-color': '#ef4444',
+                  '--primary-hover': '#dc2626',
+                  '--secondary-color': '#f97316',
+                  '--success-color': '#22c55e',
+                  '--warning-color': '#eab308',
+                  '--danger-color': '#ef4444',
+                  '--surface-color': '#7f1d1d',
+                  '--background-color': '#450a0a',
+                  '--border-color': '#991b1b',
+                  '--text-secondary': '#fca5a5'
+                },
+                'theme-8': {
+                  '--text-color': '#0f172a',
+                  '--primary-color': '#14b8a6',
+                  '--primary-hover': '#0d9488',
+                  '--secondary-color': '#06b6d4',
+                  '--success-color': '#22c55e',
+                  '--warning-color': '#f59e0b',
+                  '--danger-color': '#ef4444',
+                  '--surface-color': '#f0fdfa',
+                  '--background-color': '#ccfbf1',
+                  '--border-color': '#5eead4',
+                  '--text-secondary': '#0d9488'
+                }
+              };
+              
+              const currentThemeVars = themeVariables[this.currentTheme];
+              if (currentThemeVars) {
+                Object.entries(currentThemeVars).forEach(([property, value]) => {
+                  root.style.setProperty(property, value);
+                });
+              }
+            } else {
+              // For themes 1-4, use CSS files
+              themeLink.href = `assets/css/themes/${this.currentTheme}.css`;
+            }
             localStorage.setItem('selectedTheme', this.currentTheme);
           }
+        },
+        processCommand(input) {
+          input = input.toLowerCase().trim();
+          
+          // Check for template list command
+          if (input.includes('템플릿 종류') || input.includes('템플릿 목록')) {
+            const categories = [...new Set(this.templates.map(t => t.category))];
+            return `사용 가능한 템플릿 카테고리: ${categories.join(', ')}\n` +
+                   '템플릿 목록을 보려면 "[카테고리] 템플릿 보여줘" 라고 입력해주세요.';
+          }
+          
+          // Show templates in a category
+          const categoryMatch = input.match(/(.+?)\s*템플릿\s*(보여|보여[주]?[라봐줘]?)/);
+          if (categoryMatch) {
+            const category = categoryMatch[1].trim();
+            const templates = this.templates.filter(t => 
+              t.category.toLowerCase() === category.toLowerCase()
+            );
+            
+            if (templates.length === 0) {
+              return `'${category}' 카테고리의 템플릿을 찾을 수 없습니다.`;
+            }
+            
+            return `${category} 템플릿 목록:\n` +
+                   templates.map(t => 
+                     `- ${t.displayName} (${t.applied ? '적용됨' : '미적용'})`
+                   ).join('\n') +
+                   '\n\n템플릿을 적용하려면 "[템플릿이름] 템플릿 넣어줘" 라고 입력하세요.';
+          }
+          
+          // Change text color - check before template commands
+          const colorMatch = input.match(/글자색\s*(을 |를 | )?([^\s]+)(\s*(으|으)?로)?\s*(바꿔|변경|설정|수정|바꿔줘|변경해줘|설정해줘|수정해줘)/);
+          if (colorMatch) {
+            const color = colorMatch[2];
+            this.textColor = color.startsWith('#') ? color : `#${color}`;
+            this.applyColors();
+            return `글자색을 ${this.textColor}로 변경했습니다.`;
+          }
+          
+          // Change theme - check before template commands
+          const themeMatch = input.match(/테마\s*(을 |를 | )?([^\s]+)(\s*(으|으)?로)?\s*(바꿔|변경|설정|수정|바꿔줘|변경해줘|설정해줘|수정해줘)/);
+          if (themeMatch) {
+            const theme = themeMatch[2].trim();
+            const availableThemes = ['theme-1', 'theme-2', 'theme-3', 'theme-4', 'theme-5', 'theme-6', 'theme-7', 'theme-8'];
+            
+            // Try to find theme by number or name
+            let targetTheme = null;
+            if (theme.includes('1') || theme.includes('하나')) targetTheme = 'theme-1';
+            else if (theme.includes('2') || theme.includes('둘')) targetTheme = 'theme-2';
+            else if (theme.includes('3') || theme.includes('셋')) targetTheme = 'theme-3';
+            else if (theme.includes('4') || theme.includes('넷')) targetTheme = 'theme-4';
+            else if (theme.includes('5') || theme.includes('다섯')) targetTheme = 'theme-5';
+            else if (availableThemes.includes(theme)) targetTheme = theme;
+            
+            // Handle "번" suffix (e.g., "3번" -> "3")
+            if (!targetTheme && theme.includes('번')) {
+              const numberOnly = theme.replace('번', '').trim();
+              if (numberOnly.includes('1')) targetTheme = 'theme-1';
+              else if (numberOnly.includes('2')) targetTheme = 'theme-2';
+              else if (numberOnly.includes('3')) targetTheme = 'theme-3';
+              else if (numberOnly.includes('4')) targetTheme = 'theme-4';
+              else if (numberOnly.includes('5')) targetTheme = 'theme-5';
+            }
+            
+            if (!targetTheme) {
+              return `사용 가능한 테마: theme-1, theme-2, theme-3, theme-4, theme-5\n테마를 변경하려면 "테마 [번호]로 바꿔줘" 라고 입력하세요.`;
+            }
+            
+            this.currentTheme = targetTheme;
+            this.changeTheme();
+            return `테마를 ${targetTheme}로 변경했습니다.`;
+          }
+          
+          // Show available themes
+          if (input.includes('테마 종류') || input.includes('테마 목록')) {
+            return `사용 가능한 테마:\n- theme-1 (기본 테마)\n- theme-2 (다크 테마)\n- theme-3 (블루 테마)\n- theme-4 (그린 테마)\n- theme-5 (퍼플 테마)\n\n테마를 변경하려면 "테마 [번호]로 바꿔줘" 라고 입력하세요.`;
+          }
+          
+          // Add template(s) - support multiple templates with natural Korean expressions
+          const addMatch = input.match(/(.+?)\s*(템플릿\s*)?(추가|넣어줘|넣어|적용해줘|적용|설치해줘|설치|설정해줘|설정|바꿔줘|바꿔|수정해줘|수정|변경해줘|변경|만들어줘|만들어|생성해줘|생성|써줘|써|보여줘|보여|달라고|달라|주세요|주세요)/);
+          if (addMatch) {
+            const templateNames = addMatch[1].trim();
+            
+            // Split multiple template names by Korean separators and commas
+            const names = templateNames
+              .split(/(?:와|과|하고|,| 및 )\s*/)
+              .map(name => name.trim())
+              .filter(name => name.length > 0);
+            
+            const addedTemplates = [];
+            const notFoundTemplates = [];
+            
+            names.forEach(templateName => {
+              const template = this.templates.find(t => 
+                t.name.toLowerCase() === templateName.toLowerCase() ||
+                t.displayName.toLowerCase().includes(templateName.toLowerCase())
+              );
+              
+              if (template) {
+                template.applied = true;
+                addedTemplates.push(template.displayName);
+              } else {
+                notFoundTemplates.push(templateName);
+              }
+            });
+            
+            let response = '';
+            if (addedTemplates.length > 0) {
+              response += `${addedTemplates.join(', ')} 템플릿을 추가했습니다.\n`;
+            }
+            if (notFoundTemplates.length > 0) {
+              response += `${notFoundTemplates.join(', ')} 템플릿을 찾을 수 없습니다.`;
+            }
+            
+            return response.trim();
+          }
+          
+          // Natural language template requests - handle "헤더 보여줘", "갤러리 달라고", etc.
+          const naturalMatch = input.match(/(.+?)\s*(보여줘|보여|달라고|달라|주세요|줘|해줘)/);
+          if (naturalMatch) {
+            const templateNames = naturalMatch[1].trim();
+            
+            // Split multiple template names by Korean separators and commas
+            const names = templateNames
+              .split(/(?:와|과|하고|,| 및 )\s*/)
+              .map(name => name.trim())
+              .filter(name => name.length > 0);
+            
+            const addedTemplates = [];
+            const notFoundTemplates = [];
+            
+            names.forEach(templateName => {
+              const template = this.templates.find(t => 
+                t.name.toLowerCase() === templateName.toLowerCase() ||
+                t.displayName.toLowerCase().includes(templateName.toLowerCase())
+              );
+              
+              if (template) {
+                template.applied = true;
+                addedTemplates.push(template.displayName);
+              } else {
+                notFoundTemplates.push(templateName);
+              }
+            });
+            
+            let response = '';
+            if (addedTemplates.length > 0) {
+              response += `${addedTemplates.join(', ')} 템플릿을 추가했습니다.\n`;
+            }
+            if (notFoundTemplates.length > 0) {
+              response += `${notFoundTemplates.join(', ')} 템플릿을 찾을 수 없습니다.`;
+            }
+            
+            return response.trim();
+          }
+          
+          // Remove template(s) - support multiple templates with natural Korean expressions
+          const removeMatch = input.match(/(.+?)\s*(템플릿\s*)?(제거|빼줘|빼|삭제해줘|삭제|제거해줘|없애줘|없애|지워줘|지워|숨겨줘|숨겨|뺴줘|빼)/);
+          if (removeMatch) {
+            const templateNames = removeMatch[1].trim();
+            
+            // Split multiple template names by Korean separators and commas
+            const names = templateNames
+              .split(/(?:와|과|하고|,| 및 )\s*/)
+              .map(name => name.trim())
+              .filter(name => name.length > 0);
+            
+            const removedTemplates = [];
+            const notFoundTemplates = [];
+            
+            names.forEach(templateName => {
+              const template = this.templates.find(t => 
+                t.name.toLowerCase() === templateName.toLowerCase() ||
+                t.displayName.toLowerCase().includes(templateName.toLowerCase())
+              );
+              
+              if (template) {
+                template.applied = false;
+                removedTemplates.push(template.displayName);
+              } else {
+                notFoundTemplates.push(templateName);
+              }
+            });
+            
+            let response = '';
+            if (removedTemplates.length > 0) {
+              response += `${removedTemplates.join(', ')} 템플릿을 제거했습니다.\n`;
+            }
+            if (notFoundTemplates.length > 0) {
+              response += `${notFoundTemplates.join(', ')} 템플릿을 찾을 수 없습니다.`;
+            }
+            
+            return response.trim();
+          }
+          
+          // Show available themes
+          if (input.includes('테마 종류') || input.includes('테마 목록')) {
+            return `사용 가능한 테마:\n- theme-1 (기본 테마)\n- theme-2 (다크 테마)\n- theme-3 (블루 테마)\n- theme-4 (그린 테마)\n- theme-5 (퍼플 테마)\n\n테마를 변경하려면 "테마 [번호]로 바꿔줘" 라고 입력하세요.`;
+          }
+          
+          // Default response for unknown commands
+          return `죄송합니다. 다음 명령어들을 사용해보세요:\n` +
+                 '- 템플릿 종류 알려줘\n' +
+                 '- [카테고리] 템플릿 보여줘\n' +
+                 '- [템플릿이름] 템플릿 넣어줘\n' +
+                 '- [템플릿이름] 템플릿 빼줘\n' +
+                 '- 글자색 [색상코드]로 바꿔줘\n' +
+                 '- 테마 종류 알려줘\n' +
+                 '- 테마 [번호]로 바꿔줘';
         },
         toggleMobilePreview() {
           this.showMobilePreview = !this.showMobilePreview;
@@ -876,14 +1204,41 @@ document.addEventListener('DOMContentLoaded', async () => {
           });
           
           setTimeout(() => { 
+            const response = this.processCommand(userMessage);
             this.chatHistory.push({ 
               id: Date.now() + 1, 
               type: 'ai', 
-              text: `You said: ${userMessage}`
+              text: response
+            });
+            
+            // Auto-scroll to bottom
+            this.$nextTick(() => {
+              const chatContainer = document.querySelector('.chat-container');
+              if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+              }
             });
           }, 500);
           
           this.chatInput = '';
+        },
+        toggleMainSidebar() {
+          this.isMainSidebarOpen = !this.isMainSidebarOpen;
+          localStorage.setItem('mainSidebarCollapsed', !this.isMainSidebarOpen);
+        },
+        togglePreviewSidebar() {
+          this.isPreviewSidebarOpen = !this.isPreviewSidebarOpen;
+        },
+        changeTheme() {
+          const themeLink = document.getElementById('theme-css');
+          if (themeLink) {
+            themeLink.href = `assets/css/themes/${this.currentTheme}.css`;
+            localStorage.setItem('selectedTheme', this.currentTheme);
+          }
+        },
+        toggleMobilePreview() {
+          this.showMobilePreview = !this.showMobilePreview;
+          document.body.style.overflow = this.showMobilePreview ? 'hidden' : '';
         }
       }
     });

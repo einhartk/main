@@ -8,6 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vuedraggable@next/dist/vuedraggable.umd.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="assets/js/script-clean.js"></script>
   <link rel="stylesheet" href="assets/css/themes/theme-1.css" id="theme-css">
   <link rel="stylesheet" href="assets/css/app.css">
 </head>
@@ -28,7 +29,7 @@
     </div>
     <div v-if="isMainSidebarOpen" class="p-4 overflow-auto flex-1 flex flex-col gap-4">
       <!-- 채팅 -->
-      <div class="flex flex-col flex-1 border rounded p-2 overflow-auto" style="background-color: var(--background-color, #f9fafb); border-color: var(--border-color, #e5e7eb);">
+      <div class="chat-container flex flex-col flex-1 border rounded p-2 overflow-auto" style="background-color: var(--background-color, #f9fafb); border-color: var(--border-color, #e5e7eb);">
         <div v-for="msg in chatHistory" :key="msg.id" class="mb-2">
           <div v-if="msg.type==='user'" class="text-right font-semibold" style="color: var(--primary-color, #3b82f6);">{{ msg.text }}</div>
           <div v-else class="text-left font-semibold" style="color: var(--text-color, #1f2937);">{{ msg.text }}</div>
@@ -48,6 +49,10 @@
         <option value="theme-2">테마 2 - 초록색</option>
         <option value="theme-3">테마 3 - 미니멀</option>
         <option value="theme-4">테마 4 - 다크모드</option>
+        <option value="theme-5">테마 5 - 오렌지골드</option>
+        <option value="theme-6">테마 6 - 보라핑크</option>
+        <option value="theme-7">테마 7 - 레드다크</option>
+        <option value="theme-8">테마 8 - 테일청록</option>
       </select>
     </div>
 
@@ -296,7 +301,13 @@
     </div>
   </template>
   
-  <script src="assets/js/script-clean.js"></script>
+  
+
+<script>
+    // Vue app is already initialized in script-clean.js
+    // Just make sure it loads properly
+    console.log('index.html script loaded, waiting for Vue app...');
+  </script>
 
 </body>
 </html>

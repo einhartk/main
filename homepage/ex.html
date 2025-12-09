@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Static Page Auto Translation Demo</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .lang-btn { cursor: pointer; margin-right: 10px; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; }
+    .lang-btn:hover { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h2>🌐 Static Page Auto-Translation Example</h2>
+
+  <div>
+    <span class="lang-btn" data-lang="ko">🇰🇷 Korean</span>
+    <span class="lang-btn" data-lang="ja">🇯🇵 Japanese</span>
+    <span class="lang-btn" data-lang="zh-CN">🇨🇳 Chinese</span>
+    <span class="lang-btn" data-lang="fr">🇫🇷 French</span>
+  </div>
+
+  <hr />
+
+  <!-- Text elements with data-key attributes -->
+  <h3 data-key="title.main">Welcome to Our Website</h3>
+  <p data-key="desc.main">This page shows how to auto-translate text on a static HTML page using only frontend API calls.</p>
+  <button data-key="btn.contact">Contact Us</button>
+
+  <script>
+    // All base text stored by keys
+    const baseTexts = {
+      "title.main": "Welcome to Our Website",
+      "desc.main": "This page shows how to auto-translate text on a static HTML page using only frontend API calls.",
+      "btn.contact": "Contact Us"
+    };
+
+    // Translate function using free MyMemory API
+    async function translateText(text, target) {
+      const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${target}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return data?.responseData?.translatedText || text;
+    }
+
+    // Translate all keys
+    async function translatePage(lang) {
+      const elements = document.querySelectorAll("[data-key]");
+      for (const el of elements) {
+        const key = el.getAttribute("data-key");
+        const original = baseTexts[key];
+        const translated = await translateText(original, lang);
+        el.innerText = translated;
+      }
+    }
+
+    // Bind language buttons
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const lang = btn.dataset.lang;
+        translatePage(lang);
+      });
+    });
+  </script>
+</body>
+</html>
