@@ -166,6 +166,55 @@ function renderRaidParties() {
   updateSupportCount();
 }
 
+// 공격대 데이터 저장
+function saveRaidData() {
+  try {
+    const saveData = {
+      raidParties: state.raidParties,
+      expeditionSlots: state.expeditionSlots,
+      raidPartyCounter: state.raidPartyCounter,
+      saveTime: new Date().toISOString()
+    };
+    
+    localStorage.setItem('lostArkRaidData', JSON.stringify(saveData));
+    console.log('💾 [SAVE] 공격대 데이터가 저장되었습니다.');
+    alert('공격대 정보가 저장되었습니다!\n(원정대 정보 포함)');
+  } catch (error) {
+    console.error('❌ [SAVE ERROR]:', error);
+    alert('저장 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 공격대 데이터 불러오기
+function loadRaidData() {
+  try {
+    const savedData = localStorage.getItem('lostArkRaidData');
+    
+    if (!savedData) {
+      alert('저장된 데이터가 없습니다.');
+      return;
+    }
+    
+    const data = JSON.parse(savedData);
+    
+    // 데이터 복원
+    state.raidParties = data.raidParties || [];
+    state.expeditionSlots = data.expeditionSlots || Array.from({length:8}, () => []);
+    state.raidPartyCounter = data.raidPartyCounter || 0;
+    
+    // UI 업데이트
+    renderRaidParties();
+    renderExpedition();
+    
+    const saveTime = new Date(data.saveTime).toLocaleString('ko-KR');
+    console.log('📂 [LOAD] 공격대 데이터가 불러와졌습니다. 저장 시간:', saveTime);
+    alert(`공격대 정보가 불러와졌습니다!\n저장 시간: ${saveTime}`);
+  } catch (error) {
+    console.error('❌ [LOAD ERROR]:', error);
+    alert('불러오기 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
 // 공격대 리스트 모달창 표시
 function showRaidListModal() {
   // 모달창 HTML 생성
@@ -723,6 +772,148 @@ async function fetchExpedition(index){
     return;
   }
 
+  // 쉼표로 구분된 여러 아이디 처리
+  const names = name.split(',').map(n => n.trim()).filter(n => n);
+  
+  if (names.length > 1) {
+    // 여러 아이디를 처리하는 경우 - 한 슬롯에 모든 캐릭터 합치기
+    console.log(`🔍 [MULTI FETCH] Processing ${names.length} expedition IDs: ${names.join(', ')}`);
+    
+    try {
+      // 각 아이디에 대해 원정대 정보 조회
+      const expeditionPromises = names.map(async (expeditionName) => {
+        try {
+          // 1단계: 원정대 캐릭터 목록 조회
+          const res = await fetch(`${LOSTARK_API_CONFIG.BASE_URL}/characters/${encodeURIComponent(expeditionName)}/siblings`,
+            {headers:getLostArkHeaders()});
+          
+          if (!res.ok) {
+            console.warn(`Failed to fetch expedition ${expeditionName}: ${res.status}`);
+            return { expeditionName, success: false, error: `HTTP error! status: ${res.status}` };
+          }
+          
+          const siblingsData = await res.json();
+          
+          if (!siblingsData || !Array.isArray(siblingsData) || siblingsData.length === 0) {
+            console.warn(`No expedition data found for ${expeditionName}`);
+            return { expeditionName, success: false, error: '원정대 정보를 찾을 수 없습니다' };
+          }
+
+          // 계정당 상위 6명 캐릭터의 상세 정보만 조회
+          const topCharacters = siblingsData
+            .sort((a,b)=>parseFloat((b.ItemAvgLevel||'0').replace(',',''))-parseFloat((a.ItemAvgLevel||'0').replace(',','')))
+            .slice(0,6); // 계정당 6명으로 제한
+          
+          console.log(`📡 [FETCH] Getting detailed info for ${expeditionName}: ${topCharacters.map(c => c.CharacterName).join(', ')}`);
+          
+          const characterPromises = topCharacters.map(char => 
+            Promise.all([
+              fetch(`${LOSTARK_API_CONFIG.BASE_URL}/armories/characters/${encodeURIComponent(char.CharacterName)}/profiles`,
+                {headers:getLostArkHeaders()})
+                .then(res => {
+                  if (!res.ok) {
+                    console.warn(`Profile API failed for ${char.CharacterName}: ${res.status}`);
+                    return null;
+                  }
+                  return res.json();
+                })
+                .catch(err => {
+                  console.warn(`Profile fetch error for ${char.CharacterName}:`, err);
+                  return null;
+                }),
+              fetch(`${LOSTARK_API_CONFIG.BASE_URL}/armories/characters/${encodeURIComponent(char.CharacterName)}/arkpassive`,
+                {headers:getLostArkHeaders()})
+                .then(res => {
+                  if (!res.ok) {
+                    console.warn(`ArkPassive API failed for ${char.CharacterName}: ${res.status}`);
+                    return null;
+                  }
+                  return res.json();
+                })
+                .catch(err => {
+                  console.warn(`ArkPassive fetch error for ${char.CharacterName}:`, err);
+                  return null;
+                })
+            ])
+          );
+
+          const profiles = await Promise.all(characterPromises);
+
+          // 데이터 결합
+          const expeditionData = topCharacters.map((char, idx) => {
+            const [profile, arkpassive] = profiles[idx];
+            
+            return {
+              id: char.CharacterName,
+              name: char.CharacterName,
+              ilvl: char.ItemAvgLevel || '0',
+              combatPower: profile?.CombatPower || char.CombatPower || '0', 
+              role: guessRole(char.CharacterClassName, arkpassive), 
+              image: profile?.CharacterImage || 'img/default-character.png', 
+              className: char.CharacterClassName,
+              level: char.CharacterLevel,
+              arkpassive: arkpassive 
+            };
+          })
+          .sort((a,b)=>parseFloat((b.combatPower||'0').replace(',',''))-parseFloat((a.combatPower||'0').replace(',','')));
+
+          return { expeditionName, success: true, data: expeditionData };
+        } catch (error) {
+          console.error(`Error processing expedition ${expeditionName}:`, error);
+          return { expeditionName, success: false, error: error.message };
+        }
+      });
+
+      const results = await Promise.all(expeditionPromises);
+      
+      // 성공한 원정대들의 캐릭터를 모두 합쳐서 한 슬롯에 배치
+      let successCount = 0;
+      let failCount = 0;
+      const failedExpeditions = [];
+      const allCharacters = [];
+      
+      results.forEach((result) => {
+        if (result.success) {
+          allCharacters.push(...result.data);
+          successCount++;
+        } else {
+          failCount++;
+          failedExpeditions.push(`${result.expeditionName}: ${result.error}`);
+        }
+      });
+      
+      // 전체 캐릭터를 전투력 순으로 정렬하고 상위 18명만 선택
+      const sortedCharacters = allCharacters
+        .sort((a,b) => parseFloat((b.ilvl||'0').replace(',','')) - parseFloat((a.ilvl||'0').replace(',','')))
+        .slice(0, 18);
+      
+      // 해당 슬롯에 배치
+      if (sortedCharacters.length > 0 && index < 8) {
+        state.expeditionSlots[index] = sortedCharacters;
+        console.log(`✅ [COMBINED EXPEDITION] Slot ${index}: ${sortedCharacters.length} characters from ${successCount} expeditions`);
+      }
+      
+      // UI 업데이트
+      renderExpedition();
+      
+      // 결과 알림
+      let message = `원정대 조회 완료!\n성공: ${successCount}개, 실패: ${failCount}개\n총 ${sortedCharacters.length}명의 캐릭터가 슬롯 ${index + 1}에 배치되었습니다.`;
+      if (failedExpeditions.length > 0) {
+        message += `\n\n실패한 원정대:\n${failedExpeditions.join('\n')}`;
+      }
+      alert(message);
+      
+      console.log(`✅ [MULTI FETCH COMPLETE] Success: ${successCount}, Failed: ${failCount}, Total Characters: ${sortedCharacters.length}`);
+      
+    } catch (error) {
+      alert(`여러 원정대 조회 중 오류가 발생했습니다: ${error.message}`);
+      console.error('Multi expedition fetch error:', error);
+    }
+    
+    return;
+  }
+
+  // 단일 아이디 처리 (기존 로직)
   try {
     // 1단계: 원정대 캐릭터 목록 조회
     const res = await fetch(`${LOSTARK_API_CONFIG.BASE_URL}/characters/${encodeURIComponent(name)}/siblings`,
@@ -806,10 +997,10 @@ async function fetchExpedition(index){
 }
 
 function autoAssign(){
-  // 모든 공격대 파티 초기화
-  state.raidParties.forEach(party => {
-    party.members.fill(null);
-  });
+  // 모든 공격대 파티 초기화하지 않고 기존 배치된 캐릭터 유지
+  // state.raidParties.forEach(party => {
+  //   party.members.fill(null);
+  // });
   
   // 모든 원정대 캐릭터 수집 (전투력 순으로 정렬)
   const allChars = [];
@@ -824,7 +1015,7 @@ function autoAssign(){
   });
   
   // 전투력 높은 순으로 정렬
-  allChars.sort((a,b) => parseFloat((b.ilvl||'0').replace(',','')) - parseFloat((a.ilvl||'0').replace(',','')));
+  allChars.sort((a,b) => parseFloat((b.ilvl||'0').replace(/,/g,'')) - parseFloat((a.ilvl||'0').replace(/,/g,'')));
   
   // 서포터와 DPS 분리
   const supports = allChars.filter(c => c.role === 'support');
@@ -832,6 +1023,12 @@ function autoAssign(){
   
   // 각 파티에 서포터 배치 (최대 1명, 1캐릭터당 최대 3공격대 제한)
   state.raidParties.forEach((party, partyIndex) => {
+    // 이미 서포터가 배치되어 있으면 건너뛰기
+    if (party.members[0] && party.members[0].role === 'support') {
+      console.log(`ℹ️ [AUTO ASSIGN] Party ${partyIndex + 1} already has support: ${party.members[0].name}`);
+      return;
+    }
+    
     let bestSupport = null;
     
     // 모든 서포터 중에서 가장 적은 공격대에 배치된 서포터 찾기
@@ -846,7 +1043,7 @@ function autoAssign(){
       
       // 3개 미만으로 배치된 서포터 중에서 전투력이 가장 높은 서포터 선택
       if (supportRaidCount < 3) {
-        if (!bestSupport || parseFloat(supportChar.ilvl.replace(',', '')) > parseFloat(bestSupport.ilvl.replace(',', ''))) {
+        if (!bestSupport || parseFloat(supportChar.ilvl.replace(/,/g, '')) > parseFloat(bestSupport.ilvl.replace(/,/g, ''))) {
           bestSupport = supportChar;
         }
       }
@@ -854,6 +1051,7 @@ function autoAssign(){
     
     if (bestSupport) {
       party.members[0] = bestSupport;
+      console.log(`✅ [AUTO ASSIGN] Added support ${bestSupport.name} to Party ${partyIndex + 1}`);
     }
   });
   
@@ -878,6 +1076,12 @@ function autoAssign(){
     
     // 이 파티에 배치 가능한 DPS 찾기 (다른 원정대, 3공격대 미만)
     for (let slotIndex = 1; slotIndex < party.members.length; slotIndex++) {
+      // 이미 캐릭터가 배치되어 있으면 건너뛰기
+      if (party.members[slotIndex]) {
+        console.log(`ℹ️ [AUTO ASSIGN] Party ${partyIndex + 1} Slot ${slotIndex} already has: ${party.members[slotIndex].name}`);
+        continue;
+      }
+      
       let foundChar = null;
       
       for (let i = 0; i < dps.length; i++) {
@@ -914,6 +1118,7 @@ function autoAssign(){
       if (foundChar) {
         party.members[slotIndex] = foundChar;
         assignedCount++;
+        console.log(`✅ [AUTO ASSIGN] Added DPS ${foundChar.name} to Party ${partyIndex + 1} Slot ${slotIndex}`);
       }
     }
   });
@@ -926,11 +1131,188 @@ function autoAssign(){
     sum + party.members.filter(m => m !== null).length, 0
   );
   
-  alert(`공대 자동 추천 완료!\n총 ${totalAssigned}명의 캐릭터가 배치되었습니다.\n(1공대당 원정대 1캐릭터, 파티당 서폿 1명, 1캐릭터당 최대 3공격대)`);
+  alert(`공대 자동 추천 완료!\n총 ${totalAssigned}명의 캐릭터가 배치되었습니다.\n(기존 배치된 캐릭터 유지, 빈 슬롯만 채움)`);
 }
 
-renderExpedition();
-initializeRaids(); // 초기 공격대 파티 생성
+// 균등 분배 기능 - 각 원정대 계정당 1명씩 순차적으로 분배
+function balancedAssign() {
+  // 모든 공격대 파티 초기화하지 않고 기존 배치된 캐릭터 유지
+  // state.raidParties.forEach(party => {
+  //   party.members.fill(null);
+  // });
+  
+  // 원정대별로 캐릭터 그룹화 및 전투력 순 정렬
+  const expeditionGroups = {};
+  state.expeditionSlots.forEach((expedition, expIndex) => {
+    if (expedition.length > 0) {
+      expeditionGroups[expIndex] = expedition
+        .filter(char => char !== null)
+        .sort((a,b) => parseFloat((b.ilvl||'0').replace(/,/g,'')) - parseFloat((a.ilvl||'0').replace(/,/g,'')));
+    }
+  });
+  
+  const expeditionIndices = Object.keys(expeditionGroups).map(Number);
+  if (expeditionIndices.length === 0) {
+    alert('분배할 원정대 캐릭터가 없습니다.');
+    return;
+  }
+  
+  console.log(`🔄 [BALANCED ASSIGN] ${expeditionIndices.length}개 원정대로 균등 분배 시작`);
+  
+  // 각 파티에 서포터 먼저 배치 (균등 분배)
+  const supportSlots = [];
+  state.raidParties.forEach((party, partyIndex) => {
+    // 이미 서포터가 배치되어 있으면 건너뛰기
+    if (party.members[0] && party.members[0].role === 'support') {
+      console.log(`ℹ️ [BALANCED ASSIGN] Party ${partyIndex + 1} already has support: ${party.members[0].name}`);
+    } else {
+      supportSlots.push({ partyIndex, slotIndex: 0, party: party });
+    }
+  });
+  
+  // 서포터 균등 분배
+  let supportRound = 0;
+  let supportAssigned = 0;
+  
+  while (supportAssigned < supportSlots.length && supportRound < 100) { // 무한 루프 방지
+    let roundAssigned = false;
+    
+    expeditionIndices.forEach(expIndex => {
+      if (supportAssigned >= supportSlots.length) return;
+      
+      const expedition = expeditionGroups[expIndex];
+      const supports = expedition.filter(char => char.role === 'support');
+      
+      if (supports.length > 0) {
+        const support = supports[0]; // 가장 전투력 높은 서포터
+        
+        // 이 서포터가 이미 3개 공격대에 배치되었는지 확인
+        let raidCount = 0;
+        state.raidParties.forEach(p => {
+          if (p.members.some(m => m && m.id === support.id)) {
+            raidCount++;
+          }
+        });
+        
+        if (raidCount < 3) {
+          const targetSlot = supportSlots[supportAssigned];
+          targetSlot.party.members[targetSlot.slotIndex] = support;
+          console.log(`✅ [SUPPORT] ${support.name} → Party ${targetSlot.partyIndex + 1}`);
+          supportAssigned++;
+          roundAssigned = true;
+          
+          // 배치된 서포터는 원정대 목록에서 제거
+          const charIndex = expedition.findIndex(c => c.id === support.id);
+          if (charIndex !== -1) {
+            expedition.splice(charIndex, 1);
+          }
+        }
+      }
+    });
+    
+    if (!roundAssigned) break;
+    supportRound++;
+  }
+  
+  // DPS 균등 분배
+  const dpsSlots = [];
+  state.raidParties.forEach((party, partyIndex) => {
+    for (let slotIndex = 1; slotIndex < party.members.length; slotIndex++) {
+      // 이미 캐릭터가 배치되어 있으면 건너뛰기
+      if (!party.members[slotIndex]) {
+        dpsSlots.push({ partyIndex, slotIndex, party: party });
+      } else {
+        console.log(`ℹ️ [BALANCED ASSIGN] Party ${partyIndex + 1} Slot ${slotIndex} already has: ${party.members[slotIndex].name}`);
+      }
+    }
+  });
+  
+  let dpsRound = 0;
+  let dpsAssigned = 0;
+  
+  while (dpsAssigned < dpsSlots.length && dpsRound < 100) { // 무한 루프 방지
+    let roundAssigned = false;
+    
+    expeditionIndices.forEach(expIndex => {
+      if (dpsAssigned >= dpsSlots.length) return;
+      
+      const expedition = expeditionGroups[expIndex];
+      const dpsChars = expedition.filter(char => char.role === 'dps');
+      
+      if (dpsChars.length > 0) {
+        const dps = dpsChars[0]; // 가장 전투력 높은 DPS
+        
+        // 이 DPS가 이미 3개 공격대에 배치되었는지 확인
+        let raidCount = 0;
+        state.raidParties.forEach(p => {
+          if (p.members.some(m => m && m.id === dps.id)) {
+            raidCount++;
+          }
+        });
+        
+        if (raidCount < 3) {
+          const targetSlot = dpsSlots[dpsAssigned];
+          targetSlot.party.members[targetSlot.slotIndex] = dps;
+          console.log(`✅ [DPS] ${dps.name} → Party ${targetSlot.partyIndex + 1}`);
+          dpsAssigned++;
+          roundAssigned = true;
+          
+          // 배치된 DPS는 원정대 목록에서 제거
+          const charIndex = expedition.findIndex(c => c.id === dps.id);
+          if (charIndex !== -1) {
+            expedition.splice(charIndex, 1);
+          }
+        }
+      }
+    });
+    
+    if (!roundAssigned) break;
+    dpsRound++;
+  }
+  
+  renderRaidParties();
+  renderExpedition();
+  
+  // 결과 요약
+  const totalAssigned = state.raidParties.reduce((sum, party) => 
+    sum + party.members.filter(m => m !== null).length, 0);
+  
+  alert(`균등 분배 완료!\n총 ${totalAssigned}명의 캐릭터가 배치되었습니다.\n(기존 배치된 캐릭터 유지, 빈 슬롯만 균등 분배)`);
+}
+
+// 페이지 로드 시 저장된 데이터 확인 및 초기화
+window.addEventListener('load', function() {
+  const savedData = localStorage.getItem('lostArkRaidData');
+  let shouldAutoLoad = false;
+  
+  if (savedData) {
+    try {
+      const data = JSON.parse(savedData);
+      const saveTime = new Date(data.saveTime).toLocaleString('ko-KR');
+      
+      if (confirm(`저장된 데이터가 있습니다.\n저장 시간: ${saveTime}\n\n불러오시겠습니까?`)) {
+        // 데이터 복원
+        state.raidParties = data.raidParties || [];
+        state.expeditionSlots = data.expeditionSlots || Array.from({length:8}, () => []);
+        state.raidPartyCounter = data.raidPartyCounter || 0;
+        shouldAutoLoad = true;
+        console.log('📂 [AUTO LOAD] 저장된 데이터가 자동으로 불러와졌습니다.');
+      }
+    } catch (error) {
+      console.error('❌ [AUTO LOAD ERROR]:', error);
+    }
+  }
+  
+  // 자동 불러오기하지 않은 경우에만 초기화 실행
+  if (!shouldAutoLoad) {
+    renderExpedition();
+    initializeRaids(); // 초기 공격대 파티 생성
+  } else {
+    // 자동 불러오기한 경우 UI만 업데이트
+    renderRaidParties();
+    renderExpedition();
+  }
+});
 
 document.body.addEventListener('drop', function(e) {
   try {
@@ -992,3 +1374,9 @@ window.debugRaidSystem = {
     renderExpedition();
   }
 };
+
+// 페이지 로드 시 초기화 (저장된 데이터가 없는 경우에만)
+if (!localStorage.getItem('lostArkRaidData')) {
+  renderExpedition();
+  initializeRaids(); // 초기 공격대 파티 생성
+}
