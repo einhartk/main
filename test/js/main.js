@@ -20,7 +20,9 @@ function addRaidParty() {
     name: `공대 ${partyId}`,
     members: Array(4).fill(null), // 기본 4인
     maxSupports: 1, // 4인당 1서폿
-    size: 4 // 현재 파티 크기
+    size: 4, // 현재 파티 크기
+    minIlvl: 0,        // 최소 아이템 레벨 제한
+    minCombatPower: 0  // 최소 전투력 제한
   };
   
   state.raidParties.push(newParty);
@@ -55,6 +57,25 @@ function updatePartyName(partyId, newName) {
     console.log(`📝 [PARTY NAME] ${partyId}: "${oldName}" → "${party.name}"`);
     renderRaidParties();
   }
+}
+
+// 공격대 요구사항 업데이트
+function updatePartyRequirements(partyId, requirementType, value) {
+  const party = state.raidParties.find(p => p.id === partyId);
+  if (party) {
+    const oldValue = party[requirementType];
+    party[requirementType] = parseInt(value) || 0;
+    console.log(`📝 [REQUIREMENT] ${partyId} ${requirementType}: ${oldValue} → ${party[requirementType]}`);
+    renderRaidParties();
+  }
+}
+
+// 캐릭터가 공격대 요구사항을 만족하는지 확인
+function meetsRequirements(character, party) {
+  const charIlvl = parseFloat((character.ilvl || '0').replace(/,/g, ''));
+  const charCombatPower = parseFloat((character.combatPower || '0').replace(/,/g, ''));
+  
+  return charIlvl >= party.minIlvl && charCombatPower >= party.minCombatPower;
 }
 
 // 전체 공격대 초기화
@@ -139,16 +160,43 @@ function renderRaidParties() {
           </div>
         </div>
         <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-12">
+              <div class="d-flex flex-column gap-2">
+                <div class="input-group input-group-sm" style="flex: 0 0 auto;">
+                  <span class="input-group-text">최소 레벨</span>
+                  <input type="number" class="form-control" id="minIlvl-${party.id}" 
+                         value="${party.minIlvl || 0}" 
+                         placeholder="0" 
+                         min="0" 
+                         style="width: 80px;"
+                         onchange="updatePartyRequirements('${party.id}', 'minIlvl', this.value)">
+                  <span class="input-group-text">Lv</span>
+                </div>
+                <div class="input-group input-group-sm" style="flex: 0 0 auto;">
+                  <span class="input-group-text">최소 전투력</span>
+                  <input type="number" class="form-control" id="minCombatPower-${party.id}" 
+                         value="${party.minCombatPower || 0}" 
+                         placeholder="0" 
+                         min="0" 
+                         style="width: 100px;"
+                         onchange="updatePartyRequirements('${party.id}', 'minCombatPower', this.value)">
+                  <span class="input-group-text">CP</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="raid-slots-grid">
             ${party.members.map((char, slotIndex) => `
               <div class="raid-slot-wrapper" data-party="${party.id}" data-slot="${slotIndex}">
                 <div class="raid-slot">
                   ${char ? `
-                    <div class="char-box ${char.role}" draggable="true">
-                      <div class="fw-bold">${char.name}</div>
-                      <div class="small">Lv ${char.ilvl || '0'}</div>
-                      <div class="small">전투력 ${char.combatPower || '0'}</div>
-                      <div class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'} mt-1">${char.role === 'support' ? '서폿' : '딜러'}</div>
+                    <div class="char-box ${char.role} ${!meetsRequirements(char, party) ? 'requirement-failed' : ''}" draggable="true">
+                      <div class="fw-bold small">${char.name}</div>
+                      <div class="small text-muted">Lv ${char.ilvl || '0'}</div>
+                      <div class="small text-muted">CP ${(char.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+                      <div class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'} mt-1" style="font-size: 0.7rem;">${char.role === 'support' ? '서폿' : '딜러'}</div>
+                      ${!meetsRequirements(char, party) ? '<div class="badge bg-danger mt-1" style="font-size: 0.65rem;">조건미달</div>' : ''}
                     </div>
                   ` : ''}
                 </div>
