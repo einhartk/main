@@ -1033,7 +1033,7 @@ Vue.component('party-creation', {
             
             console.log('Party 1 (highest levels):', this.raidParty1.map(c => `${c.CharacterName} (${c.ItemAvgLevel})`));
             console.log('Party 2 (next highest levels):', this.raidParty2.map(c => `${c.CharacterName} (${c.ItemAvgLevel})`));
-        },
+        },  
         
         resetRaid() {
             this.raidParty1 = [];

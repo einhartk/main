@@ -1,0 +1,660 @@
+/* 기본 스타일 */
+.char-box {
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  background: white;
+  transition: all 0.2s ease;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.char-box.support {
+  border-color: #ffc107;
+  background: #fff9e6;
+}
+
+.char-box.dps {
+  border-color: #0d6efd;
+  background: #f0f7ff;
+}
+
+.char-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.char-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.char-icon img {
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  object-fit:cover;
+  object-position: center top;
+  transform: scale(1.5);
+}
+
+.char-icon.support {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.char-icon.dps {
+  background: #cfe2ff;
+  color: #084298;
+}
+
+.char-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: white;
+  cursor: move;
+  transition: all 0.2s ease;
+}
+
+.char-item:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+}
+
+.char-item.dragging {
+  opacity: 0.5;
+}
+
+.raid-slot {
+  border: 2px dashed #ced4da;
+  border-radius: 8px;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  transition: all 0.2s ease;
+}
+
+.raid-slot.drag-over {
+  border-color: #0d6efd;
+  background: #e7f1ff;
+}
+
+.raid-slot.invalid {
+  border-color: #dc3545;
+  background: #f8d7da;
+}
+
+.expedition-drop-zone {
+  min-height: 120px;
+  transition: all 0.2s ease;
+}
+
+.expedition-drop-zone.drag-over {
+  background: #e7f1ff;
+  border: 2px dashed #0d6efd;
+  border-radius: 8px;
+}
+
+/* 원정대 그리드 레이아웃 */
+.expedition-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+.expedition-slot {
+  min-width: 0; /* 그리드에서 넘침 방지 */
+}
+
+/* 상하 분할 레이아웃 */
+.container-fluid {
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 상단 원정대 영역 */
+.container-fluid > .row:first-child {
+  flex: 0 0 auto;
+  max-height: 44vh;
+  overflow-y: auto;
+}
+
+/* 하단 공격대 영역 */
+.container-fluid > .row:last-child {
+  flex: 1 1 auto;
+  max-height: 64vh;
+  overflow-y: auto;
+  padding-right: 15px;
+}
+
+/* 공격대 가로 스크롤 컨테이너 */
+.raid-parties-container {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 12px;
+  padding: 8px 0;
+  scroll-behavior: smooth;
+}
+
+.raid-parties-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.raid-parties-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.raid-parties-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.raid-parties-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 공격대 파티 카드 */
+.raid-party-card {
+  flex: 0 0 280px;
+  min-width: 280px;
+  max-width: 280px;
+}
+
+.raid-party-card .card {
+  height: 100%;
+  font-size: 0.85rem;
+}
+
+.raid-party-card .card-body {
+  padding: 8px;
+}
+
+.raid-party-card .raid-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+/* 공격대 헤더 컴팩트 */
+.card-header {
+  padding: 6px 12px;
+}
+
+.card-header h5 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.card-body {
+  padding: 8px 12px;
+}
+
+/* 공격대 파티 컴팩트 */
+.raid-party {
+  margin-bottom: 12px;
+}
+
+.raid-party .card {
+  font-size: 0.85rem;
+}
+
+.raid-party .card-body {
+  padding: 8px;
+}
+
+.raid-slot {
+  min-height: 70px;
+  padding: 4px;
+}
+
+.char-box {
+  padding: 6px;
+  font-size: 0.75rem;
+}
+
+.char-box .fw-bold {
+  font-size: 0.8rem;
+}
+
+.char-box .small {
+  font-size: 0.65rem;
+}
+
+.char-box .badge {
+  font-size: 0.6rem;
+  padding: 1px 4px;
+}
+/* 공격대 설정 컴팩트 */
+.raid-settings .card {
+  margin-bottom: 8px;
+}
+
+.raid-settings .btn {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+}
+
+.raid-settings .btn-sm {
+  padding: 2px 6px;
+  font-size: 0.75rem;
+}
+
+/* 공격대 파티 그리드 컴팩트 */
+#raidParties {
+  gap: 12px;
+}
+
+#raidParties .col-md-4 {
+  padding: 0;
+}
+
+/* 원정대 카드 컴팩트 */
+#expedition .card {
+  height: 100%;
+  font-size: 0.75rem;
+}
+
+#expedition .card-body {
+  min-height: 90px;
+  padding: 3px;
+}
+
+#expedition .card-header {
+  padding: 4px;
+}
+
+#expedition .expedition-input {
+  font-size: 0.75rem;
+  padding: 2px 4px;
+  margin-bottom: 2px;
+}
+
+#expedition .btn-sm {
+  font-size: 0.7rem;
+  padding: 2px 4px;
+  line-height: 1.2;
+}
+
+/* 캐릭터 아이템 컴팩트 */
+.char-item {
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  margin-bottom: 3px;
+  background: white;
+  cursor: move;
+  transition: all 0.2s ease;
+  font-size: 0.65rem;
+}
+
+.char-item:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+}
+
+.char-item.dragging {
+  opacity: 0.5;
+}
+
+.char-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 5px;
+  flex-shrink: 0;
+  font-size: 0.5rem;
+  order: 1;
+}
+
+.char-icon img {
+  width:100%;
+  height:100%;
+  border-radius:50%;
+  object-fit:cover;
+  object-position: center top;
+  transform: scale(1.5);
+}
+
+.char-icon.support {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.char-icon.dps {
+  background: #cfe2ff;
+  color: #084298;
+}
+
+.char-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  order: 2;
+}
+
+.char-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1px;
+}
+
+.char-name {
+  font-weight: bold;
+  font-size: 0.7rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.char-details {
+  font-size: 0.55rem;
+  color: #6c757d;
+  margin-bottom: 1px;
+}
+
+.char-item .badge {
+  font-size: 0.5rem;
+  padding: 1px 3px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+/* 공격대 카드 그리드 스타일 - 가로 스크롤 레이아웃 */
+#raidParties {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  min-height: 200px;
+  scroll-behavior: smooth;
+}
+
+/* 스크롤바 스타일링 */
+#raidParties::-webkit-scrollbar {
+  height: 8px;
+}
+
+#raidParties::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+#raidParties::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+#raidParties::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+#raidParties .col-12 {
+  padding: 0;
+  flex: 0 0 320px;
+  min-width: 320px;
+  max-width: 320px;
+}
+
+/* 공격대 카드 컴팩트 스타일 */
+#raidParties .card {
+  font-size: 0.75rem;
+  border: 1px solid #dee2e6;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  animation: slideInRight 0.3s ease-out;
+  transform-origin: right center;
+}
+
+/* 공격대 카드 생성 애니메이션 */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* 공격대 카드 삭제 애니메이션 */
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(50px) scale(0.95);
+  }
+}
+
+/* 삭제 중인 카드 */
+#raidParties .card.removing {
+  animation: slideOutRight 0.3s ease-out forwards;
+}
+
+/* 여러 카드가 동시에 생성될 때 딜레이 효과 */
+#raidParties .col-12:nth-child(1) .card { animation-delay: 0.1s; }
+#raidParties .col-12:nth-child(2) .card { animation-delay: 0.15s; }
+#raidParties .col-12:nth-child(3) .card { animation-delay: 0.2s; }
+#raidParties .col-12:nth-child(4) .card { animation-delay: 0.25s; }
+#raidParties .col-12:nth-child(5) .card { animation-delay: 0.3s; }
+#raidParties .col-12:nth-child(6) .card { animation-delay: 0.35s; }
+
+#raidParties .card:hover {
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  transform: translateY(-1px);
+}
+
+#raidParties .card-header {
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+#raidParties .card-body {
+  padding: 10px 12px;
+}
+
+#raidParties h5 {
+  font-size: 0.85rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+#raidParties h6 {
+  font-size: 0.8rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+#raidParties .form-label {
+  font-size: 0.65rem;
+  margin-bottom: 0;
+}
+
+#raidParties .btn-sm {
+  padding: 3px 6px;
+  font-size: 0.65rem;
+  line-height: 1.2;
+}
+
+#raidParties .badge {
+  font-size: 0.55rem;
+  padding: 2px 6px;
+}
+
+/* 공격대 슬롯 그리드 - 4인은 2x2, 8인은 4x2 */
+.raid-slots-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+/* 8인 공격대일 때: 4x2 그리드 (가로로 길게) */
+.raid-slots-grid:has(.raid-slot-wrapper:nth-child(8)) {
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+/* 공격대 슬롯 컴팩트 */
+.raid-slot {
+  min-height: 55px;
+  padding: 3px;
+  border: 1px dashed #dee2e6;
+  border-radius: 4px;
+  background: #f8f9fa;
+  position: relative;
+}
+
+.raid-slot-wrapper {
+  min-height: 55px;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed transparent;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  pointer-events: auto !important;
+}
+
+.raid-slot-wrapper.drag-over {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+  border-style: solid;
+}
+
+.raid-slot-wrapper:hover {
+  border-color: #adb5bd;
+}
+
+/* 캐릭터 박스 컴팩트 */
+.char-box {
+  padding: 3px;
+  font-size: 0.6rem;
+  text-align: center;
+  pointer-events: auto !important;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  margin: 2px;
+  cursor: move;
+  transition: all 0.2s ease;
+}
+
+.char-box:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.char-box.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+.char-box .fw-bold {
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.char-box .small {
+  font-size: 0.55rem;
+  line-height: 1.2;
+}
+
+.char-box .badge {
+  font-size: 0.5rem;
+  padding: 1px 4px;
+  margin-top: 2px;
+}
+
+/* 빈 슬롯 표시 */
+.raid-slot:empty::before {
+  content: "비어있음";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 47px;
+  color: #6c757d;
+  font-size: 0.6rem;
+  background: #f8f9fa;
+  border: 1px dashed #dee2e6;
+  border-radius: 3px;
+  margin: 2px;
+}
+
+/* 반응형 - 작은 화면에서는 카드 크기 조정 */
+@media (max-width: 768px) {
+  #raidParties .col-12 {
+    flex: 0 0 280px;
+    min-width: 280px;
+    max-width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  #raidParties {
+    gap: 8px;
+  }
+  
+  #raidParties .col-12 {
+    flex: 0 0 260px;
+    min-width: 260px;
+    max-width: 260px;
+  }
+  
+  #raidParties .card {
+    font-size: 0.7rem;
+  }
+  
+  #raidParties .card-header {
+    padding: 6px 10px;
+  }
+  
+  #raidParties .card-body {
+    padding: 8px 10px;
+  }
+  
+  .raid-slot {
+    min-height: 50px;
+  }
+  
+  .char-box {
+    font-size: 0.55rem;
+    padding: 2px;
+  }
+}
