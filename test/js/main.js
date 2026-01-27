@@ -166,6 +166,171 @@ function renderRaidParties() {
   updateSupportCount();
 }
 
+// 공격대 리스트 모달창 표시
+function showRaidListModal() {
+  // 모달창 HTML 생성
+  const modalHtml = `
+    <div class="modal fade" id="raidListModal" tabindex="-1" aria-labelledby="raidListModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-fullscreen-lg-down">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="raidListModalLabel">공대 리스트</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="table-responsive">
+              <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                  <tr>
+                    <th>공대</th>
+                    <th>이름</th>
+                    <th>크기</th>
+                    <th>서폿</th>
+                    <th>평균 전투력</th>
+                    <th>캐릭터 목록</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${state.raidParties.map(party => {
+                    const validMembers = party.members.filter(m => m !== null);
+                    const avgCombatPower = validMembers.length > 0 
+                      ? Math.round(validMembers.reduce((sum, m) => sum + parseFloat((m.combatPower || '0').replace(',', '')), 0) / validMembers.length)
+                      : 0;
+                    const supportCount = party.members.filter(m => m?.role === 'support').length;
+                    
+                    return `
+                      <tr>
+                        <td><span class="badge bg-primary">${party.id}</span></td>
+                        <td><strong>${party.name}</strong></td>
+                        <td>${party.size}인</td>
+                        <td>
+                          <span class="badge ${supportCount > party.maxSupports ? 'bg-danger' : 'bg-success'}">
+                            ${supportCount}/${party.maxSupports}
+                          </span>
+                        </td>
+                        <td>${avgCombatPower.toLocaleString()}</td>
+                        <td>
+                          <div class="d-flex flex-wrap gap-1">
+                            ${party.members.map((char, index) => char ? `
+                              <span class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" 
+                                    title="Lv ${char.ilvl || '0'} | 전투력 ${char.combatPower || '0'}">
+                                ${char.name}
+                              </span>
+                            ` : `
+                              <span class="badge bg-secondary">빈 슬롯 ${index + 1}</span>
+                            `).join('')}
+                          </div>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="mt-3">
+              <h6>요약 정보</h6>
+              <div class="row">
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body">
+                      <h3 class="card-title">${state.raidParties.length}</h3>
+                      <p class="card-text">전체 공대 수</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body">
+                      <h3 class="card-title">${state.raidParties.reduce((sum, party) => sum + party.members.filter(m => m !== null).length, 0)}</h3>
+                      <p class="card-text">배치된 캐릭터</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body">
+                      <h3 class="card-title">${state.raidParties.reduce((sum, party) => sum + party.members.filter(m => m?.role === 'support').length, 0)}</h3>
+                      <p class="card-text">전체 서폿 수</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card text-center">
+                    <div class="card-body">
+                      <h3 class="card-title">${state.raidParties.reduce((sum, party) => sum + party.members.filter(m => m?.role === 'dps').length, 0)}</h3>
+                      <p class="card-text">전체 딜러 수</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            <button type="button" class="btn btn-primary" onclick="exportRaidList()">내보내기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // 기존 모달이 있다면 제거
+  const existingModal = document.getElementById('raidListModal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // 모달을 body에 추가
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // Bootstrap 모달 표시
+  const modal = new bootstrap.Modal(document.getElementById('raidListModal'));
+  modal.show();
+}
+
+// 공대 리스트 내보내기
+function exportRaidList() {
+  let exportText = "=== 공대 리스트 ===\n\n";
+  
+  state.raidParties.forEach(party => {
+    const validMembers = party.members.filter(m => m !== null);
+    const avgCombatPower = validMembers.length > 0 
+      ? Math.round(validMembers.reduce((sum, m) => sum + parseFloat((m.combatPower || '0').replace(',', '')), 0) / validMembers.length)
+      : 0;
+    const supportCount = party.members.filter(m => m?.role === 'support').length;
+    
+    exportText += `【${party.name} (${party.id})】\n`;
+    exportText += `크기: ${party.size}인 | 서폿: ${supportCount}/${party.maxSupports} | 평균 전투력: ${avgCombatPower.toLocaleString()}\n`;
+    
+    party.members.forEach((char, index) => {
+      if (char) {
+        exportText += `  ${index + 1}. ${char.name} (${char.role === 'support' ? '서폿' : '딜러'}) - Lv ${char.ilvl || '0'} | 전투력 ${char.combatPower || '0'}\n`;
+      }
+    });
+    exportText += "\n";
+  });
+  
+  exportText += `=== 요약 ===\n`;
+  exportText += `전체 공대: ${state.raidParties.length}개\n`;
+  exportText += `배치된 캐릭터: ${state.raidParties.reduce((sum, party) => sum + party.members.filter(m => m !== null).length, 0)}명\n`;
+  exportText += `전체 서폿: ${state.raidParties.reduce((sum, party) => sum + party.members.filter(m => m?.role === 'support').length, 0)}명\n`;
+  exportText += `전체 딜러: ${state.raidParties.reduce((sum, party) => sum + party.members.filter(m => m?.role === 'dps').length, 0)}명\n`;
+  
+  // 텍스트 파일로 다운로드
+  const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `공대리스트_${new Date().toISOString().slice(0, 10)}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  alert('공대 리스트가 내보내기 되었습니다!');
+}
+
 function guessRole(cls, arkpassive) {
   // 아크패시브 Effects에서 축복의 여신 확인
   if (arkpassive && arkpassive.Effects) {
