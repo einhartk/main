@@ -187,8 +187,12 @@ function renderRaidParties() {
             </div>
           </div>
           <div class="raid-slots-grid">
-            ${party.members.map((char, slotIndex) => `
+            ${party.members.map((char, slotIndex) => {
+              const partyNumber = party.size === 8 ? Math.floor(slotIndex / 4) + 1 : 1;
+              const isFirstInParty = slotIndex % 4 === 0;
+              return `
               <div class="raid-slot-wrapper" data-party="${party.id}" data-slot="${slotIndex}">
+                ${isFirstInParty && party.size === 8 ? `<div class="party-label">파티 ${partyNumber}</div>` : ''}
                 <div class="raid-slot">
                   ${char ? `
                     <div class="char-box ${char.role} ${!meetsRequirements(char, party) ? 'requirement-failed' : ''}" draggable="true">
@@ -201,7 +205,8 @@ function renderRaidParties() {
                   ` : ''}
                 </div>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
         </div>
       </div>
@@ -307,16 +312,47 @@ function showRaidListModal() {
                         </td>
                         <td>${avgCombatPower.toLocaleString()}</td>
                         <td>
-                          <div class="d-flex flex-wrap gap-1">
-                            ${party.members.map((char, index) => char ? `
-                              <span class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" 
-                                    title="Lv ${char.ilvl || '0'} | 전투력 ${char.combatPower || '0'}">
-                                ${char.name}
-                              </span>
-                            ` : `
-                              <span class="badge bg-secondary">빈 슬롯 ${index + 1}</span>
-                            `).join('')}
-                          </div>
+                          ${party.size === 8 ? `
+                            <div class="party-group">
+                              <div class="party-section">
+                                <span class="party-label-text">P1</span>
+                                <div class="d-flex flex-wrap gap-1">
+                                  ${party.members.slice(0, 4).map((char, index) => char ? `
+                                    <span class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" 
+                                          title="Lv ${char.ilvl || '0'} | 전투력 ${char.combatPower || '0'}">
+                                      ${char.name}
+                                    </span>
+                                  ` : `
+                                    <span class="badge bg-secondary">빈 슬롯 ${index + 1}</span>
+                                  `).join('')}
+                                </div>
+                              </div>
+                              <div class="party-section">
+                                <span class="party-label-text">P2</span>
+                                <div class="d-flex flex-wrap gap-1">
+                                  ${party.members.slice(4, 8).map((char, index) => char ? `
+                                    <span class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" 
+                                          title="Lv ${char.ilvl || '0'} | 전투력 ${char.combatPower || '0'}">
+                                      ${char.name}
+                                    </span>
+                                  ` : `
+                                    <span class="badge bg-secondary">빈 슬롯 ${index + 5}</span>
+                                  `).join('')}
+                                </div>
+                              </div>
+                            </div>
+                          ` : `
+                            <div class="d-flex flex-wrap gap-1">
+                              ${party.members.map((char, index) => char ? `
+                                <span class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" 
+                                      title="Lv ${char.ilvl || '0'} | 전투력 ${char.combatPower || '0'}">
+                                  ${char.name}
+                                </span>
+                              ` : `
+                                <span class="badge bg-secondary">빈 슬롯 ${index + 1}</span>
+                              `).join('')}
+                            </div>
+                          `}
                         </td>
                       </tr>
                     `;
@@ -524,6 +560,15 @@ function setupRaidEventListeners() {
         charBox.classList.remove('dragging');
         console.log(`🏁 [DRAG END] Raid character: ${char.name}`);
       };
+      
+      // 더블클릭으로 캐릭터 제거
+      charBox.ondblclick = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log(`🗑️ [DBL CLICK REMOVE] Raid character: ${char.name}, Party: ${partyId}, Slot: ${slotIndex}`);
+        
+        showRemoveCharacterModal(char, partyId, slotIndex);
+      };
     }
 
     slot.ondragover = e => {
@@ -607,12 +652,30 @@ function setupRaidEventListeners() {
           return;
         }
         
-        // 서폿 수 체크 (파티당 1명으로 고정)
-        const currentSupports = party.members.filter(m => m?.role === 'support').length;
-        if (data.role === 'support' && currentSupports >= 1) {
-          console.log(`❌ [DROP ERROR] Support limit reached: ${currentSupports}/1`);
-          alert('이 공격대에는 서포터를 1명만 배치할 수 있습니다.');
-          return;
+        // 서폿 수 체크 (파티당 1명, 8인은 각 파티별 1명씩)
+        if (data.role === 'support') {
+          if (party.size === 8) {
+            // 8인 공격대: 각 파티별로 서폿 1명씩 체크
+            const partyNumber = Math.floor(slotIndex / 4) + 1;
+            const partyStartIndex = (partyNumber - 1) * 4;
+            const partyEndIndex = partyNumber * 4;
+            const partyMembers = party.members.slice(partyStartIndex, partyEndIndex);
+            const supportsInParty = partyMembers.filter(m => m?.role === 'support').length;
+            
+            if (supportsInParty >= 1) {
+              console.log(`❌ [DROP ERROR] Support limit reached in Party ${partyNumber}: ${supportsInParty}/1`);
+              alert(`파티 ${partyNumber}에는 서포터를 1명만 배치할 수 있습니다.`);
+              return;
+            }
+          } else {
+            // 4인 공격대: 전체 파티에서 서폿 1명 체크
+            const currentSupports = party.members.filter(m => m?.role === 'support').length;
+            if (currentSupports >= party.maxSupports) {
+              console.log(`❌ [DROP ERROR] Support limit reached: ${currentSupports}/${party.maxSupports}`);
+              alert(`이 공격대에는 서포터를 ${party.maxSupports}명만 배치할 수 있습니다.`);
+              return;
+            }
+          }
         }
         
         console.log(`✅ [DROP SUCCESS] Adding ${data.name} to Party ${partyId}, Slot ${slotIndex}`);
@@ -669,6 +732,58 @@ function removeCharacterFromRaid(partyId, slotIndex) {
   } catch (error) {
     console.error(`❌ [REMOVE ERROR]:`, error);
     alert('캐릭터를 제거하는 중 오류가 발생했습니다: ' + error.message);
+  }
+}
+
+// 캐릭터 삭제 확인 모달창 표시
+function showRemoveCharacterModal(character, partyId, slotIndex) {
+  // 모달창 HTML 생성
+  const modalHtml = `
+    <div class="modal fade" id="removeCharacterModal" tabindex="-1" aria-labelledby="removeCharacterModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="removeCharacterModalLabel">캐릭터 삭제</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="mb-0"><span class="text-danger fw-bold">${character.name}</span> 캐릭터를 공격대에서 제거하시겠습니까?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+            <button type="button" class="btn btn-danger" onclick="confirmRemoveCharacter('${partyId}', ${slotIndex})">삭제</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // 기존 모달이 있다면 제거
+  const existingModal = document.getElementById('removeCharacterModal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // 모달을 body에 추가
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // Bootstrap 모달 표시
+  const modal = new bootstrap.Modal(document.getElementById('removeCharacterModal'));
+  modal.show();
+}
+
+// 캐릭터 삭제 확정
+function confirmRemoveCharacter(partyId, slotIndex) {
+  try {
+    removeCharacterFromRaid(partyId, slotIndex);
+    
+    // 모달 닫기
+    const modal = bootstrap.Modal.getInstance(document.getElementById('removeCharacterModal'));
+    modal.hide();
+    
+  } catch (error) {
+    console.error('캐릭터 삭제 중 오류:', error);
+    alert('캐릭터를 삭제하는 중 오류가 발생했습니다: ' + error.message);
   }
 }
 
@@ -786,21 +901,111 @@ function renderExpedition() {
         e.preventDefault();
         console.log(`🔄 [DBL CLICK] Character: ${c.name}, Role: ${c.role}`);
         
-        // 역할 변경
-        const oldRole = c.role;
-        c.role = c.role === 'dps' ? 'support' : 'dps';
-        
-        console.log(`📝 [ROLE CHANGE] ${c.name}: ${oldRole} → ${c.role}`);
-        
-        // UI 업데이트
-        renderExpedition();
-        renderRaidParties();
+        // 역할 수정 모달창 표시
+        showCharacterEditModal(c, i);
       };
+      
       body.appendChild(div);
     });
-    
+
+    // 원정대 슬롯에 추가
     root.appendChild(col);
   });
+}
+
+// 캐릭터 수정 모달창 표시
+function showCharacterEditModal(character, expeditionIndex) {
+  // 모달창 HTML 생성
+  const modalHtml = `
+    <div class="modal fade" id="characterEditModal" tabindex="-1" aria-labelledby="characterEditModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="characterEditModalLabel">캐릭터 정보 수정</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="characterEditForm">
+              <div class="mb-3">
+                <label class="form-label">캐릭터 이름</label>
+                <input type="text" class="form-control" id="editName" value="${character.name}" readonly>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">전투력</label>
+                <div class="input-group">
+                  <input type="number" class="form-control" id="editCombatPower" value="${character.combatPower || '0'}" placeholder="전투력 입력">
+                  <span class="input-group-text">원본: ${character.combatPower || '0'}</span>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">역할</label>
+                <div class="btn-group w-100" role="group">
+                  <input type="radio" class="btn-check" name="editRole" id="editRoleDps" value="dps" ${character.role === 'dps' ? 'checked' : ''}>
+                  <label class="btn btn-outline-primary" for="editRoleDps">딜러</label>
+                  
+                  <input type="radio" class="btn-check" name="editRole" id="editRoleSupport" value="support" ${character.role === 'support' ? 'checked' : ''}>
+                  <label class="btn btn-outline-warning" for="editRoleSupport">서폿</label>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+            <button type="button" class="btn btn-primary" onclick="saveCharacterEdit(${expeditionIndex})">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // 기존 모달이 있다면 제거
+  const existingModal = document.getElementById('characterEditModal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // 모달을 body에 추가
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // Bootstrap 모달 표시
+  const modal = new bootstrap.Modal(document.getElementById('characterEditModal'));
+  modal.show();
+}
+
+// 캐릭터 정보 저장
+function saveCharacterEdit(expeditionIndex) {
+  try {
+    const character = state.expeditionSlots[expeditionIndex].find(c => c.id === document.getElementById('editName').value);
+    
+    if (!character) {
+      alert('캐릭터를 찾을 수 없습니다.');
+      return;
+    }
+    
+    // 전투력 업데이트
+    const newCombatPower = document.getElementById('editCombatPower').value;
+    character.combatPower = newCombatPower || '0';
+    
+    // 역할 업데이트
+    const newRole = document.querySelector('input[name="editRole"]:checked').value;
+    character.role = newRole;
+    
+    console.log(`📝 [CHARACTER EDIT] ${character.name}: CombatPower ${character.combatPower}, Role ${character.role}`);
+    
+    // UI 업데이트
+    renderExpedition();
+    renderRaidParties();
+    
+    // 모달 닫기
+    const modal = bootstrap.Modal.getInstance(document.getElementById('characterEditModal'));
+    modal.hide();
+    
+    alert('캐릭터 정보가 수정되었습니다.');
+    
+  } catch (error) {
+    console.error('캐릭터 정보 수정 중 오류:', error);
+    alert('캐릭터 정보 수정 중 오류가 발생했습니다: ' + error.message);
+  }
 }
 
 // 엔터키 처리 함수
