@@ -146,7 +146,6 @@ function forceShowAnnouncement() {
 // 공지사항 초기화 (다시 보게 하기)
 function resetAnnouncement() {
   localStorage.removeItem('hasSeenAnnouncement');
-  console.log('공지사항 확인 기록이 초기화되었습니다. 페이지를 새로고침하면 다시 공지사항이 표시됩니다.');
 }
 
 // 공지사항 모달창 닫기

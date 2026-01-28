@@ -1,4 +1,90 @@
 /* 기본 스타일 */
+html, body {
+  height: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* 메인 스크롤 방지 */
+}
+
+/* 메인 컨테이너 스크롤 처리 */
+.container-fluid {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 채팅 관련 스타일 */
+#chat-container {
+  font-family: 'Malgun Gothic', sans-serif;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+
+#chat-window {
+  display: none !important;
+  flex-direction: column !important;
+  max-height: 80vh; /* 화면 높이의 80%로 제한 */
+}
+
+#chat-window.show {
+  display: flex !important;
+}
+
+#chat-icon {
+  display: flex !important;
+}
+
+#chat-icon.hide {
+  display: none !important;
+}
+
+#messages-container {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc #f8f9fa;
+  max-height: 300px; /* 메시지 영역 높이 제한 */
+}
+
+#messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+#messages-container::-webkit-scrollbar-track {
+  background: #f8f9fa;
+}
+
+#messages-container::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+
+#messages-container::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+.chat-message {
+  animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .char-box {
   border: 2px solid #dee2e6;
   border-radius: 8px;
@@ -136,6 +222,138 @@
   min-width: 0; /* 그리드에서 넘침 방지 */
 }
 
+/* 레이드 탭 스타일 */
+#raidTabs {
+  margin-bottom: 1rem;
+}
+
+.raid-tabs-nav {
+  display: flex;
+  border-bottom: 2px solid #dee2e6;
+  background: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 8px 8px 0 0;
+  overflow-x: auto;
+  gap: 0.25rem;
+}
+
+.raid-tab {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #6c757d;
+  position: relative;
+}
+
+.raid-tab:hover {
+  background: #e9ecef;
+  color: #495057;
+  transform: translateY(-1px);
+}
+
+.raid-tab.active {
+  background: #0d6efd;
+  color: white;
+  border-color: #0d6efd;
+  box-shadow: 0 -2px 4px rgba(13, 110, 253, 0.2);
+}
+
+.raid-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #0d6efd;
+}
+
+/* 난이도 탭 스타일 */
+.difficulty-tabs-nav {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.difficulty-tab {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.difficulty-tab:hover {
+  background: #e9ecef;
+  color: #495057;
+  transform: translateY(-1px);
+}
+
+.difficulty-tab.active {
+  background: #198754;
+  color: white;
+  border-color: #198754;
+  box-shadow: 0 2px 4px rgba(25, 135, 84, 0.2);
+}
+
+/* 레이드 탭 컨테이너 */
+.raid-tab-content {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 1rem;
+  min-height: 200px;
+}
+
+/* 탭 내용 애니메이션 */
+.raid-tab-content {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 레이드 설정 카드 개선 */
+.raid-settings {
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+}
+
+.raid-settings .card-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-bottom: 1px solid #dee2e6;
+  border-radius: 8px 8px 0 0;
+}
+
+.raid-settings .card-body {
+  background: white;
+}
+
 /* 상하 분할 레이아웃 */
 .container-fluid {
   max-height: 100vh;
@@ -144,14 +362,14 @@
 }
 
 /* 상단 원정대 영역 */
-.container-fluid > .row:first-child {
+.expedition-row {
   flex: 0 0 auto;
   max-height: 44vh;
   overflow-y: auto;
 }
 
 /* 하단 공격대 영역 */
-.container-fluid > .row:last-child {
+.raid-row {
   flex: 1 1 auto;
   max-height: 64vh;
   overflow-y: auto;
