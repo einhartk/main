@@ -1,0 +1,67 @@
+{
+  "raids": [
+    {
+      "id": "serkaris",
+      "name": "세르카",
+      "size": 4,
+      "difficulties": [
+        {
+          "id": "nightmare",
+          "name": "나이트메어",
+          "minIlvl": 1740,
+          "minCombatPower": 4000
+        },
+        {
+          "id": "hard",
+          "name": "하드",
+          "minIlvl": 1730,
+          "minCombatPower": 3000
+        },
+        {
+          "id": "normal",
+          "name": "노말",
+          "minIlvl": 1710,
+          "minCombatPower": 2000
+        }
+      ]
+    },
+    {
+      "id": "kazeros",
+      "name": "카제로스",
+      "size": 8,
+      "difficulties": [
+        {
+          "id": "hard",
+          "name": "하드",
+          "minIlvl": 1730,
+          "minCombatPower": 3000
+        },
+        {
+          "id": "normal",
+          "name": "노말",
+          "minIlvl": 1710,
+          "minCombatPower": 2000
+        }
+      ]
+    },
+    {
+      "id": "armache",
+      "name": "아르모체",
+      "size": 8,
+      "difficulties": [
+        {
+          "id": "hard",
+          "name": "하드",
+          "minIlvl": 1720,
+          "minCombatPower": 2500
+        },
+        {
+          "id": "normal",
+          "name": "노말",
+          "minIlvl": 1700,
+          "minCombatPower": 1500
+        }
+      ]
+    }
+  ]
+}

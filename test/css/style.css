@@ -12,6 +12,35 @@ body {
   overflow: hidden; /* 메인 스크롤 방지 */
 }
 
+/* Modal backdrop 강제 제거 */
+.modal-backdrop {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  z-index: -1 !important;
+}
+
+.modal-backdrop.show {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  z-index: -1 !important;
+}
+
+/* Bootstrap modal backdrop 강제 숨김 */
+body.modal-open .modal-backdrop {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  z-index: -1 !important;
+}
+
+/* body 스타일 강제 초기화 */
+body.modal-open {
+  overflow: hidden !important;
+  padding-right: 0 !important;
+}
+
 /* 메인 컨테이너 스크롤 처리 */
 .container-fluid {
   height: 100vh;
