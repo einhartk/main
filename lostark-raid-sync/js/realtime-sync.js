@@ -13,6 +13,143 @@ class RealtimeSync {
         this.isEditing = false; // 편집 상태
         this.editingUser = null; // 현재 편집 중인 사용자
         this.editLockTimeout = null; // 편집 잠금 타임아웃
+
+        this.currentSlotLock = null; // { key, ref }
+        this.slotLockHeartbeat = null;
+    }
+
+    // userId에서 브라우저/기기 suffix를 제거한 "base user" 키
+    // 예: User_1234567890_abcdef_xyzBrowser -> User_1234567890_abcdef
+    getBaseUserKey(userId) {
+        const raw = String(userId || '');
+        if (!raw) return '';
+        const parts = raw.split('_');
+        // 기본 생성 규칙: User_<timestamp>_<rand>_<browserId>
+        if (parts.length >= 3) {
+            return parts.slice(0, 3).join('_');
+        }
+        return raw;
+    }
+
+    encodeSlotKey(slotKey) {
+        return String(slotKey || '').replace(/[.#$\[\]/]/g, '_');
+    }
+
+    async acquireSlotLock(slotKey, ttlMs = 45000) {
+        if (!this.isConnected || !this.dbRef) return true;
+        if (!slotKey) return false;
+
+        const encodedKey = this.encodeSlotKey(slotKey);
+        const lockRef = this.dbRef.child('slotLocks').child(encodedKey);
+
+        const me = this.currentUser;
+        const meBase = this.getBaseUserKey(me);
+
+        try {
+            const res = await lockRef.transaction((current) => {
+                const now = Date.now();
+                if (!current) {
+                    return { user: me, baseUser: meBase, ts: now, ttlMs };
+                }
+
+                const ts = current.ts || 0;
+                const curTtl = current.ttlMs || ttlMs;
+                const expired = now - ts > curTtl;
+                if (expired) {
+                    return { user: me, baseUser: meBase, ts: now, ttlMs };
+                }
+
+                const ownerBase = current.baseUser || this.getBaseUserKey(current.user);
+                if (ownerBase && meBase && ownerBase === meBase) {
+                    return { ...current, user: me, baseUser: meBase, ts: now, ttlMs: curTtl };
+                }
+
+                return;
+            });
+
+            if (!res.committed) {
+                return false;
+            }
+
+            this.currentSlotLock = { key: slotKey, ref: lockRef };
+            lockRef.onDisconnect().remove();
+
+            if (this.slotLockHeartbeat) {
+                clearInterval(this.slotLockHeartbeat);
+                this.slotLockHeartbeat = null;
+            }
+            this.slotLockHeartbeat = setInterval(() => {
+                try {
+                    lockRef.update({ ts: Date.now(), user: me, baseUser: meBase });
+                } catch (_) {}
+            }, 10000);
+
+            return true;
+        } catch (e) {
+            console.error('❌ [SLOT LOCK] acquire failed', e);
+            return false;
+        }
+    }
+
+    async releaseSlotLock(slotKey) {
+        if (!this.isConnected || !this.dbRef) return;
+
+        const keyToRelease = slotKey || (this.currentSlotLock ? this.currentSlotLock.key : null);
+        if (!keyToRelease) return;
+
+        const encodedKey = this.encodeSlotKey(keyToRelease);
+        const lockRef = this.dbRef.child('slotLocks').child(encodedKey);
+        const meBase = this.getBaseUserKey(this.currentUser);
+
+        try {
+            const snap = await lockRef.once('value');
+            const v = snap.val();
+            const ownerBase = v?.baseUser || this.getBaseUserKey(v?.user);
+            if (v && ownerBase && meBase && ownerBase === meBase) {
+                await lockRef.remove();
+            }
+        } catch (e) {
+            console.error('❌ [SLOT LOCK] release failed', e);
+        } finally {
+            if (this.slotLockHeartbeat) {
+                clearInterval(this.slotLockHeartbeat);
+                this.slotLockHeartbeat = null;
+            }
+            if (this.currentSlotLock && this.currentSlotLock.key === keyToRelease) {
+                this.currentSlotLock = null;
+            }
+        }
+    }
+
+    async isSlotLockedByOther(slotKey, ttlFallbackMs = 45000) {
+        if (!this.isConnected || !this.dbRef) return false;
+        if (!slotKey) return false;
+
+        const encodedKey = this.encodeSlotKey(slotKey);
+        const lockRef = this.dbRef.child('slotLocks').child(encodedKey);
+
+        try {
+            const snap = await lockRef.once('value');
+            const v = snap.val();
+            if (!v || !v.user) return false;
+
+            const now = Date.now();
+            const ts = v.ts || 0;
+            const ttl = v.ttlMs || ttlFallbackMs;
+            if (now - ts > ttl) {
+                await lockRef.remove();
+                return false;
+            }
+
+            const ownerBase = v.baseUser || this.getBaseUserKey(v.user);
+            const meBase = this.getBaseUserKey(this.currentUser);
+            if (ownerBase && meBase && ownerBase === meBase) return false;
+
+            return true;
+        } catch (e) {
+            console.error('❌ [SLOT LOCK] check failed', e);
+            return false;
+        }
     }
 
     // 현재 사용자 정보 가져오기
@@ -71,11 +208,20 @@ class RealtimeSync {
         console.log(`🔄 [SYNC] Initializing sync with code: ${syncCode} (using Realtime Database)`);
         
         // 데이터 변경 감지 리스너
-        this.dbRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data && data.raidData) {
-                this.handleRemoteUpdate(data.raidData);
-            }
+        // IMPORTANT: 루트(value) 구독은 editLock/users 같은 부수 데이터 변경에도 매번 호출되어
+        //            아직 업데이트되지 않은 d(이전 값)로 UI가 롤백되는 문제가 생김.
+        //            그래서 실제 데이터 노드(d)만 구독한다.
+        this.dbRef.child('d').on('value', (snapshot) => {
+            const d = snapshot.val();
+            if (!d) return;
+            this.handleRemoteUpdate({ d });
+        });
+
+        // Legacy wrapper 지원: syncSessions/<code>/raidData/d
+        this.dbRef.child('raidData').child('d').on('value', (snapshot) => {
+            const d = snapshot.val();
+            if (!d) return;
+            this.handleRemoteUpdate({ d });
         });
         
         // 사용자 접속 정보 등록
@@ -127,13 +273,39 @@ class RealtimeSync {
                     state.selectedRaid = raid;
                 }
             }
+
+            // selectedDifficulty 역직렬화
+            if (state.selectedRaid) {
+                const desiredDiffId = compressedData.sd;
+                if (desiredDiffId) {
+                    const diff = state.selectedRaid.difficulties?.find(d => d.id === desiredDiffId);
+                    state.selectedDifficulty = diff || state.selectedRaid.difficulties?.[0] || null;
+                } else {
+                    // 이전 데이터/호환: 난이도 정보가 없으면 첫 난이도로 고정
+                    state.selectedDifficulty = state.selectedRaid.difficulties?.[0] || null;
+                }
+            }
         }
         
         // UI 업데이트 (무한 루프 방지)
         this.updateUISafely();
         
-        // 사용자 알림
-        this.showUpdateNotification(data.u);
+        // 사용자 알림 (저장 구조에 따라 u 위치가 다를 수 있음)
+        const updateUser = (data && data.d && data.d.u) ? data.d.u : data.u;
+        this.showUpdateNotification(updateUser);
+    }
+
+    // 업데이트 알림 (간단/안전 버전)
+    showUpdateNotification(updateUser) {
+        try {
+            if (!updateUser) return;
+            if (updateUser === this.currentUser) return;
+
+            // 조용히 로그만 남김 (UI 토스트 등은 추후 확장 가능)
+            console.log(`🔔 [SYNC] Updated by: ${updateUser}`);
+        } catch (e) {
+            console.log('⚠️ [SYNC] showUpdateNotification failed', e);
+        }
     }
 
     // 안전한 UI 업데이트 (무한 루프 방지)
@@ -226,7 +398,11 @@ class RealtimeSync {
                 }
                 
                 // 다른 사용자가 편집 중인 경우
-                if (lockData.user !== this.currentUser) {
+                const lockOwnerBase = this.getBaseUserKey(lockData.user);
+                const meBase = this.getBaseUserKey(this.currentUser);
+
+                // base user가 다를 때만 타인으로 간주
+                if (lockOwnerBase && meBase && lockOwnerBase !== meBase) {
                     console.log(`🔒 [SYNC] Edit conflict: ${lockData.user} is editing`);
                     return false;
                 }
@@ -318,17 +494,42 @@ class RealtimeSync {
             rt: serializedRaidTabs, // raidTabs -> rt (JSON string)
             es: serializedExpedition, // expeditionSlots -> es (JSON string)
             sr: state.selectedRaid ? state.selectedRaid.id : null, // selectedRaid -> sr
+            sd: state.selectedDifficulty ? state.selectedDifficulty.id : null, // selectedDifficulty -> sd
             t: Date.now(), // timestamp -> t
             u: this.currentUser // user -> u
         };
         
-        this.dbRef.update({
+        const p = this.dbRef.update({
             d: compressedData, // data -> d
             a: Date.now() // activity -> a
         });
         
         this.lastSyncTime = Date.now();
         console.log(`📤 [SYNC] Serialized data synced (${JSON.stringify(compressedData).length} chars)`);
+        return p;
+    }
+
+    // 편집 잠금을 활용한 동기화 (CRUD 발생 시 즉시 저장용)
+    async syncToFirebaseWithLock() {
+        if (!this.isConnected) return false;
+
+        const canEdit = await this.checkEditLock();
+        if (!canEdit) {
+            return false;
+        }
+
+        try {
+            await this.setEditLock();
+            await this.syncToFirebase();
+            await this.clearEditLock();
+            return true;
+        } catch (e) {
+            console.error('❌ [SYNC] syncToFirebaseWithLock failed:', e);
+            try {
+                await this.clearEditLock();
+            } catch (_) {}
+            return false;
+        }
     }
 
     // 동기화 상태 표시
@@ -451,6 +652,17 @@ class RealtimeSync {
 
     // 동기화 종료
     disconnect() {
+        try {
+            if (this.slotLockHeartbeat) {
+                clearInterval(this.slotLockHeartbeat);
+                this.slotLockHeartbeat = null;
+            }
+            if (this.currentSlotLock) {
+                // best-effort release
+                this.releaseSlotLock(this.currentSlotLock.key);
+            }
+        } catch (_) {}
+
         if (this.userRef) {
             this.userRef.remove();
         }
@@ -487,12 +699,17 @@ window.realtimeSync = new RealtimeSync();
 window.testSync = () => window.realtimeSync.testSync();
 window.checkSyncStatus = () => window.realtimeSync.checkConnectionStatus();
 
-// 페이지 로드 시 동기화 코드 확인
+// 페이지 로드 시 자동 실시간 동기화 시작
 document.addEventListener('DOMContentLoaded', () => {
+    // URL 파라미터 확인
     const syncCode = window.realtimeSync.getSyncCode();
     if (syncCode) {
         console.log(`🔄 [SYNC] Found sync code in URL: ${syncCode}`);
         window.realtimeSync.init(syncCode);
+    } else {
+        // URL에 동기화 코드가 없으면 자동으로 세션 생성
+        console.log('🔄 [SYNC] No sync code found, creating auto-sync session...');
+        window.realtimeSync.createSession();
     }
 });
 

@@ -17,7 +17,7 @@ class ModalManager {
             zIndex = 1080
         } = options;
 
-        const modalId = 'confirmModal_' + Date.now();
+        const modalId = generateUniqueId('confirmModal_');
         
         const modalHtml = `
             <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true" style="z-index: ${zIndex};">
@@ -73,7 +73,7 @@ class ModalManager {
                 zIndex = 1080
             } = options;
 
-            const modalId = 'confirmSyncModal_' + Date.now();
+            const modalId = generateUniqueId('confirmSyncModal_');
             
             const modalHtml = `
                 <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true" style="z-index: ${zIndex};">
@@ -133,7 +133,7 @@ class ModalManager {
             zIndex = 1080
         } = options;
 
-        const modalId = 'alertModal_' + Date.now();
+        const modalId = generateUniqueId('alertModal_');
         
         const modalHtml = `
             <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true" style="z-index: ${zIndex};">
@@ -186,7 +186,7 @@ class ModalManager {
             zIndex = 1080
         } = options;
 
-        const modalId = 'inputModal_' + Date.now();
+        const modalId = generateUniqueId('inputModal_');
         
         const modalHtml = `
             <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true" style="z-index: ${zIndex};">
@@ -248,7 +248,7 @@ class ModalManager {
             zIndex = 1130
         } = options;
 
-        const modalId = 'progressModal_' + Date.now();
+        const modalId = generateUniqueId('progressModal_');
         
         const modalHtml = `
             <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" style="z-index: ${zIndex};">

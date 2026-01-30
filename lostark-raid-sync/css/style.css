@@ -47,6 +47,94 @@ main {
     }
 }
 
+/* 원정대 사이드 패널 */
+.expedition-side-panel {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.expedition-side-panel .card {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #e9ecef;
+}
+
+.expedition-side-panel .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.expedition-side-panel .expedition-slot {
+    border: 1px dashed #dee2e6;
+    border-radius: 6px;
+    padding: 4px;
+    transition: all 0.2s ease;
+    background: #f8f9fa;
+    min-height: 110px; /* 아이템레벨/전투력 추가로 높이 증가 */
+    height: 100%; /* 외부 컨테이너 높이만큼 차지 */
+    display: flex;
+    flex-direction: column;
+}
+
+.expedition-side-panel .expedition-slots {
+    flex-grow: 1; /* 남은 공간 모두 차지 */
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 가로 3개 */
+    gap: 2px; /* 캐릭터 카드 사이 간격 */
+    align-content: start; /* 위쪽부터 정렬 */
+}
+
+.expedition-side-panel .expedition-slot:hover {
+    border-color: #007bff;
+    background: #e3f2fd;
+}
+
+.expedition-side-panel .expedition-slot-filled {
+    border-style: solid;
+    border-color: #28a745;
+    background: #f8fff9;
+}
+
+.expedition-side-panel .expedition-slot-filled:hover {
+    border-color: #218838;
+    background: #e8f5e8;
+}
+
+.expedition-side-panel .expedition-char {
+    position: relative;
+    padding: 2px;
+    margin: 1px 0;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid #e9ecef;
+    cursor: grab;
+    transition: all 0.2s ease;
+    text-align: left;
+    min-height: 45px;
+    max-height: 55px; /* 외부 레이블 크기 제한 */
+    overflow: hidden;
+}
+
+.expedition-side-panel .expedition-char:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.expedition-side-panel .expedition-char.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.expedition-side-panel .expedition-char.support {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-color: #ffc107;
+}
+
+.expedition-side-panel .expedition-char.dps {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-color: #2196f3;
+}
+
 /* Raid slots */
 .raid-slots-grid {
     display: grid;

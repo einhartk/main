@@ -54,9 +54,75 @@ lostark-raid-sync/
 │   ├── api-config.js       # API 및 Firebase 설정
 │   ├── modal-manager.js    # 모달 관리자
 │   ├── realtime-sync.js    # 🔥 실시간 동기화 핵심 로직
+│   ├── constraints.js      # 🎯 캐릭터 배치 제약 조건
+│   ├── raid-ui.js          # 🖼️ 레이드/원정대 UI 렌더링
+│   ├── dragdrop.js         # 🎯 드래그/드롭 핸들러
+│   ├── modals.js           # 📋 모달/캐릭터 검색/수정/삭제
+│   ├── autosave.js         # 💾 자동저장/Firebase 동기화
 │   └── main.js            # 메인 애플리케이션 로직
 └── README.md              # 이 파일
 ```
+
+### 🧩 모듈 상세 설명
+
+#### `constraints.js` - 캐릭터 배치 제약 조건
+- `Constraints` 객체: 모든 캐릭터 배치 규칙 정의
+- `applyConstraints()`: 제약 조건 검증 헬퍼
+- 주요 기능:
+  - 캐릭터 중복 체크 (공격대당 1캐릭)
+  - 파티별 서폿 수 제한
+  - 아이템 레벨/전투력 요구사항 검증
+  - 원정대 슬롯 사용 제한
+
+#### `raid-ui.js` - 레이드/원정대 UI 렌더링
+- `renderRaidTabs()`: 레이드 탭/난이도 탭 렌더링
+- `renderRaidParties()`: 공격대 파티 UI 렌더링
+- `renderExpedition()`: 원정대 슬롯 UI 렌더링
+- `setupRaidEventListeners()`: 이벤트 리스너 설정
+- `updateSupportCount()`: 서폿 수 UI 업데이트
+
+#### `dragdrop.js` - 드래그/드롭 핸들러
+- `handleDragStart()`: 드래그 시작 처리
+- `handleDragEnd()`: 드래그 종료 처리
+- `handleDragOver()`: 드래그 오버 처리
+- `handleDrop()`: 공격대 슬롯 드랍 처리
+- `handleExpeditionDrop()`: 원정대 슬롯 드랍 처리
+- 슬롯 단위 락 확인/차단 로직 포함
+
+#### `modals.js` - 모달/캐릭터 관리
+- `openCharacterSearchModal()`: 캐릭터 검색 모달
+- `searchCharacters()`: 캐릭터 API 조회
+- `editCharacter()`: 캐릭터 수정 모달
+- `confirmRemoveCharacter()`: 캐릭터 삭제 확인
+- `fetchCharacterData()`: Lost Ark API 데이터 조회
+- `displaySearchResults()`: 조회 결과 표시
+- 슬롯 락/해제 로직 포함
+
+#### `autosave.js` - 자동저장/동기화
+- `scheduleAutoSave()`: 자동 저장 스케줄러
+- `schedulePartyConfigSave()`: 파티 설정 저장 스케줄러
+- `autoSaveToDatabase()`: Firebase Realtime Database 저장
+- 실시간 동기화 전파 로직 포함
+
+### 🔄 모듈 로딩 순서
+```html
+<script src="js/api-config.js"></script>
+<script src="js/modal-manager.js"></script>
+<script src="js/realtime-sync.js"></script>
+<script src="js/constraints.js"></script>
+<script src="js/raid-ui.js"></script>
+<script src="js/dragdrop.js"></script>
+<script src="js/modals.js"></script>
+<script src="js/autosave.js"></script>
+<script src="js/main.js"></script>
+```
+
+### 🎯 모듈화 장점
+- **유지보수성**: 기능별로 분리되어 코드 수정 용이
+- **재사용성**: 각 모듈 독립적으로 재사용 가능
+- **가독성**: main.js가 훨씬 간결해짐
+- **확장성**: 새 기능 추가 시 해당 모듈만 수정
+- **번들러 없음**: script 태그 순서로 간단하게 관리
 
 ## 🔧 설정 방법
 
