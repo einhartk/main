@@ -118,8 +118,11 @@ function handleDrop(event, partyId, slotIndex) {
             continue;
           }
           
-          // 공격대에는 캐릭터 이름만 저장
-          party.members[emptyIndex] = { name: character.name };
+          // 공격대에는 캐릭터 ID와 이름 저장
+          party.members[emptyIndex] = { 
+            id: character.id,
+            name: character.name 
+          };
           renderRaidParties();
           renderExpedition();
           added = true;

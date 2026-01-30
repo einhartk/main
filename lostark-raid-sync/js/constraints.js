@@ -16,15 +16,35 @@ const Constraints = {
 
   // 캐릭터 사용 횟수 확인
   getCharacterUsageCount: function(characterName, parties = null) {
-    const targetParties = parties || getCurrentTabParties();
     let count = 0;
-    targetParties.forEach(party => {
-      party.members.forEach(member => {
-        if (member && member.name === characterName) {
-          count++;
-        }
+    
+    if (parties) {
+      // 특정 파티 목록이 주어진 경우
+      parties.forEach(party => {
+        party.members.forEach(member => {
+          if (member && (member.name === characterName || member.id === characterName)) {
+            count++;
+          }
+        });
       });
-    });
+    } else {
+      // 모든 레이드의 모든 파티를 확인
+      if (state.raidTabs) {
+        Object.keys(state.raidTabs).forEach(raidId => {
+          Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+            const parties = state.raidTabs[raidId][difficultyId];
+            parties.forEach(party => {
+              party.members.forEach(member => {
+                if (member && (member.name === characterName || member.id === characterName)) {
+                  count++;
+                }
+              });
+            });
+          });
+        });
+      }
+    }
+    
     return count;
   },
 
@@ -62,7 +82,7 @@ const Constraints = {
   getExpeditionSlotIndexByCharacterName: function(characterName) {
     for (let slotIndex = 0; slotIndex < state.expeditionSlots.length; slotIndex++) {
       const slot = state.expeditionSlots[slotIndex];
-      if (slot && slot.some(c => c && c.name === characterName)) {
+      if (slot && slot.some(c => c && (c.name === characterName || c.id === characterName))) {
         return slotIndex;
       }
     }
@@ -76,6 +96,8 @@ const Constraints = {
     if (!party) return false;
 
     let usedCount = 0;
+    
+    // 현재 파티의 멤버 중 같은 원정대 슬롯의 캐릭터 수 확인
     party.members.forEach(member => {
       if (!member) return;
       const memberSlotIndex = this.getExpeditionSlotIndexByCharacterName(member.name);
@@ -102,7 +124,7 @@ const Constraints = {
         const parties = state.raidTabs[raidId][difficultyId] || [];
         parties.forEach(party => {
           party.members.forEach(member => {
-            if (member && member.name === characterName) {
+            if (member && (member.name === characterName || member.id === characterName)) {
               count++;
             }
           });

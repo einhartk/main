@@ -4420,56 +4420,18 @@ function captureRaidList() {
 
 function guessRole(cls, arkpassive) {
 
-
-
   // 아크패시브 Effects에서 축복의 여신 확인
-
-
-
   if (arkpassive && arkpassive.Effects) {
-
-
-
     const hasGoddessBlessing = arkpassive.Effects.some(effect => 
-
-
-
       effect.Description && effect.Description.includes("축복의 여신")
-
-
-
     );
 
-
-
     if (hasGoddessBlessing) {
-
-
-
       return "support";
-
-
-
     }
-
-
-
   }
-
-
-
-  
-
-
-
   // 기존 직업명 기준 구분 (백업)
-
-
-
   return ["바드","홀리나이트","도화가"].includes(cls) ? "support" : "dps";
-
-
-
 }
 
 

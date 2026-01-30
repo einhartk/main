@@ -14,91 +14,60 @@ function showStatisticsModal() {
 // 통계 데이터 계산 및 표시
 function calculateAndDisplayStatistics() {
   const stats = calculateStatistics();
-  
-  // 기본 통계 표시
   displayBasicStatistics(stats);
-  
-  // 테이블 데이터 표시
   displayStatisticsTable(stats);
-  
-  // 차트 그리기
+  displayExpeditionGold(stats);
   drawCharts(stats);
+}
+
+// 클리어 골드 탭만 새로고침
+function refreshExpeditionGold() {
+  const stats = calculateStatistics();
+  displayExpeditionGold(stats);
 }
 
 // 통계 데이터 계산
 function calculateStatistics() {
-  const parties = getCurrentTabParties();
+  const parties = getCurrentTabPartiesForStats();
   const allCharacters = [];
   const assignedCharacters = [];
   const partyStats = [];
-  
-  // 원정대 캐릭터 수집
-  state.expeditionSlots.forEach(slot => {
-    slot.forEach(char => {
-      allCharacters.push(char);
-    });
-  });
-  
-  // 파티별 통계 계산
-  parties.forEach((party, index) => {
-    const partyCharacters = [];
-    let supports = 0;
-    let dps = 0;
-    let totalIlvl = 0;
-    let totalCombatPower = 0;
-    let filledSlots = 0;
+
+  parties.forEach((party) => {
+    const validMembers = party.members.filter(m => m !== null);
+    const validMembersWithDetails = validMembers.map(m => getCharacterDetailsFromExpedition(m.name)).filter(m => m !== null);
     
-    party.members.forEach(member => {
-      if (member) {
-        const charDetails = getCharacterDetailsFromExpedition(member.name);
-        if (charDetails) {
-          partyCharacters.push(charDetails);
-          assignedCharacters.push(charDetails);
-          
-          if (charDetails.role === 'support') {
-            supports++;
-          } else {
-            dps++;
-          }
-          
-          totalIlvl += parseCompareNumber(charDetails.ilvl || '0');
-          totalCombatPower += parseCompareNumber(charDetails.combatPower || '0');
-          filledSlots++;
-        }
-      }
-    });
-    
-    const completionRate = Math.round((filledSlots / party.size) * 100);
-    const avgIlvl = filledSlots > 0 ? Math.round(totalIlvl / filledSlots) : 0;
-    const avgCombatPower = filledSlots > 0 ? Math.round(totalCombatPower / filledSlots) : 0;
-    
+    const avgCombatPower = validMembersWithDetails.length > 0
+      ? Math.round(validMembersWithDetails.reduce((sum, m) => sum + parseCompareNumber(m.combatPower || '0'), 0) / validMembersWithDetails.length)
+      : 0;
+
+    const supportCount = validMembersWithDetails.filter(m => m?.role === 'support').length;
+
     partyStats.push({
-      partyName: `파티 ${index + 1}`,
-      completionRate,
-      supports,
-      dps,
-      avgIlvl,
-      avgCombatPower,
-      status: completionRate === 100 ? '완성' : completionRate >= 50 ? '진행중' : '미완성'
+      partyName: party.name,
+      totalMembers: validMembers.length,
+      size: party.size || 4,
+      avgCombatPower: avgCombatPower,
+      supportCount: supportCount
     });
+
+    allCharacters.push(...validMembersWithDetails);
+    assignedCharacters.push(...validMembersWithDetails);
   });
+
+  const totalCharacters = state.expeditionSlots.flat().filter(char => char).length;
   
-  // 전체 통계
-  const totalSupports = allCharacters.filter(char => char.role === 'support').length;
-  const totalDps = allCharacters.filter(char => char.role === 'dps').length;
-  
-  // 클래스별 통계
+  // 클래스별 통계 계산
   const classStats = {};
-  allCharacters.forEach(char => {
+  assignedCharacters.forEach(char => {
     const className = char.className || '알 수 없음';
     classStats[className] = (classStats[className] || 0) + 1;
   });
-  
+
   return {
-    totalCharacters: allCharacters.length,
-    totalSupports,
-    totalDps,
-    assignedCharacters: assignedCharacters.length,
+    totalCharacters,
+    assignedCharacters,
+    unassignedCharacters: totalCharacters - assignedCharacters.length,
     partyStats,
     classStats
   };
@@ -107,9 +76,160 @@ function calculateStatistics() {
 // 기본 통계 표시
 function displayBasicStatistics(stats) {
   document.getElementById('totalCharacters').textContent = stats.totalCharacters;
-  document.getElementById('totalSupports').textContent = stats.totalSupports;
-  document.getElementById('totalDps').textContent = stats.totalDps;
-  document.getElementById('assignedCharacters').textContent = stats.assignedCharacters;
+  
+  // 배정된 캐릭터 수 계산
+  const assignedCount = stats.assignedCharacters ? stats.assignedCharacters.length : 0;
+  document.getElementById('assignedCharacters').textContent = assignedCount;
+  
+  // 서폿/DPS 수 계산
+  const totalSupports = stats.assignedCharacters ? stats.assignedCharacters.filter(char => char.role === 'support').length : 0;
+  const totalDps = stats.assignedCharacters ? stats.assignedCharacters.filter(char => char.role === 'dps').length : 0;
+  
+  document.getElementById('totalSupports').textContent = totalSupports;
+  document.getElementById('totalDps').textContent = totalDps;
+  
+  // 미배정 캐릭터 수 표시
+  const unassignedElement = document.getElementById('totalEarnedGold');
+  if (unassignedElement) {
+    unassignedElement.textContent = stats.unassignedCharacters.toLocaleString();
+  }
+  
+  // 완성율 표시
+  const completionRate = stats.totalCharacters > 0 ? 
+    Math.round((stats.assignedCharacters.length / stats.totalCharacters) * 100) : 0;
+  const completionElement = document.getElementById('totalExpeditionGold');
+  if (completionElement) {
+    completionElement.textContent = `${completionRate}%`;
+  }
+}
+
+// 전체 공격대 리스트 표시
+function displayCurrentTabParties() {
+  const container = document.getElementById('currentTabParties');
+  if (!container) return;
+  
+  let html = '<div class="row g-3">';
+  let hasAnyParties = false;
+  
+  // 모든 레이드와 난이도의 공격대 표시
+  state.raidsData.forEach(raid => {
+    raid.difficulties.forEach(difficulty => {
+      const raidId = raid.id;
+      const difficultyId = difficulty.id;
+      const parties = state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId] 
+        ? state.raidTabs[raidId][difficultyId] 
+        : [];
+      
+      if (parties.length > 0) {
+        hasAnyParties = true;
+        
+        // 난이도별 색상 설정
+        let difficultyColor = 'text-primary';
+        if (difficulty.id === 'nightmare') {
+          difficultyColor = 'text-danger';
+        } else if (difficulty.id === 'hard') {
+          difficultyColor = 'text-warning';
+        } else if (difficulty.id === 'normal') {
+          difficultyColor = 'text-success';
+        }
+        
+        parties.forEach(party => {
+          const validMembers = party.members.filter(m => m !== null);
+          const supportCount = validMembers.filter(m => m?.role === 'support').length;
+          const completionRate = party.size > 0 ? Math.round((validMembers.length / party.size) * 100) : 0;
+          const statusBadge = completionRate === 100 ? 'bg-success' : 
+                             completionRate >= 50 ? 'bg-warning' : 'bg-danger';
+          const status = completionRate === 100 ? '완성' : 
+                        completionRate >= 50 ? '진행중' : '미완성';
+          
+          // 평균 전투력 계산
+          const validMembersWithDetails = validMembers.map(m => getCharacterDetailsFromExpedition(m.name)).filter(m => m !== null);
+          const avgCombatPower = validMembersWithDetails.length > 0
+            ? Math.round(validMembersWithDetails.reduce((sum, m) => sum + parseCompareNumber(m.combatPower || '0'), 0) / validMembersWithDetails.length)
+            : 0;
+          
+          html += `
+            <div class="col-md-6 col-lg-4">
+              <div class="card border-0 shadow-sm h-100" style="font-size: 0.8rem;">
+                <div class="card-header bg-light py-2">
+                  <h6 class="card-title mb-0" style="font-size: 0.85rem;">
+                    <i class="bi bi-people-fill me-1"></i>${party.name}
+                  </h6>
+                </div>
+                <div class="card-body p-2">
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <div class="text-center">
+                        <small class="text-muted d-block">인원</small>
+                        <strong>${validMembers.length}/${party.size}</strong>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="text-center">
+                        <small class="text-muted d-block">서폿</small>
+                        <strong>${supportCount}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="row g-2 mb-2">
+                    <div class="col-6">
+                      <div class="text-center">
+                        <small class="text-muted d-block">완성도</small>
+                        <strong>${completionRate}%</strong>
+                      </div>
+                    </div>
+                    <div class="col-6">
+                      <div class="text-center">
+                        <small class="text-muted d-block">평균 CP</small>
+                        <strong class="text-primary">${avgCombatPower.toLocaleString()}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="text-center">
+                    <span class="badge ${statusBadge}">${status}</span>
+                  </div>
+                  
+                  ${validMembers.length > 0 ? `
+                    <div class="mt-2 pt-2 border-top">
+                      <small class="text-muted d-block mb-2">캐릭터 (${validMembers.length}명)</small>
+                      <div class="d-flex flex-wrap gap-1">
+                        ${validMembers.slice(0, 3).map(member => {
+                          const charDetails = getCharacterDetailsFromExpedition(member.name);
+                          const roleIcon = charDetails?.role === 'support' ? '🛡️' : '⚔️';
+                          return `
+                            <span class="badge bg-light text-dark" style="font-size: 0.65rem;" title="${
+                              charDetails ? `${charDetails.ilvl} / ${charDetails.combatPower} / ${charDetails.role}` : '정보 없음'
+                            }">
+                              ${member.name || '알 수 없음'} ${roleIcon}
+                            </span>
+                          `;
+                        }).join('')}
+                        ${validMembers.length > 3 ? `
+                          <span class="badge bg-secondary" style="font-size: 0.65rem;">
+                            +${validMembers.length - 3}
+                          </span>
+                        ` : ''}
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      }
+    });
+  });
+  
+  html += '</div>';
+  
+  if (!hasAnyParties) {
+    container.innerHTML = '<div class="alert alert-light text-center">생성된 공격대가 없습니다.</div>';
+  } else {
+    container.innerHTML = html;
+  }
 }
 
 // 통계 테이블 표시
@@ -117,27 +237,301 @@ function displayStatisticsTable(stats) {
   const tbody = document.getElementById('statisticsTable');
   tbody.innerHTML = '';
   
-  stats.partyStats.forEach(party => {
+  // 모든 레이드와 난이도의 공격대 정보 표시
+  let hasAnyParties = false;
+  
+  state.raidsData.forEach(raid => {
+    raid.difficulties.forEach(difficulty => {
+      const raidId = raid.id;
+      const difficultyId = difficulty.id;
+      const parties = state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId] 
+        ? state.raidTabs[raidId][difficultyId] 
+        : [];
+      
+      if (parties.length > 0) {
+        hasAnyParties = true;
+        
+        parties.forEach(party => {
+          const validMembers = party.members.filter(m => m !== null);
+          const supportCount = validMembers.filter(m => m?.role === 'support').length;
+          const completionRate = party.size > 0 ? Math.round((validMembers.length / party.size) * 100) : 0;
+          const statusBadge = completionRate === 100 ? 'bg-success' : 
+                             completionRate >= 50 ? 'bg-warning' : 'bg-danger';
+          const status = completionRate === 100 ? '완성' : 
+                        completionRate >= 50 ? '진행중' : '미완성';
+          
+          // 평균 전투력 계산
+          const validMembersWithDetails = validMembers.map(m => getCharacterDetailsFromExpedition(m.name)).filter(m => m !== null);
+          const avgCombatPower = validMembersWithDetails.length > 0
+            ? Math.round(validMembersWithDetails.reduce((sum, m) => sum + parseCompareNumber(m.combatPower || '0'), 0) / validMembersWithDetails.length)
+            : 0;
+          
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${party.name}</td>
+            <td>
+              <div class="progress" style="height: 20px;">
+                <div class="progress-bar ${completionRate === 100 ? 'bg-success' : 'bg-primary'}" 
+                     style="width: ${completionRate}%">${completionRate}%</div>
+              </div>
+            </td>
+            <td>${supportCount} / ${validMembers.length - supportCount}</td>
+            <td>-</td>
+            <td>${avgCombatPower.toLocaleString()}</td>
+            <td><span class="badge bg-info">${validMembers.length}/${party.size}명</span></td>
+            <td><span class="badge bg-warning">${supportCount}서폿</span></td>
+            <td><span class="badge ${statusBadge}">${status}</span></td>
+          `;
+          
+          tbody.appendChild(row);
+        });
+      }
+    });
+  });
+  
+  if (!hasAnyParties) {
     const row = document.createElement('tr');
-    const statusBadge = party.status === '완성' ? 'bg-success' : 
-                       party.status === '진행중' ? 'bg-warning' : 'bg-danger';
-    
     row.innerHTML = `
-      <td>${party.partyName}</td>
-      <td>
-        <div class="progress" style="height: 20px;">
-          <div class="progress-bar ${party.completionRate === 100 ? 'bg-success' : 'bg-primary'}" 
-               style="width: ${party.completionRate}%">${party.completionRate}%</div>
+      <td colspan="8" class="text-center text-muted">생성된 공격대가 없습니다.</td>
+    `;
+    tbody.appendChild(row);
+  }
+}
+
+// 모든 캐릭터의 레이드 배정 정보 한 번에 가져오기 (여러 공격대 지원)
+function getAllCharacterRaidAssignments() {
+  const assignments = {};
+  
+  console.log(`[DEBUG] 모든 캐릭터의 레이드 배정 정보 한 번에 검색 시작`);
+  console.log(`[DEBUG] 현재 state.raidTabs:`, state.raidTabs);
+  console.log(`[DEBUG] state.raidTabs 키 목록:`, state.raidTabs ? Object.keys(state.raidTabs) : '없음');
+  
+  // state.raidTabs 상세 정보 출력
+  if (state.raidTabs) {
+    Object.keys(state.raidTabs).forEach(raidId => {
+      console.log(`[DEBUG] ${raidId} 레이드 난이도 목록:`, Object.keys(state.raidTabs[raidId]));
+      Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+        const parties = state.raidTabs[raidId][difficultyId];
+        console.log(`[DEBUG] ${raidId}-${difficultyId} 파티 수:`, parties.length);
+        parties.forEach((party, index) => {
+          console.log(`[DEBUG] ${raidId}-${difficultyId} 파티 ${index} 멤버:`, party.members);
+        });
+      });
+    });
+  }
+  
+  // state.raidTabs에서 직접 검색
+  if (state.raidTabs) {
+    Object.keys(state.raidTabs).forEach(raidId => {
+      const raidData = state.raidTabs[raidId];
+      console.log(`[DEBUG] 레이드 탭 ${raidId} 검색:`, raidData);
+      
+      Object.keys(raidData).forEach(difficultyId => {
+        const parties = raidData[difficultyId];
+        console.log(`[DEBUG] ${raidId}-${difficultyId} 파티들:`, parties);
+        
+        parties.forEach(party => {
+          if (party.members) {
+            console.log(`[DEBUG] 파티 ${party.id} 멤버들:`, party.members);
+            
+            party.members.forEach((member, index) => {
+              if (member) {
+                console.log(`[DEBUG] 파티 ${party.id} 멤버 ${index}:`, member);
+                
+                // ID가 없으면 이름을 ID로 사용
+                const characterId = member.id || member.name;
+                console.log(`[DEBUG] 캐릭터 ID: ${characterId} (원본 ID: ${member.id}, 이름: ${member.name})`);
+                
+                if (characterId) {
+                  console.log(`[DEBUG] 캐릭터 ${characterId}를 ${raidId}-${difficultyId} 파티 ${party.id}에서 찾음`);
+                  
+                  const raid = state.raidsData.find(r => r.id === raidId);
+                  console.log(`[DEBUG] 레이드 정보:`, raid);
+                  
+                  if (raid) {
+                    const difficulty = raid.difficulties.find(d => d.id === difficultyId);
+                    console.log(`[DEBUG] 난이도 정보:`, difficulty);
+                    
+                    if (difficulty && difficulty.clearGold) {
+                      // 여러 공격대에 배정된 경우 배열로 저장
+                      if (!assignments[characterId]) {
+                        assignments[characterId] = [];
+                      }
+                      
+                      assignments[characterId].push({
+                        raidId: raidId,
+                        raidName: raid.name,
+                        difficultyId: difficultyId,
+                        difficultyName: difficulty.name,
+                        clearGold: difficulty.clearGold,
+                        raidSize: raid.size || 4,
+                        partyId: party.id
+                      });
+                      
+                      console.log(`[DEBUG] 캐릭터 ${characterId} 배정 정보 추가:`, assignments[characterId]);
+                    }
+                  }
+                } else {
+                  console.log(`[DEBUG] 캐릭터 ID와 이름 모두 없음:`, member);
+                }
+              }
+            });
+          }
+        });
+      });
+    });
+  } else {
+    console.log(`[DEBUG] state.raidTabs가 없음`);
+  }
+  
+  console.log(`[DEBUG] 모든 캐릭터의 배정 정보:`, assignments);
+  return assignments;
+}
+
+// 캐릭터 ID로 배정된 레이드 정보 가져오기 (개별용)
+function getCharacterRaidAssignment(characterId) {
+  const allAssignments = getAllCharacterRaidAssignments();
+  return allAssignments[characterId] || null;
+}
+
+// 원정대별 클리어 골드 표시
+function displayExpeditionGold(stats) {
+  const container = document.getElementById('expeditionGoldContainer');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  
+  console.log(`[DEBUG] displayExpeditionGold 시작`);
+  console.log(`[DEBUG] state.expeditionSlots:`, state.expeditionSlots);
+  console.log(`[DEBUG] state.raidTabs:`, state.raidTabs);
+  console.log(`[DEBUG] state.raidTabs 키 목록:`, state.raidTabs ? Object.keys(state.raidTabs) : '없음');
+  
+  // state.raidTabs 상세 정보 출력
+  if (state.raidTabs) {
+    Object.keys(state.raidTabs).forEach(raidId => {
+      console.log(`[DEBUG] ${raidId} 레이드 난이도 목록:`, Object.keys(state.raidTabs[raidId]));
+      Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+        const parties = state.raidTabs[raidId][difficultyId];
+        console.log(`[DEBUG] ${raidId}-${difficultyId} 파티 수:`, parties.length);
+        parties.forEach((party, index) => {
+          console.log(`[DEBUG] ${raidId}-${difficultyId} 파티 ${index} 멤버:`, party.members);
+        });
+      });
+    });
+  }
+  
+  console.log(`[DEBUG] state.raidsData:`, state.raidsData);
+  
+  // 각 원정대(0-7)에 대해 처리
+  for (let expIndex = 0; expIndex < 8; expIndex++) {
+    console.log(`[DEBUG] ${expIndex + 1}번째 원정대 처리 시작`);
+    
+    const expeditionDiv = document.createElement('div');
+    expeditionDiv.className = 'col-12 col-md-6 col-lg-3 mb-4';
+    expeditionDiv.style.setProperty('--index', expIndex);
+    
+    // 이 원정대에 속한 캐릭터들
+    const expeditionChars = state.expeditionSlots[expIndex]?.filter(char => char) || [];
+    console.log(`[DEBUG] ${expIndex + 1}번째 원정대 캐릭터들:`, expeditionChars);
+    
+    let totalGold = 0;
+    
+    // 모든 캐릭터의 레이드 배정 정보 한 번에 가져오기
+    console.log(`[DEBUG] 모든 캐릭터의 레이드 배정 정보 한 번에 조회 시작`);
+    const allAssignments = getAllCharacterRaidAssignments();
+    
+    // 각 캐릭터의 레이드 배정 정보와 골드 계산
+    const charDetails = expeditionChars.map(char => {
+      console.log(`[DEBUG] 캐릭터 처리:`, char);
+      
+      // ID가 없으면 이름을 ID로 사용
+      const characterId = char.id || char.name;
+      console.log(`[DEBUG] 캐릭터 ID: ${characterId} (원본 ID: ${char.id}, 이름: ${char.name})`);
+      
+      // 캐릭터 ID로 배정된 레이드 정보 가져오기
+      const assignedRaids = allAssignments[characterId];
+      let charGold = 0;
+      let raidInfo = [];
+      
+      if (assignedRaids && assignedRaids.length > 0) {
+        // 여러 공격대의 골드 합산
+        assignedRaids.forEach(raid => {
+          charGold += raid.clearGold;
+          // 나이트메어를 나메로 줄여서 표시
+          const difficultyName = raid.difficultyName === '나이트메어' ? '나메' : raid.difficultyName;
+          raidInfo.push(`${raid.raidName} ${difficultyName}`);
+        });
+        totalGold += charGold;
+        console.log(`[DEBUG] 캐릭터 ${char.name}(${characterId})의 골드: ${charGold}, 배정된 레이드:`, raidInfo);
+      } else {
+        console.log(`[DEBUG] 캐릭터 ${char.name}(${characterId})는 배정된 레이드가 없음`);
+      }
+      
+      return {
+        ...char,
+        assignedRaid: assignedRaids && assignedRaids.length > 0 ? assignedRaids[0] : null,
+        assignedRaids: raidInfo,
+        charGold
+      };
+    });
+    
+    console.log(`[DEBUG] ${expIndex + 1}번째 원정대 총 골드: ${totalGold}`);
+    
+    // 원정대 카드 생성
+    expeditionDiv.innerHTML = `
+      <div class="card h-100">
+        <div class="card-header bg-primary text-white">
+          <h5 class="card-title mb-0">${expIndex + 1}번째 원정대</h5>
         </div>
-      </td>
-      <td>${party.supports} / ${party.dps}</td>
-      <td>${party.avgIlvl}</td>
-      <td>${party.avgCombatPower.toLocaleString()}</td>
-      <td><span class="badge ${statusBadge}">${party.status}</span></td>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush">
+            ${charDetails.length > 0 ? 
+              charDetails.map(char => `
+                <li class="list-group-item">
+                  <div class="d-flex flex-column">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <div class="d-flex align-items-center">
+                        <span class="character-name" 
+                              title="${char.name || '알 수 없음'}">
+                          ${char.name || '알 수 없음'}
+                        </span>
+                        <span class="badge bg-warning text-dark ms-2" style="flex-shrink: 0;">
+                          ${char.charGold.toLocaleString()}
+                        </span>
+                        ${(() => {
+                          const usageCount = Constraints.getCharacterUsageCount(char.name);
+                          const badgeColor = usageCount >= 3 ? 'bg-danger' : usageCount >= 2 ? 'bg-warning' : 'bg-success';
+                          return `<span class="badge ${badgeColor} ms-2" style="font-size: 0.65rem;">${usageCount}/3</span>`;
+                        })()}
+                      </div>
+                    </div>
+                    ${char.assignedRaids && char.assignedRaids.length > 0 ? `
+                      <div class="d-flex flex-wrap gap-1">
+                        ${char.assignedRaids.map(raid => `
+                          <span class="badge bg-light text-dark" style="font-size: 0.65rem;">
+                            ${raid}
+                          </span>
+                        `).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                </li>
+              `).join('') : 
+              '<li class="list-group-item text-muted text-center py-3">원정대에 캐릭터가 없습니다</li>'
+            }
+            ${charDetails.length > 0 ? `
+              <li class="list-group-item bg-light d-flex justify-content-between align-items-center fw-bold">
+                <span>총 획득 골드</span>
+                <span class="badge bg-success">${totalGold.toLocaleString()}</span>
+              </li>
+            ` : ''}
+          </ul>
+        </div>
+      </div>
     `;
     
-    tbody.appendChild(row);
-  });
+    container.appendChild(expeditionDiv);
+  }
 }
 
 // 차트 그리기

@@ -106,29 +106,36 @@ function applyRecommendedRequirements() {
   });
 }
 
-// 현재 탭의 파티 가져오기
+// 현재 탭의 공격대(파티들) 가져오기
 function getCurrentTabParties() {
   if (!state.selectedRaid || !state.selectedDifficulty) return [];
   
   const raidId = state.selectedRaid.id;
   const difficultyId = state.selectedDifficulty.id;
   
-  if (!state.raidTabs[raidId]) state.raidTabs[raidId] = {};
-  if (!state.raidTabs[raidId][difficultyId]) state.raidTabs[raidId][difficultyId] = [];
-  if (!state.raidPartyCounter[raidId]) state.raidPartyCounter[raidId] = {};
-  if (!state.raidPartyCounter[raidId][difficultyId]) state.raidPartyCounter[raidId][difficultyId] = 0;
+  // state.raidTabs에서 공격대 데이터 가져오기
+  if (state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId]) {
+    return state.raidTabs[raidId][difficultyId];
+  }
   
-  // 파티 객체에 raidId와 difficultyId가 있는지 확인하고 없으면 추가
-  const parties = state.raidTabs[raidId][difficultyId];
-  parties.forEach(party => {
-    if (!party.raidId) party.raidId = raidId;
-    if (!party.difficultyId) party.difficultyId = difficultyId;
-    if (!party.uniqueId) party.uniqueId = `${raidId}-${difficultyId}-${party.id}`; // 고유 ID 설정
-    if (!party.raidName) party.raidName = state.selectedRaid.name;
-    if (!party.difficultyName) party.difficultyName = state.selectedDifficulty.name;
-  });
+  return [];
+}
+
+// 통계용 공격대 데이터 가져오기 (디버그 로그 포함)
+function getCurrentTabPartiesForStats() {
+  if (!state.selectedRaid || !state.selectedDifficulty) return [];
   
-  return parties;
+  const raidId = state.selectedRaid.id;
+  const difficultyId = state.selectedDifficulty.id;
+  
+  // state.raidTabs에서 공격대 데이터 가져오기
+  if (state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId]) {
+    console.log(`[DEBUG] state.raidTabs에서 공격대 데이터 가져옴: ${raidId}-${difficultyId}`, state.raidTabs[raidId][difficultyId]);
+    return state.raidTabs[raidId][difficultyId];
+  }
+  
+  console.log(`[DEBUG] ${raidId}-${difficultyId} 공격대 데이터가 없음, 빈 배열 반환`);
+  return [];
 }
 
 // 공격대 파티 추가
@@ -172,7 +179,20 @@ function addRaidParty() {
     minCombatPower: state.selectedDifficulty.minCombatPower || 0
   };
   
-  parties.push(newParty);
+  // state.raidTabs에 데이터 저장
+  if (!state.raidTabs) {
+    state.raidTabs = {};
+  }
+  if (!state.raidTabs[raidId]) {
+    state.raidTabs[raidId] = {};
+  }
+  if (!state.raidTabs[raidId][difficultyId]) {
+    state.raidTabs[raidId][difficultyId] = [];
+  }
+  
+  state.raidTabs[raidId][difficultyId].push(newParty);
+  console.log(`[DEBUG] 파티를 state.raidTabs에 저장:`, state.raidTabs);
+  
   renderRaidParties();
   
   // 저장 (자동)
@@ -424,8 +444,157 @@ function showExpeditionModal() {
 }
 
 function showRaidListModal() {
+  renderRaidListModal();
   const modal = new bootstrap.Modal(document.getElementById('raidListModal'));
   modal.show();
+}
+
+function renderRaidListModal() {
+  const content = document.getElementById('raidListContent');
+  if (!content) return;
+  
+  let html = '<ul class="nav nav-tabs mb-4" id="raidListTabs" role="tablist">';
+  
+  // 레이드 탭 생성
+  state.raidsData.forEach((raid, index) => {
+    const isActive = index === 0 ? 'active' : '';
+    html += `
+      <li class="nav-item" role="presentation">
+        <button class="nav-link ${isActive}" 
+                id="raidList-tab-${raid.id}" 
+                data-bs-toggle="tab" 
+                data-bs-target="#raidList-${raid.id}" 
+                type="button" 
+                role="tab">
+          ${raid.name}
+        </button>
+      </li>
+    `;
+  });
+  
+  html += '</ul>';
+  html += '<div class="tab-content" id="raidListTabContent">';
+  
+  // 각 레이드의 난이도별 공격대 카드 생성
+  state.raidsData.forEach((raid, index) => {
+    const isActive = index === 0 ? 'show active' : '';
+    html += `<div class="tab-pane fade ${isActive}" id="raidList-${raid.id}" role="tabpanel">`;
+    
+    raid.difficulties.forEach(difficulty => {
+      const raidId = raid.id;
+      const difficultyId = difficulty.id;
+      const parties = state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId] 
+        ? state.raidTabs[raidId][difficultyId] 
+        : [];
+      
+      // 난이도별 색상 설정
+      let difficultyColor = 'text-primary';
+      let badgeColor = 'bg-secondary';
+      
+      if (difficulty.id === 'nightmare') {
+        difficultyColor = 'text-danger';
+        badgeColor = 'bg-danger';
+      } else if (difficulty.id === 'hard') {
+        difficultyColor = 'text-warning';
+        badgeColor = 'bg-warning';
+      } else if (difficulty.id === 'normal') {
+        difficultyColor = 'text-success';
+        badgeColor = 'bg-success';
+      }
+      
+      html += `
+        <div class="mb-4">
+          <h6 class="${difficultyColor} mb-3">
+            <i class="bi bi-shield-fill me-2"></i>${difficulty.name}
+            <span class="badge ${badgeColor} ms-2 text-white">${parties.length}개 공격대</span>
+          </h6>
+          <div class="row g-3">
+      `;
+      
+      if (parties.length === 0) {
+        html += `
+          <div class="col-12">
+            <div class="alert alert-light text-center">
+              <i class="bi bi-inbox me-2"></i>생성된 공격대가 없습니다
+            </div>
+          </div>
+        `;
+      } else {
+        parties.forEach(party => {
+          const validMembers = party.members.filter(m => m !== null);
+          const supportCount = validMembers.filter(m => m?.role === 'support').length;
+          const completionRate = party.size > 0 ? Math.round((validMembers.length / party.size) * 100) : 0;
+          const statusBadge = completionRate === 100 ? 'bg-success' : 
+                             completionRate >= 50 ? 'bg-warning' : 'bg-danger';
+          const status = completionRate === 100 ? '완성' : 
+                        completionRate >= 50 ? '진행중' : '미완성';
+          
+          // 평균 전투력 계산
+          const validMembersWithDetails = validMembers.map(m => getCharacterDetailsFromExpedition(m.name)).filter(m => m !== null);
+          const avgCombatPower = validMembersWithDetails.length > 0
+            ? Math.round(validMembersWithDetails.reduce((sum, m) => sum + parseCompareNumber(m.combatPower || '0'), 0) / validMembersWithDetails.length)
+            : 0;
+          const avgIlvl = validMembersWithDetails.length > 0
+            ? Math.round(validMembersWithDetails.reduce((sum, m) => sum + parseCompareNumber(m.ilvl || '0'), 0) / validMembersWithDetails.length)
+            : 0;
+          
+          html += `
+            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+              <div class="card border-0 shadow-sm" style="font-size: 0.7rem;">
+                <div class="card-header bg-light py-1">
+                  <h6 class="card-title mb-0" style="font-size: 0.75rem;">
+                    <i class="bi bi-people-fill me-1"></i>${party.name}
+                  </h6>
+                </div>
+                <div class="card-body p-1">
+                  <div class="text-center mb-1">
+                    <small class="text-muted">인원 ${validMembers.length}/${party.size}</small>
+                    <span class="mx-1">|</span>
+                    <small class="text-primary">평균 CP ${avgCombatPower.toLocaleString()}</small>
+                  </div>
+                  
+                  ${validMembers.length > 0 ? `
+                    <div class="d-flex flex-column gap-0">
+                      ${validMembers.map(member => {
+                        const charDetails = getCharacterDetailsFromExpedition(member.name);
+                        const roleIcon = charDetails?.role === 'support' ? '🛡️' : '⚔️';
+                        const roleColor = charDetails?.role === 'support' ? 'text-success' : 'text-danger';
+                        return `
+                          <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size: 0.65rem;">
+                            <span class="text-truncate" style="max-width: 70px;">
+                              ${member.name || '알 수 없음'}
+                            </span>
+                            <span class="${roleColor}" style="font-size: 0.7rem;">${roleIcon}</span>
+                            <small class="text-muted">${charDetails?.ilvl || '?'}</small>
+                            <small class="text-primary">${(charDetails?.combatPower || '0').toLocaleString()}</small>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  ` : `
+                    <div class="text-center text-muted py-2" style="font-size: 0.65rem;">
+                      배정된 캐릭터 없음
+                    </div>
+                  `}
+                </div>
+              </div>
+            </div>
+          `;
+        });
+      }
+      
+      html += `
+          </div>
+        </div>
+      `;
+    });
+    
+    html += '</div>';
+  });
+  
+  html += '</div>';
+  
+  content.innerHTML = html;
 }
 
 function showStatisticsModal() {
@@ -729,8 +898,11 @@ function autoAssign() {
           break;
         }
         const picked = supports.splice(pickIndex, 1)[0];
-        // 공격대에는 캐릭터 이름만 저장
-        party.members[i] = { name: picked.name };
+        // 공격대에는 캐릭터 ID와 이름 저장
+        party.members[i] = { 
+          id: picked.id,
+          name: picked.name 
+        };
         supportCount++;
         assignedCount++;
         break;
@@ -753,8 +925,11 @@ function autoAssign() {
           break;
         }
         const picked = dps.splice(pickIndex, 1)[0];
-        // 공격대에는 캐릭터 이름만 저장
-        party.members[i] = { name: picked.name };
+        // 공격대에는 캐릭터 ID와 이름 저장
+        party.members[i] = { 
+          id: picked.id,
+          name: picked.name 
+        };
         assignedCount++;
         break;
       }
@@ -852,7 +1027,10 @@ function balancedAssign() {
       if (pickIndex === -1) break;
 
       const picked = supports.splice(pickIndex, 1)[0];
-      party.members[i] = picked;
+      party.members[i] = {
+        id: picked.id,
+        name: picked.name
+      };
       assignedCount++;
       placedSupports++;
     }
@@ -885,7 +1063,10 @@ function balancedAssign() {
       if (pickIndex === -1) continue;
 
       const picked = dps.splice(pickIndex, 1)[0];
-      party.members[emptyIndex] = picked;
+      party.members[emptyIndex] = {
+        id: picked.id,
+        name: picked.name
+      };
       assignedCount++;
       placedThisRound++;
 

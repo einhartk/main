@@ -279,7 +279,7 @@
                 <div class="modal-body">
                     <!-- 통계 개요 -->
                     <div class="row mb-4">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="card text-center">
                                 <div class="card-body">
                                     <h5 class="card-title text-primary" id="totalCharacters">0</h5>
@@ -287,7 +287,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="card text-center">
                                 <div class="card-body">
                                     <h5 class="card-title text-warning" id="totalSupports">0</h5>
@@ -295,7 +295,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="card text-center">
                                 <div class="card-body">
                                     <h5 class="card-title text-info" id="totalDps">0</h5>
@@ -303,7 +303,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <div class="card text-center">
                                 <div class="card-body">
                                     <h5 class="card-title text-success" id="assignedCharacters">0</h5>
@@ -311,27 +311,148 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- 역할 분포 차트 -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card">
-                                <div class="card-header">
-                                    <h6 class="mb-0">역할 분포</h6>
-                                </div>
+                        <div class="col-md-4">
+                            <div class="card text-center">
                                 <div class="card-body">
-                                    <canvas id="roleChart" width="400" height="200"></canvas>
+                                    <h5 class="card-title text-warning" id="totalEarnedGold">0</h5>
+                                    <p class="card-text">미배정 캐릭터</p>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                    </div>
+
+                    <!-- 통계 탭 -->
+                    <ul class="nav nav-tabs mb-4" id="statisticsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">개요</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="clear-gold-tab" data-bs-toggle="tab" data-bs-target="#clear-gold" type="button" role="tab" onclick="refreshExpeditionGold()">클리어 골드</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab">차트</button>
+                        </li>
+                    </ul>
+
+                    <!-- 통계 탭 내용 -->
+                    <div class="tab-content">
+                        <!-- 개요 탭 - 전체 통계 -->
+                        <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                            <!-- 통계 개요 -->
+                            <div class="row mb-4">
+                                <div class="col-md-2">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title text-primary" id="totalCharacters">0</h5>
+                                            <p class="card-text">전체 캐릭터</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title text-warning" id="totalSupports">0</h5>
+                                            <p class="card-text">서폿 캐릭터</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title text-info" id="totalDps">0</h5>
+                                            <p class="card-text">딜러 캐릭터</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title text-success" id="assignedCharacters">0</h5>
+                                            <p class="card-text">배정된 캐릭터</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title text-warning" id="totalEarnedGold">0</h5>
+                                            <p class="card-text">미배정 캐릭터</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <h5 class="card-title text-info" id="totalExpeditionGold">0%</h5>
+                                            <p class="card-text">배정 완성율</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 상세 통계 테이블 -->
                             <div class="card">
                                 <div class="card-header">
-                                    <h6 class="mb-0">클래스 분포</h6>
+                                    <h6 class="mb-0">상세 통계</h6>
                                 </div>
                                 <div class="card-body">
-                                    <canvas id="classChart" width="400" height="200"></canvas>
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>파티</th>
+                                                    <th>완성도</th>
+                                                    <th>서폿/딜러</th>
+                                                    <th>평균 레벨</th>
+                                                    <th>평균 전투력</th>
+                                                    <th>인원</th>
+                                                    <th>서폿 수</th>
+                                                    <th>상태</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="statisticsTable">
+                                                <!-- 통계 데이터가 여기에 표시됨 -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 클리어 골드 탭 -->
+                        <div class="tab-pane fade" id="clear-gold" role="tabpanel">
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h4 class="text-center mb-4">원정대별 클리어 골드 현황</h4>
+                                    <div id="expeditionGoldContainer" class="row">
+                                        <!-- 원정대별로 여기에 동적으로 생성됩니다 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 차트 탭 -->
+                        <div class="tab-pane fade" id="charts" role="tabpanel">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">역할 분포</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="roleChart" width="400" height="200"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="mb-0">클래스 분포</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <canvas id="classChart" width="400" height="200"></canvas>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -352,6 +473,7 @@
                                             <th>서폿/딜러</th>
                                             <th>평균 레벨</th>
                                             <th>평균 전투력</th>
+                                            <th>인원</th>
                                             <th>상태</th>
                                         </tr>
                                     </thead>
