@@ -1,15 +1,22 @@
 // Global State
 const state = {
+  expedition: {},
+  raid: {},
+  raidPartyCounter: {},
+  globalPartyCounter: 0,
+  lastModifiedTimes: {
+    expedition: {},
+    raid: {}
+  },
+  history: {
+    entries: [],
+    maxEntries: 50
+  },
   expeditionSlots: Array.from({length:8}, () => []),
   raidsData: [],
   selectedRaid: null,
   selectedDifficulty: null,
-  raidTabs: {},
-  raidPartyCounter: {},
-  lastModifiedTimes: {
-    expedition: {},
-    raid: {}
-  }
+  raidTabs: {}
 };
 
 
@@ -44,44 +51,68 @@ async function loadRaidsData() {
 }
 
 // 레이드 선택
-function selectRaid(raidId) {
-  const raid = state.raidsData.find(r => r.id === raidId);
-  if (raid) {
-    state.selectedRaid = raid;
-    state.selectedDifficulty = raid.difficulties[0];
-    
-    // 레이드/난이도별 데이터 구조 확인만 하고, 자동 생성은 하지 않음
-    const raidId = state.selectedRaid.id;
-    const difficultyId = state.selectedDifficulty.id;
-    if (!state.raidTabs[raidId]) state.raidTabs[raidId] = {};
-    // 데이터가 없어도 빈 배열만 설정하고 자동 생성하지 않음
-    if (!state.raidTabs[raidId][difficultyId]) {
-      state.raidTabs[raidId][difficultyId] = [];
+async function selectRaid(raidId) {
+  // 작업 잠금 확인 (안전한 확인)
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    window.modalManager.showAlert({
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
+    });
+    return;
+  }
+  
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('레이드 선택');
+  }
+  
+  if (!acquired) return;
+  
+  try {
+    const raid = state.raidsData.find(r => r.id === raidId);
+    if (raid) {
+      state.selectedRaid = raid;
+      state.selectedDifficulty = raid.difficulties[0]; // 기본 난이도 선택
+      renderRaidTabs();
+      renderRaidParties();
+      scheduleAutoSave();
     }
-    
-    applyRecommendedRequirements();
-    renderRaidTabs();
-    renderRaidParties();
-    
-    // 저장 (자동)
-    scheduleAutoSave();
+  } finally {
+    // 잠금 해제 (안전한 확인)
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('레이드 선택');
+    }
   }
 }
 
 // 난이도 선택
-function selectDifficulty(difficultyId) {
-  if (!state.selectedRaid) return;
-  const difficulty = state.selectedRaid.difficulties.find(d => d.id === difficultyId);
-  if (difficulty) {
-    state.selectedDifficulty = difficulty;
-    
-    // 난이도별 데이터 구조 확인만 하고, 자동 생성은 하지 않음
-    const raidId = state.selectedRaid.id;
-    const difficultyId = difficulty.id;
-    if (!state.raidTabs[raidId]) state.raidTabs[raidId] = {};
-    // 데이터가 없어도 빈 배열만 설정하고 자동 생성하지 않음
-    if (!state.raidTabs[raidId][difficultyId]) {
-      state.raidTabs[raidId][difficultyId] = [];
+async function selectDifficulty(difficultyId) {
+  // 작업 잠금 확인 (안전한 확인)
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    window.modalManager.showAlert({
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
+    });
+    return;
+  }
+  
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('난이도 선택');
+  }
+  
+  if (!acquired) return;
+  
+  try {
+    if (!state.selectedRaid) return;
+    const difficulty = state.selectedRaid.difficulties.find(d => d.id === difficultyId);
+    if (difficulty) {
+      state.selectedDifficulty = difficulty;
+      renderRaidTabs();
+      renderRaidParties();
+      scheduleAutoSave();
     }
     
     applyRecommendedRequirements();
@@ -90,6 +121,11 @@ function selectDifficulty(difficultyId) {
     
     // 저장 (자동)
     scheduleAutoSave();
+  } finally {
+    // 잠금 해제 (안전한 확인)
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('난이도 선택');
+    }
   }
 }
 
@@ -130,16 +166,30 @@ function getCurrentTabPartiesForStats() {
   
   // state.raidTabs에서 공격대 데이터 가져오기
   if (state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId]) {
-    console.log(`[DEBUG] state.raidTabs에서 공격대 데이터 가져옴: ${raidId}-${difficultyId}`, state.raidTabs[raidId][difficultyId]);
     return state.raidTabs[raidId][difficultyId];
   }
   
-  console.log(`[DEBUG] ${raidId}-${difficultyId} 공격대 데이터가 없음, 빈 배열 반환`);
   return [];
 }
 
-// 공격대 파티 추가
-function addRaidParty() {
+// 새로운 레이드 추가
+async function addNewRaid(skipHistory = false) {
+  // 작업 잠금 확인 (안전한 확인)
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    window.modalManager.showAlert({
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
+    });
+    return;
+  }
+  
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('레이드 추가');
+  }
+  
+  if (!acquired) return;
   if (!state.selectedRaid || !state.selectedDifficulty) {
     window.modalManager.showAlert({
       title: '알림',
@@ -160,13 +210,22 @@ function addRaidParty() {
     state.raidPartyCounter[raidId][difficultyId] = 0;
   }
   
+  // 전역 파티 카운터로 고유한 ID 생성
+  if (!state.globalPartyCounter) {
+    state.globalPartyCounter = 0;
+  }
+  state.globalPartyCounter++;
+  
   const partyId = String.fromCharCode(65 + state.raidPartyCounter[raidId][difficultyId]);
   state.raidPartyCounter[raidId][difficultyId]++;
   
-  const uniquePartyId = `${state.selectedRaid.id}-${state.selectedDifficulty.id}-${partyId}`;
+  // 전역 고유 ID 생성
+  const globalPartyId = `P${state.globalPartyCounter}`;
+  const uniquePartyId = `${state.selectedRaid.id}-${state.selectedDifficulty.id}-${globalPartyId}`;
   const newParty = {
-    id: partyId,
-    uniqueId: uniquePartyId, // 고유 ID 추가
+    id: globalPartyId, // 전역 고유 ID 사용
+    uniqueId: uniquePartyId,
+    displayName: `${state.selectedRaid.name} ${state.selectedDifficulty.name} ${partyId}`, // 표시용 이름
     name: `${state.selectedRaid.name} ${state.selectedDifficulty.name} ${partyId}`,
     raidId: state.selectedRaid.id,
     difficultyId: state.selectedDifficulty.id,
@@ -190,13 +249,34 @@ function addRaidParty() {
     state.raidTabs[raidId][difficultyId] = [];
   }
   
-  state.raidTabs[raidId][difficultyId].push(newParty);
-  console.log(`[DEBUG] 파티를 state.raidTabs에 저장:`, state.raidTabs);
-  
-  renderRaidParties();
-  
-  // 저장 (자동)
-  scheduleAutoSave();
+  // 히스토리 기록 (데이터 로드 시 제외)
+  if (!skipHistory && typeof recordHistory === 'function') {
+    await recordHistory(
+      'add',
+      {
+        type: 'party',
+        id: uniquePartyId,
+        path: `raidTabs[${raidId}][${difficultyId}][${state.raidTabs[raidId][difficultyId].length}]`
+      },
+      null,
+      newParty,
+      `${newParty.name} 파티 생성`
+    );
+  }
+
+  try {
+    state.raidTabs[raidId][difficultyId].push(newParty);
+    
+    renderRaidParties();
+    
+    // 저장 (자동)
+    scheduleAutoSave();
+  } finally {
+    // 잠금 해제 (안전한 확인)
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('레이드 추가');
+    }
+  }
 }
 
 
@@ -205,54 +285,133 @@ function addRaidParty() {
 
 
 
-// 파티 이름 업데이트
-function updatePartyName(partyId, newName) {
+// 레이드 이름 업데이트
+async function updateRaidName(partyId, newName) {
   if (!state.selectedRaid || !state.selectedDifficulty) return;
   const parties = getCurrentTabParties();
   const party = parties.find(p => p.id === partyId);
   if (party) {
+    const oldName = party.name;
+    
+    // 히스토리 기록
+    await recordHistory(
+      'update',
+      {
+        type: 'party',
+        id: partyId,
+        path: `party.name`
+      },
+      { name: oldName },
+      { name: newName },
+      `${partyId} 파티 이름 변경: "${oldName}" → "${newName}"`
+    );
+    
     party.name = newName;
     renderRaidParties();
-    schedulePartyConfigSave();
+    scheduleAutoSave();
   }
 }
 
-// 파티 요구사항 업데이트
-function updatePartyRequirements(partyId, requirementType, value) {
+// 레이드 요구사항 업데이트
+function updateRaidRequirements(partyId, requirementType, value) {
   const parties = getCurrentTabParties();
   const party = parties.find(p => p.id === partyId);
   if (party) {
-    party[requirementType] = parseInt(value) || 0;
+    const oldValue = party[requirementType] || 0;
+    const newValue = parseInt(value) || 0;
+    
+    // 히스토리 기록
+    recordHistory(
+      'update',
+      {
+        type: 'party',
+        id: partyId,
+        path: `party.${requirementType}`
+      },
+      { [requirementType]: oldValue },
+      { [requirementType]: newValue },
+      `${partyId} 파티 ${requirementType} 변경: ${oldValue} → ${newValue}`
+    );
+    
+    party[requirementType] = newValue;
     renderRaidParties();
     schedulePartyConfigSave();
   }
 }
 
-// 파티 크기 변경
-function updatePartySize(partyId, size) {
+// 레이드 크기 변경
+function updateRaidSize(partyId, size) {
   const parties = getCurrentTabParties();
   const party = parties.find(p => p.id === partyId);
   
   if (!party || party.size === size) return;
+  
+  // 8명에서 4명으로 변경할 때 확인 필요
+  if (party.size === 8 && size === 4) {
+    const occupiedSlots = party.members.filter(m => m !== null).length;
+    if (occupiedSlots > 4) {
+      window.modalManager.showAlert({
+        title: '경고',
+        message: `현재 ${occupiedSlots}명의 캐릭터가 배치되어 있습니다. 4명으로 변경하면 ${occupiedSlots - 4}명의 캐릭터가 제거됩니다. 계속하시겠습니까?`,
+        showConfirm: true,
+        onConfirm: () => {
+          performRaidSizeChange(party, size);
+        }
+      });
+      return;
+    }
+  }
+  
+  performRaidSizeChange(party, size);
+}
+
+// 실제 레이드 크기 변경 수행
+function performRaidSizeChange(party, size) {
+  const oldSize = party.size;
   
   party.size = size;
   
   if (size > party.members.length) {
     party.members.push(...Array(size - party.members.length).fill(null));
   } else {
+    // 잘려나가는 멤버들 기록 (히스토리용)
+    const removedMembers = party.members.slice(size);
+    
+    // 멤버 자르기
     party.members = party.members.slice(0, size);
+    
+    // 제거된 멤버 히스토리 기록
+    if (removedMembers.some(m => m !== null)) {
+      recordHistory(
+        'remove_members',
+        {
+          type: 'raid',
+          id: party.id,
+          path: `raidMembers[${party.id}]`
+        },
+        removedMembers,
+        null,
+        `${party.id} 레이드 크기 변경: ${oldSize}명 → ${size}명 (${removedMembers.filter(m => m !== null).length}명 제거)`
+      );
+    }
   }
   
-  party.maxSupports = 1; // 파티당 항상 1서폿
+  party.maxSupports = 1; // 레이드당 항상 1서폿
   renderRaidParties();
   schedulePartyConfigSave();
+  
+  // 크기 변경 완료 알림
+  window.modalManager.showAlert({
+    title: '레이드 크기 변경 완료',
+    message: `레이드 크기가 ${oldSize}명에서 ${size}명으로 변경되었습니다.`
+  });
 }
 
-async function setPartySize(partyId, size) {
+async function setRaidSize(partyId, size) {
   // 충돌 감지
   if (!window.realtimeSync || !window.realtimeSync.isSyncActive()) {
     // 일반 모드에서는 바로 실행
-    updatePartySize(partyId, size);
+    updateRaidSize(partyId, size);
     // 저장
     scheduleAutoSave();
     return;
@@ -272,8 +431,10 @@ async function setPartySize(partyId, size) {
     // 편집 잠금 설정
     await window.realtimeSync.setEditLock();
     
-    // 편집 실행
-    updatePartySize(partyId, size);
+    // 편집 실행 (동기화 모드에서는 확인 없이 바로 실행)
+    const parties = getCurrentTabParties();
+    const party = parties.find(p => p.id === partyId);
+    performRaidSizeChange(party, size);
     
     // 잠금 해제
     await window.realtimeSync.clearEditLock();
@@ -294,17 +455,69 @@ async function setPartySize(partyId, size) {
   }
 }
 
-// 파티 제거
-async function removeRaidParty(partyId) {
+// 레이드 제거
+async function removeRaid(partyId) {
+  console.log('🗑️ [REMOVE] Attempting to remove party:', partyId);
+  
+  // 작업 잠금 확인 (안전한 확인)
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    window.modalManager.showAlert({
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
+    });
+    return;
+  }
+  
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('레이드 삭제');
+  }
+  
+  if (!acquired) return;
+  
   // 충돌 감지
   if (!window.realtimeSync || !window.realtimeSync.isSyncActive()) {
     // 일반 모드에서는 바로 실행
     const parties = getCurrentTabParties();
+    console.log('🗑️ [REMOVE] Current parties before removal:', parties.map(p => p.id));
+    
     const index = parties.findIndex(p => p.id === partyId);
+    console.log('🗑️ [REMOVE] Party index to remove:', index);
+    
     if (index !== -1) {
+      const removedParty = parties[index];
+      console.log('🗑️ [REMOVE] Party to remove:', removedParty);
+      
+      // 히스토리 기록
+      if (typeof recordHistory === 'function') {
+        await recordHistory(
+          'delete',
+          {
+            type: 'party',
+            id: partyId,
+            path: `parties[${index}]`
+          },
+          removedParty,
+          null,
+          `${partyId} 파티 삭제`
+        );
+      }
+      
       parties.splice(index, 1);
-      renderRaidParties();
-      scheduleAutoSave();
+      console.log('🗑️ [REMOVE] Parties after splice:', parties.map(p => p.id));
+      
+      try {
+        renderRaidParties();
+        scheduleAutoSave();
+      } finally {
+        // 잠금 해제
+        operationLock.release('파티 삭제');
+      }
+    } else {
+      console.log('🗑️ [REMOVE] Party not found with ID:', partyId);
+      // 잠금 해제
+      operationLock.release('파티 삭제');
     }
     return;
   }
@@ -325,10 +538,36 @@ async function removeRaidParty(partyId) {
     
     // 편집 실행
     const parties = getCurrentTabParties();
+    console.log('🗑️ [REMOVE SYNC] Current parties before removal:', parties.map(p => p.id));
+    
     const index = parties.findIndex(p => p.id === partyId);
+    console.log('🗑️ [REMOVE SYNC] Party index to remove:', index);
+    
     if (index !== -1) {
+      const removedParty = parties[index];
+      console.log('🗑️ [REMOVE SYNC] Party to remove:', removedParty);
+      
+      // 히스토리 기록
+      if (typeof recordHistory === 'function') {
+        await recordHistory(
+          'delete',
+          {
+            type: 'party',
+            id: partyId,
+            path: `parties[${index}]`
+          },
+          removedParty,
+          null,
+          `${partyId} 파티 삭제 (실시간 동기화)`
+        );
+      }
+      
       parties.splice(index, 1);
+      console.log('🗑️ [REMOVE SYNC] Parties after splice:', parties.map(p => p.id));
+      
       renderRaidParties();
+    } else {
+      console.log('🗑️ [REMOVE SYNC] Party not found with ID:', partyId);
     }
     
     // 잠금 해제
@@ -347,6 +586,11 @@ async function removeRaidParty(partyId) {
       title: '오류',
       message: '파티 제거 중 오류가 발생했습니다: ' + error.message
     });
+  } finally {
+    // 작업 잠금 해제 (안전한 확인)
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('레이드 삭제');
+    }
   }
 }
 
@@ -396,9 +640,29 @@ async function saveCharacterEdit() {
   saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>저장 중...';
   
   try {
+    // 히스토리 기록 (수정 전 데이터)
+    const oldCharacter = { ...character };
+    const newCombatPower = document.getElementById('editCombatPower').value || '0';
+    const newRole = document.querySelector('input[name="editRole"]:checked').value;
+    
     // 정보 업데이트
-    character.combatPower = document.getElementById('editCombatPower').value || '0';
-    character.role = document.querySelector('input[name="editRole"]:checked').value;
+    character.combatPower = newCombatPower;
+    character.role = newRole;
+    
+    // 히스토리 기록
+    if (typeof recordHistory === 'function') {
+      recordHistory(
+        'update',
+        {
+          type: 'character',
+          id: `expeditionSlot_${expeditionIndex}_${characterIndex}`,
+          path: `expeditionSlots[${expeditionIndex}][${characterIndex}]`
+        },
+        oldCharacter,
+        { ...character },
+        `원정대 슬롯 ${expeditionIndex + 1} 캐릭터 ${character.name} 정보 수정`
+      );
+    }
     
     // UI 업데이트
     renderExpedition();
@@ -447,6 +711,263 @@ function showRaidListModal() {
   renderRaidListModal();
   const modal = new bootstrap.Modal(document.getElementById('raidListModal'));
   modal.show();
+}
+
+// 홍보글 생성 함수
+function generatePromotionText() {
+  try {
+    // 각 원정대별 최고 레벨 캐릭터 찾기
+    const expeditionTopChars = [];
+    
+    for (let i = 0; i < 8; i++) {
+      const expeditionChars = state.expeditionSlots[i] || [];
+      let topChar = null;
+      let maxIlvl = 0;
+      
+      expeditionChars.forEach(char => {
+        if (char && char.ilvl) {
+          const ilvl = parseInt(char.ilvl.replace(/,/g, ''));
+          if (ilvl > maxIlvl) {
+            maxIlvl = ilvl;
+            topChar = char;
+          }
+        }
+      });
+      
+      if (topChar) {
+        expeditionTopChars.push({
+          expeditionNum: i + 1,
+          char: topChar,
+          ilvl: maxIlvl
+        });
+      }
+    }
+    
+    // 아이템 레벨 기준으로 정렬
+    expeditionTopChars.sort((a, b) => b.ilvl - a.ilvl);
+    
+    // 홍보글 템플릿
+    let promotionText = `<<<직장인 공대 워or붕쯔 모집>> 5000+(유도리o)
+:__~234: 요일 : 수,목  21:30~01:00
+:__~234: 철새 찍먹 사절 + 찐득하게 할분만 + 야행성 환영
+:__~234: 레이드를 되도록 같이 즐길 곳을 찾는분
+:__~234: 필수: 윗레이드4개(본캐,부캐) 필수 그 외 자율`;
+    
+    // 원정대별 캐릭터 정보 추가 (좌우 4명씩 배치)
+    const leftSide = [];
+    const rightSide = [];
+    
+    expeditionTopChars.forEach((exp, index) => {
+      const lineNum = 1766 - index;
+      const charName = exp.char.name || '알 수 없음';
+      const charClass = exp.char.class || '알 수 없음';
+      const ilvl = exp.ilvl.toLocaleString();
+      
+      const charInfo = `${lineNum}: ${charName}.${ilvl}`;
+      
+      if (index < 4) {
+        leftSide.push(charInfo);
+      } else {
+        rightSide.push(charInfo);
+      }
+    });
+    
+    // 좌우 4명씩 배치하여 추가
+    const maxLines = Math.max(leftSide.length, rightSide.length);
+    for (let i = 0; i < maxLines; i++) {
+      const leftText = leftSide[i] || '';
+      const rightText = rightSide[i] || '';
+      
+      if (leftText && rightText) {
+        promotionText += `
+${leftText}       ${rightText}`;
+      } else if (leftText) {
+        promotionText += `
+${leftText}`;
+      } else if (rightText) {
+        promotionText += `
+${rightText}`;
+      }
+    }
+    
+    // 워디 정보 추가 (워딘이 있으면 마지막 줄에 추가)
+    const wodiIndex = expeditionTopChars.findIndex(exp => exp.char.class && exp.char.class.includes('워딘'));
+    if (wodiIndex !== -1) {
+      const wodiLineNum = 1766 - expeditionTopChars.length;
+      promotionText += `
+     워or디           ${wodiLineNum}: 건슬.5241`;
+    }
+    
+    // 마무리 문구
+    promotionText += `
+
+새 공대원 적극 환영!! 본캐점수보다 원정대체급선호!!`;
+    
+    // 모달로 홍보글 표시
+    showPromotionModal(promotionText);
+    
+  } catch (error) {
+    console.error('홍보글 생성 중 오류 발생:', error);
+    alert('홍보글 생성 중 오류가 발생했습니다.');
+  }
+}
+
+// 홍보글 모달 표시 함수
+function showPromotionModal(text) {
+  const modalHtml = `
+    <div class="modal fade" id="promotionModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-megaphone me-2"></i>공대 홍보글
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <button class="btn btn-primary" onclick="copyPromotionText()">
+                <i class="bi bi-clipboard"></i> 복사하기
+              </button>
+              <button class="btn btn-secondary" onclick="downloadPromotionText()">
+                <i class="bi bi-download"></i> 다운로드
+              </button>
+            </div>
+            <textarea class="form-control" id="promotionText" rows="15" readonly>${text}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // 기존 모달이 있으면 제거
+  const existingModal = document.getElementById('promotionModal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // 새 모달 추가
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // 모달 표시
+  const modal = new bootstrap.Modal(document.getElementById('promotionModal'));
+  modal.show();
+  
+  // 모달 닫힐 때 제거
+  document.getElementById('promotionModal').addEventListener('hidden.bs.modal', function() {
+    this.remove();
+  });
+}
+
+// 홍보글 복사 함수
+function copyPromotionText() {
+  const textArea = document.getElementById('promotionText');
+  if (textArea) {
+    textArea.select();
+    document.execCommand('copy');
+    
+    // 복사 성공 알림
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check"></i> 복사됨!';
+    button.classList.remove('btn-primary');
+    button.classList.add('btn-success');
+    
+    setTimeout(() => {
+      button.innerHTML = originalText;
+      button.classList.remove('btn-success');
+      button.classList.add('btn-primary');
+    }, 2000);
+  }
+}
+
+// 홍보글 다운로드 함수
+function downloadPromotionText() {
+  const text = document.getElementById('promotionText').value;
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `공대_홍보글_${new Date().toLocaleDateString().replace(/\//g, '-')}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+  setTimeout(() => {
+    a.remove();
+  }, 0);
+}
+
+// 공대 리스트 스크린샷 함수
+function captureRaidList() {
+  // html2canvas 라이브러리 로드 확인
+  if (typeof html2canvas === 'undefined') {
+    // 라이브러리가 없으면 동적으로 로드
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.onload = function() {
+      captureRaidListWithLibrary();
+    };
+    document.head.appendChild(script);
+  } else {
+    captureRaidListWithLibrary();
+  }
+}
+
+// html2canvas로 스크린샷 촬영
+function captureRaidListWithLibrary() {
+  try {
+    const element = document.getElementById('raidListContent');
+    if (!element) {
+      alert('공대 리스트를 찾을 수 없습니다.');
+      return;
+    }
+
+    // 스크린샷 버튼 숨기기
+    const buttons = document.querySelector('#raidListModal .modal-body .mb-3');
+    const originalDisplay = buttons ? buttons.style.display : '';
+    if (buttons) {
+      buttons.style.display = 'none';
+    }
+
+    // html2canvas로 캡처
+    html2canvas(element, {
+      backgroundColor: '#ffffff',
+      scale: 2, // 고화질
+      logging: false,
+      useCORS: true,
+      allowTaint: true
+    }).then(canvas => {
+      // 버튼 다시 보이기
+      if (buttons) {
+        buttons.style.display = originalDisplay;
+      }
+
+      // 캔버스를 이미지로 변환하여 다운로드
+      canvas.toBlob(function(blob) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `공대_리스트_${new Date().toLocaleDateString().replace(/\//g, '-')}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 'image/png');
+
+    }).catch(error => {
+      // 버튼 다시 보이기
+      if (buttons) {
+        buttons.style.display = originalDisplay;
+      }
+      console.error('스크린샷 생성 중 오류 발생:', error);
+      alert('스크린샷 생성 중 오류가 발생했습니다.');
+    });
+
+  } catch (error) {
+    console.error('스크린샷 함수 실행 중 오류:', error);
+    alert('스크린샷 기능을 실행할 수 없습니다.');
+  }
 }
 
 function renderRaidListModal() {
@@ -608,17 +1129,25 @@ function showStatisticsModal() {
 
 // 초기화
 async function initializeRaids() {
-  await loadRaidsData();
+  // loadRaidsData가 이미 호출되었는지 확인
+  if (!state.raidsData || state.raidsData.length === 0) {
+    await loadRaidsData();
+  }
   if (!state.selectedRaid || !state.selectedDifficulty) return;
   
   renderRaidTabs();
   
-  // 레드 크기에 따라 파티 자동 생성
+  // 레드 크기에 따라 파티 자동 생성 (이미 파티가 없는 경우에만)
   const raidSize = state.selectedRaid.size || 4;
-  const partyCount = raidSize === 8 ? 2 : 1;
+  const expectedPartyCount = raidSize === 8 ? 2 : 1;
+  const currentParties = getCurrentTabParties();
   
-  for (let i = 0; i < partyCount; i++) {
-    addRaidParty();
+  // 현재 파티 수가 예상보다 적을 때만 생성
+  if (currentParties.length < expectedPartyCount) {
+    const partiesToAdd = expectedPartyCount - currentParties.length;
+    for (let i = 0; i < partiesToAdd; i++) {
+      addNewRaid(true);  // 데이터 로드 시 히스토리 기록 건너뜀
+    }
   }
   
   applyRecommendedRequirements();
@@ -629,36 +1158,27 @@ async function initializeRaids() {
 // DB에서 데이터 불러오기 (Realtime Database)
 async function loadFromDatabase() {
   try {
-    console.log('🔄 [LOAD] Starting data load from Realtime Database...');
-    console.log('🔄 [LOAD] Current expeditionSlots before load:', state.expeditionSlots);
-    
+        
     // URL에서 동기화 코드 확인
     const syncCode = window.realtimeSync.getSyncCode();
-    console.log('🔄 [LOAD] Sync code from URL:', syncCode);
-    
+        
     let dataPath;
     let snapshot;
     
     if (syncCode) {
       // 동기화 코드가 있으면 syncSessions에서 데이터 조회
       dataPath = `syncSessions/${syncCode}`;
-      console.log('🔄 [LOAD] Loading from sync session path:', dataPath);
-      snapshot = await realtimeDB.ref(dataPath).once('value');
+            snapshot = await realtimeDB.ref(dataPath).once('value');
     } else {
       // 동기화 코드가 없으면 일반 데이터 경로에서 조회
       dataPath = 'raidData/currentData';
-      console.log('🔄 [LOAD] Loading from default path:', dataPath);
-      snapshot = await realtimeDB.ref(dataPath).once('value');
+            snapshot = await realtimeDB.ref(dataPath).once('value');
     }
     
-    console.log('🔍 [LOAD] Snapshot exists:', snapshot.exists());
-    console.log('🔍 [LOAD] Data path used:', dataPath);
-    
+        
     if (snapshot.exists()) {
       const data = snapshot.val();
-      console.log('📥 [LOAD] Raw data from Realtime Database:', data);
-      console.log('📥 [LOAD] Data keys:', Object.keys(data));
-      
+            
       // 동기화 세션인 경우 compressed data (d)에서 추출
       let expeditionData = null;
       let raidTabsData = null;
@@ -666,27 +1186,19 @@ async function loadFromDatabase() {
       
       if (syncCode && data.d) {
         // 동기화 세션 데이터 (compressed format)
-        console.log('📥 [LOAD] Found sync session data, extracting from compressed format');
         const compressedData = data.d;
-        console.log('📥 [LOAD] Compressed data structure:', compressedData);
         
         expeditionData = compressedData.es; // expeditionSlots
         raidTabsData = compressedData.rt; // raidTabs
         selectedRaidData = compressedData.sr; // selectedRaid
         
-        console.log('📥 [LOAD] Extracted expedition data (es):', expeditionData);
-        console.log('📥 [LOAD] Extracted raid tabs data (rt):', raidTabsData);
-        console.log('📥 [LOAD] Extracted selected raid data (sr):', selectedRaidData);
-      } else if (!syncCode) {
+              } else if (!syncCode) {
         // 일반 데이터
-        console.log('📥 [LOAD] Found regular data format');
-        expeditionData = data.es;
+                expeditionData = data.es;
         raidTabsData = data.rt;
         selectedRaidData = data.sr;
       } else {
-        console.log('⚠️ [LOAD] Unexpected data format for sync session');
-        console.log('⚠️ [LOAD] Available keys:', Object.keys(data));
-      }
+              }
       
       // raidTabs 복원
       if (raidTabsData) {
@@ -698,10 +1210,44 @@ async function loadFromDatabase() {
           Object.keys(state.raidTabs).forEach(raidId => {
             Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
               const parties = state.raidTabs[raidId][difficultyId];
+              
+              // raidPartyCounter 초기화 (이미 초기화되었는지 확인)
+              if (!state.raidPartyCounter[raidId]) {
+                state.raidPartyCounter[raidId] = {};
+              }
+              if (!state.raidPartyCounter[raidId][difficultyId]) {
+                state.raidPartyCounter[raidId][difficultyId] = 0;
+              }
+              
+              // 전역 파티 카운터 초기화
+              if (!state.globalPartyCounter) {
+                state.globalPartyCounter = 0;
+              }
+              
+              // 기존 파티 ID를 고유하게 업데이트
               parties.forEach(party => {
                 party.raidId = raidId;
                 party.difficultyId = difficultyId;
-                party.uniqueId = `${raidId}-${difficultyId}-${party.id}`; // 고유 ID 설정
+                
+                // 기존 파티가 단일 문자 ID(A, B 등)인 경우 고유 ID로 변경
+                if (party.id && party.id.length === 1 && /^[A-Z]$/.test(party.id)) {
+                  // 전역 고유 ID 생성
+                  state.globalPartyCounter++;
+                  const newGlobalId = `P${state.globalPartyCounter}`;
+                  const oldId = party.id;
+                  
+                  // ID 업데이트
+                  party.id = newGlobalId;
+                  party.uniqueId = `${raidId}-${difficultyId}-${newGlobalId}`;
+                  party.displayName = party.name; // 기존 이름을 displayName로 저장
+                  party.name = `${party.raidName || raidId} ${party.difficultyName || difficultyId} ${oldId}`;
+                }
+                
+                // uniqueId가 없을 때만 설정 (중복 방지)
+                if (!party.uniqueId) {
+                  party.uniqueId = `${raidId}-${difficultyId}-${party.id}`;
+                }
+                
                 // raidName과 difficultyName도 설정
                 const raid = state.raidsData?.find(r => r.id === raidId);
                 const difficulty = raid?.difficulties?.find(d => d.id === difficultyId);
@@ -803,7 +1349,10 @@ window.addEventListener('load', function() {
     window.realtimeSync.init(syncCode);
     
     // 동기화 모드에서도 기본 초기화는 필요
-    initializeRaids();
+    // 단, 이미 초기화되었는지 확인
+    if (!state.raidsData || state.raidsData.length === 0) {
+      initializeRaids();
+    }
   } else {
     // 일반 초기화
     initializeRaids();
@@ -827,15 +1376,33 @@ function toggleExpeditionPanel() {
 
 
 // 자동 추천 기능
-function autoAssign() {
-  const parties = getCurrentTabParties();
-  if (parties.length === 0) {
+async function autoAssign() {
+  // 작업 잠금 확인 (안전한 확인)
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
     window.modalManager.showAlert({
-      title: '알림',
-      message: '먼저 공격대 파티를 생성해주세요.'
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
     });
     return;
   }
+  
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('자동 추천');
+  }
+  
+  if (!acquired) return;
+  
+  try {
+    const parties = getCurrentTabParties();
+    if (parties.length === 0) {
+      window.modalManager.showAlert({
+        title: '알림',
+        message: '먼저 공격대 파티를 생성해주세요.'
+      });
+      return;
+    }
 
   // 원정대에서 사용 가능한 캐릭터 수집 (제약 조건 적용)
   const allCharacters = Constraints.getAvailableCharacters();
@@ -852,25 +1419,12 @@ function autoAssign() {
   const supports = allCharacters.filter(char => char.role === 'support');
   const dps = allCharacters.filter(char => char.role === 'dps');
 
-  // 각 파티에 캐릭터 배치
   let assignedCount = 0;
-  parties.forEach(party => {
-    // 기존 배치를 유지하면서 size에 맞게 members 길이만 보정
-    if (!Array.isArray(party.members)) party.members = [];
-    if (party.members.length < party.size) {
-      party.members = party.members.concat(Array(party.size - party.members.length).fill(null));
-    } else if (party.members.length > party.size) {
-      party.members = party.members.slice(0, party.size);
-    }
-    
-    // 서폿 우선 배치 (파티당 최대 서폿 수) - 기존 배치 포함
-    // 공격대에 저장된 이름으로 원정대에서 상세 정보를 가져와서 역할 확인
-    let supportCount = (party.members || []).filter(m => {
-      if (!m) return false;
-      const charDetails = getCharacterDetailsFromExpedition(m.name);
-      return charDetails?.role === 'support';
-    }).length;
+  let supportCount = 0;
 
+  // 각 파티에 캐릭터 배치
+  parties.forEach(party => {
+    // 유틸리티 함수: 원정대 슬롯 인덱스 가져오기
     const getUsedExpeditionSlotIndices = () => {
       const used = new Set();
       (party.members || []).forEach(m => {
@@ -880,7 +1434,7 @@ function autoAssign() {
       });
       return used;
     };
-    
+      
     // 서폿 배치 (제약 조건 확인) - 빈 슬롯만 채움
     for (let i = 0; i < party.size && supportCount < party.maxSupports && supports.length > 0; i++) {
       if (party.members[i]) continue;
@@ -908,7 +1462,7 @@ function autoAssign() {
         break;
       }
     }
-    
+      
     // DPS 배치 (제약 조건 확인) - 빈 슬롯만 채움
     for (let i = 0; i < party.size && dps.length > 0; i++) {
       if (party.members[i]) continue;
@@ -947,17 +1501,41 @@ function autoAssign() {
     title: '자동 추천 완료',
     message: `${assignedCount}명의 캐릭터를 공격대에 배치했습니다.\n서폿 우선 배치: ${supports.length}명 남음\nDPS 배치: ${dps.length}명 남음\n(모든 제약 조건 적용 완료)`
   });
+  } finally {
+    // 잠금 해제 (안전한 확인)
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('자동 추천');
+    }
+  }
 }
 
-function balancedAssign() {
-  const parties = getCurrentTabParties();
-  if (parties.length === 0) {
+async function balancedAssign() {
+  // 작업 잠금 확인 (안전한 확인)
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
     window.modalManager.showAlert({
-      title: '알림',
-      message: '먼저 공격대 파티를 생성해주세요.'
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
     });
     return;
   }
+  
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('균등 분배');
+  }
+  
+  if (!acquired) return;
+  
+  try {
+    const parties = getCurrentTabParties();
+    if (parties.length === 0) {
+      window.modalManager.showAlert({
+        title: '알림',
+        message: '먼저 공격대 파티를 생성해주세요.'
+      });
+      return;
+    }
 
   // 원정대에서 사용 가능한 캐릭터 수집 (제약 조건 적용)
   const allCharacters = Constraints.getAvailableCharacters();
@@ -1027,10 +1605,28 @@ function balancedAssign() {
       if (pickIndex === -1) break;
 
       const picked = supports.splice(pickIndex, 1)[0];
-      party.members[i] = {
+      const oldMember = party.members[i];
+      const newMember = {
         id: picked.id,
         name: picked.name
       };
+      
+      // 히스토리 기록
+      if (typeof recordHistory === 'function') {
+        recordHistory(
+          'add',
+          {
+            type: 'character',
+            id: `${party.id}_slot${i}`,
+            path: `party.members[${i}]`
+          },
+          oldMember,
+          newMember,
+          `균등 배치: ${party.id} 파티 ${i}번 슬롯에 ${picked.name} 캐릭터 추가`
+        );
+      }
+      
+      party.members[i] = newMember;
       assignedCount++;
       placedSupports++;
     }
@@ -1063,10 +1659,28 @@ function balancedAssign() {
       if (pickIndex === -1) continue;
 
       const picked = dps.splice(pickIndex, 1)[0];
-      party.members[emptyIndex] = {
+      const oldMember = party.members[emptyIndex];
+      const newMember = {
         id: picked.id,
         name: picked.name
       };
+      
+      // 히스토리 기록
+      if (typeof recordHistory === 'function') {
+        recordHistory(
+          'add',
+          {
+            type: 'character',
+            id: `${party.id}_slot${emptyIndex}`,
+            path: `party.members[${emptyIndex}]`
+          },
+          oldMember,
+          newMember,
+          `균등 배치: ${party.id} 파티 ${emptyIndex}번 슬롯에 ${picked.name} 캐릭터 추가`
+        );
+      }
+      
+      party.members[emptyIndex] = newMember;
       assignedCount++;
       placedThisRound++;
 
@@ -1106,4 +1720,10 @@ function balancedAssign() {
     title: '균등 분배 완료',
     message: `${assignedCount}명의 캐릭터를 균등하게 분배했습니다.\n\n${statsMessage}\n\n(모든 제약 조건 적용 완료)`
   });
+  } finally {
+    // 잠금 해제 (안전한 확인)
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('균등 분배');
+    }
+  }
 }

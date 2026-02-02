@@ -205,8 +205,7 @@ class RealtimeSync {
         // Realtime Database 사용으로 복원
         this.dbRef = realtimeDB.ref(`syncSessions/${syncCode}`);
         
-        console.log(`🔄 [SYNC] Initializing sync with code: ${syncCode} (using Realtime Database)`);
-        
+                
         // 데이터 변경 감지 리스너
         // IMPORTANT: 루트(value) 구독은 editLock/users 같은 부수 데이터 변경에도 매번 호출되어
         //            아직 업데이트되지 않은 d(이전 값)로 UI가 롤백되는 문제가 생김.
@@ -234,15 +233,13 @@ class RealtimeSync {
         this.setupAutoSync();
         
         this.isConnected = true;
-        console.log(`✅ [SYNC] Realtime sync initialized for code: ${syncCode}`);
     }
 
     // 원격 데이터 처리 - 역직렬화 버전
     handleRemoteUpdate(data) {
         if (!data) return;
         
-        console.log('📥 [SYNC] Received remote update');
-        
+                
         // 역직렬화
         if (data.d) { // compressed data
             const compressedData = data.d;
@@ -301,8 +298,7 @@ class RealtimeSync {
             if (!updateUser) return;
             if (updateUser === this.currentUser) return;
 
-            // 조용히 로그만 남김 (UI 토스트 등은 추후 확장 가능)
-            console.log(`🔔 [SYNC] Updated by: ${updateUser}`);
+            // 조용히 처리 (UI 토스트 등은 추후 확장 가능)
         } catch (e) {
             console.log('⚠️ [SYNC] showUpdateNotification failed', e);
         }
@@ -349,8 +345,7 @@ class RealtimeSync {
             }
         }, 30000);
         
-        console.log(`👤 [SYNC] User presence registered: ${this.getDisplayName()}`);
-    }
+            }
     
     // 표시 이름 가져오기
     getDisplayName() {
@@ -393,8 +388,7 @@ class RealtimeSync {
                 // 잠금 시간이 지났 경우 잠금 해제
                 if (now - lockTime > lockTimeout) {
                     await lockRef.remove();
-                    console.log('🔓 [SYNC] Edit lock expired and cleared');
-                    return true;
+                                        return true;
                 }
                 
                 // 다른 사용자가 편집 중인 경우
@@ -403,8 +397,7 @@ class RealtimeSync {
 
                 // base user가 다를 때만 타인으로 간주
                 if (lockOwnerBase && meBase && lockOwnerBase !== meBase) {
-                    console.log(`🔒 [SYNC] Edit conflict: ${lockData.user} is editing`);
-                    return false;
+                                        return false;
                 }
             }
             
@@ -434,8 +427,7 @@ class RealtimeSync {
                 this.clearEditLock();
             }, 30000);
             
-            console.log(`🔒 [SYNC] Edit lock set by ${this.currentUser}`);
-        } catch (error) {
+                    } catch (error) {
             console.error('❌ [SYNC] Error setting edit lock:', error);
         }
     }
@@ -456,16 +448,14 @@ class RealtimeSync {
                 this.editLockTimeout = null;
             }
             
-            console.log(`🔓 [SYNC] Edit lock cleared by ${this.currentUser}`);
-        } catch (error) {
+                    } catch (error) {
             console.error('❌ [SYNC] Error clearing edit lock:', error);
         }
     }
 
     // 자동 동기화 설정
     setupAutoSync() {
-        console.log('🔄 [SYNC] Setting up auto-sync...');
-        
+                
         // 기존 렌더링 함수를 래핑하여 동기화 추가 (자동 저장 제거)
         const originalRenderRaidParties = window.renderRaidParties;
         window.renderRaidParties = function() {
@@ -479,8 +469,7 @@ class RealtimeSync {
             // 자동 저장 제거 - 사용자가 직접 저장해야 함
         };
         
-        console.log('🔄 [SYNC] Auto-sync setup completed (manual save only)');
-    }
+            }
 
     // Firebase에 데이터 동기화 (Realtime Database) - 문자열 직렬화 버전
     syncToFirebase() {
@@ -505,7 +494,6 @@ class RealtimeSync {
         });
         
         this.lastSyncTime = Date.now();
-        console.log(`📤 [SYNC] Serialized data synced (${JSON.stringify(compressedData).length} chars)`);
         return p;
     }
 
@@ -589,8 +577,7 @@ class RealtimeSync {
             lastSyncTime: this.lastSyncTime
         };
         
-        console.log('🔍 [SYNC] Connection Status:', status);
-        
+                
         // UI에 상태 표시
         const syncStatus = document.getElementById('syncStatus');
         if (syncStatus) {
@@ -615,12 +602,10 @@ class RealtimeSync {
     // 동기화 테스트
     async testSync() {
         if (!window.realtimeSync || !window.realtimeSync.isSyncActive()) {
-            console.log('❌ [SYNC TEST] 동기화가 활성화되지 않았습니다.');
-            return false;
+                        return false;
         }
         
-        console.log('🧪 [SYNC TEST] 동기화 테스트 시작...');
-        
+                
         try {
             // 테스트 데이터 전송
             const testData = {
@@ -630,16 +615,12 @@ class RealtimeSync {
             };
             
             await window.realtimeSync.dbRef.child('test').set(testData);
-            console.log('✅ [SYNC TEST] 테스트 데이터 전송 성공');
-            
+                        
             // 3초 후 데이터 확인
             setTimeout(() => {
                 window.realtimeSync.dbRef.child('test').once('value', (snapshot) => {
                     if (snapshot.exists()) {
-                        console.log('✅ [SYNC TEST] 테스트 데이터 수신 성공:', snapshot.val());
-                    } else {
-                        console.log('❌ [SYNC TEST] 테스트 데이터 수신 실패');
-                    }
+                                            }
                 });
             }, 3000);
             
@@ -683,8 +664,7 @@ class RealtimeSync {
             syncStatus.style.display = 'none';
         }
         
-        console.log('🔌 [SYNC] Disconnected from realtime sync');
-    }
+            }
 
     // 동기화 상태 확인
     isSyncActive() {
@@ -704,12 +684,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // URL 파라미터 확인
     const syncCode = window.realtimeSync.getSyncCode();
     if (syncCode) {
-        console.log(`🔄 [SYNC] Found sync code in URL: ${syncCode}`);
-        window.realtimeSync.init(syncCode);
+                window.realtimeSync.init(syncCode);
     } else {
         // URL에 동기화 코드가 없으면 자동으로 세션 생성
-        console.log('🔄 [SYNC] No sync code found, creating auto-sync session...');
-        window.realtimeSync.createSession();
+                window.realtimeSync.createSession();
     }
 });
 

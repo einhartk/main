@@ -66,27 +66,45 @@ function handleDragStart(event, charId, fromRaid, partyId, slotIndex, expedition
   
   // ID만 전송
   event.dataTransfer.setData('text/plain', charId);
-  event.target.classList.add('dragging');
+  if (event.target && event.target.classList) {
+    event.target.classList.add('dragging');
+  }
 }
 
 function handleDragEnd(event) {
-  event.target.classList.remove('dragging');
+  if (event.target && event.target.classList) {
+    event.target.classList.remove('dragging');
+  }
+  // 드래그 데이터 초기화
   draggedData = null;
 }
 
 function handleDragOver(event) {
   event.preventDefault();
-  event.currentTarget.classList.add('dragover');
+  if (event.currentTarget && event.currentTarget.classList) {
+    event.currentTarget.classList.add('dragover');
+  }
 }
 
-function handleDrop(event, partyId, slotIndex) {
+async function handleDrop(event, partyId, slotIndex) {
   event.preventDefault();
-  event.currentTarget.classList.remove('dragover');
+  event.stopPropagation(); // 이벤트 버블링 방지
+  
+  if (event.currentTarget && event.currentTarget.classList) {
+    event.currentTarget.classList.remove('dragover');
+  }
   
   if (!draggedData) return;
   
   const charId = event.dataTransfer.getData('text/plain');
   if (!charId) return;
+  
+  // 중복 실행 방지 (드래그 데이터 초기화)
+  if (draggedData.processed) {
+    console.log('🔄 [DROP] Already processed, skipping');
+    return;
+  }
+  draggedData.processed = true;
   
   try {
     // 원정대에서 온 캐릭터인 경우 공격대에 추가
@@ -104,7 +122,6 @@ function handleDrop(event, partyId, slotIndex) {
       }
       
       // 모든 파티의 빈 슬롯 찾기
-      let added = false;
       for (const party of parties) {
         const emptyIndex = party.members.findIndex(m => m === null);
         if (emptyIndex !== -1) {
@@ -119,13 +136,28 @@ function handleDrop(event, partyId, slotIndex) {
           }
           
           // 공격대에는 캐릭터 ID와 이름 저장
-          party.members[emptyIndex] = { 
+          const oldMember = party.members[emptyIndex];
+          const newMember = { 
             id: character.id,
             name: character.name 
           };
-          renderRaidParties();
-          renderExpedition();
-          added = true;
+          
+          // 히스토리 기록
+          if (typeof recordHistory === 'function') {
+            await recordHistory(
+              'add',
+              {
+                type: 'character',
+                id: `${party.id}_slot${emptyIndex}`,
+                path: `party.members[${emptyIndex}]`
+              },
+              oldMember,
+              newMember,
+              `${party.id} 파티 ${emptyIndex}번 슬롯에 ${character.name} 캐릭터 추가`
+            );
+          }
+          
+          party.members[emptyIndex] = newMember;
           
           // 자동 저장
           scheduleAutoSave();
@@ -134,7 +166,11 @@ function handleDrop(event, partyId, slotIndex) {
             title: '캐릭터 추가 완료',
             message: `${character.name} 캐릭터가 공격대에 추가되었습니다.`
           });
-          break;
+          
+          // UI 업데이트 (마지막에 한 번만)
+          renderRaidParties();
+          renderExpedition();
+          return; // 첫 번째 빈 슬롯에 추가 후 바로 종료
         }
       }
       

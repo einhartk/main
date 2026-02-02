@@ -302,89 +302,57 @@ function displayStatisticsTable(stats) {
 function getAllCharacterRaidAssignments() {
   const assignments = {};
   
-  console.log(`[DEBUG] 모든 캐릭터의 레이드 배정 정보 한 번에 검색 시작`);
-  console.log(`[DEBUG] 현재 state.raidTabs:`, state.raidTabs);
-  console.log(`[DEBUG] state.raidTabs 키 목록:`, state.raidTabs ? Object.keys(state.raidTabs) : '없음');
-  
-  // state.raidTabs 상세 정보 출력
-  if (state.raidTabs) {
-    Object.keys(state.raidTabs).forEach(raidId => {
-      console.log(`[DEBUG] ${raidId} 레이드 난이도 목록:`, Object.keys(state.raidTabs[raidId]));
-      Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
-        const parties = state.raidTabs[raidId][difficultyId];
-        console.log(`[DEBUG] ${raidId}-${difficultyId} 파티 수:`, parties.length);
-        parties.forEach((party, index) => {
-          console.log(`[DEBUG] ${raidId}-${difficultyId} 파티 ${index} 멤버:`, party.members);
-        });
-      });
-    });
-  }
-  
-  // state.raidTabs에서 직접 검색
-  if (state.raidTabs) {
-    Object.keys(state.raidTabs).forEach(raidId => {
-      const raidData = state.raidTabs[raidId];
-      console.log(`[DEBUG] 레이드 탭 ${raidId} 검색:`, raidData);
-      
-      Object.keys(raidData).forEach(difficultyId => {
-        const parties = raidData[difficultyId];
-        console.log(`[DEBUG] ${raidId}-${difficultyId} 파티들:`, parties);
+  try {
+    // state.raidTabs에서 직접 검색
+    if (state.raidTabs) {
+      Object.keys(state.raidTabs).forEach(raidId => {
+        const raidData = state.raidTabs[raidId];
         
-        parties.forEach(party => {
-          if (party.members) {
-            console.log(`[DEBUG] 파티 ${party.id} 멤버들:`, party.members);
-            
-            party.members.forEach((member, index) => {
-              if (member) {
-                console.log(`[DEBUG] 파티 ${party.id} 멤버 ${index}:`, member);
-                
-                // ID가 없으면 이름을 ID로 사용
-                const characterId = member.id || member.name;
-                console.log(`[DEBUG] 캐릭터 ID: ${characterId} (원본 ID: ${member.id}, 이름: ${member.name})`);
-                
-                if (characterId) {
-                  console.log(`[DEBUG] 캐릭터 ${characterId}를 ${raidId}-${difficultyId} 파티 ${party.id}에서 찾음`);
+        Object.keys(raidData).forEach(difficultyId => {
+          const parties = raidData[difficultyId];
+          
+          parties.forEach(party => {
+            if (party.members) {
+              party.members.forEach((member, index) => {
+                if (member) {
+                  // ID가 없으면 이름을 ID로 사용
+                  const characterId = member.id || member.name;
                   
-                  const raid = state.raidsData.find(r => r.id === raidId);
-                  console.log(`[DEBUG] 레이드 정보:`, raid);
-                  
-                  if (raid) {
-                    const difficulty = raid.difficulties.find(d => d.id === difficultyId);
-                    console.log(`[DEBUG] 난이도 정보:`, difficulty);
+                  if (characterId) {
+                    const raid = state.raidsData.find(r => r.id === raidId);
                     
-                    if (difficulty && difficulty.clearGold) {
-                      // 여러 공격대에 배정된 경우 배열로 저장
-                      if (!assignments[characterId]) {
-                        assignments[characterId] = [];
+                    if (raid) {
+                      const difficulty = raid.difficulties.find(d => d.id === difficultyId);
+                      
+                      if (difficulty && difficulty.clearGold) {
+                        // 여러 공격대에 배정된 경우 배열로 저장
+                        if (!assignments[characterId]) {
+                          assignments[characterId] = [];
+                        }
+                        
+                        assignments[characterId].push({
+                          raidId: raidId,
+                          raidName: raid.name,
+                          difficultyId: difficultyId,
+                          difficultyName: difficulty.name,
+                          clearGold: difficulty.clearGold,
+                          raidSize: raid.size || 4,
+                          partyId: party.id
+                        });
                       }
-                      
-                      assignments[characterId].push({
-                        raidId: raidId,
-                        raidName: raid.name,
-                        difficultyId: difficultyId,
-                        difficultyName: difficulty.name,
-                        clearGold: difficulty.clearGold,
-                        raidSize: raid.size || 4,
-                        partyId: party.id
-                      });
-                      
-                      console.log(`[DEBUG] 캐릭터 ${characterId} 배정 정보 추가:`, assignments[characterId]);
                     }
                   }
-                } else {
-                  console.log(`[DEBUG] 캐릭터 ID와 이름 모두 없음:`, member);
                 }
-              }
-            });
-          }
+              });
+            }
+          });
         });
       });
-    });
-  } else {
-    console.log(`[DEBUG] state.raidTabs가 없음`);
+    }
+  } catch (error) {
+    console.error(`[ERROR] 캐릭터 배정 정보 조회 중 오류 발생:`, error);
   }
   
-  console.log(`[DEBUG] 모든 캐릭터의 배정 정보:`, assignments);
   return assignments;
 }
 
@@ -401,30 +369,8 @@ function displayExpeditionGold(stats) {
   
   container.innerHTML = '';
   
-  console.log(`[DEBUG] displayExpeditionGold 시작`);
-  console.log(`[DEBUG] state.expeditionSlots:`, state.expeditionSlots);
-  console.log(`[DEBUG] state.raidTabs:`, state.raidTabs);
-  console.log(`[DEBUG] state.raidTabs 키 목록:`, state.raidTabs ? Object.keys(state.raidTabs) : '없음');
-  
-  // state.raidTabs 상세 정보 출력
-  if (state.raidTabs) {
-    Object.keys(state.raidTabs).forEach(raidId => {
-      console.log(`[DEBUG] ${raidId} 레이드 난이도 목록:`, Object.keys(state.raidTabs[raidId]));
-      Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
-        const parties = state.raidTabs[raidId][difficultyId];
-        console.log(`[DEBUG] ${raidId}-${difficultyId} 파티 수:`, parties.length);
-        parties.forEach((party, index) => {
-          console.log(`[DEBUG] ${raidId}-${difficultyId} 파티 ${index} 멤버:`, party.members);
-        });
-      });
-    });
-  }
-  
-  console.log(`[DEBUG] state.raidsData:`, state.raidsData);
-  
   // 각 원정대(0-7)에 대해 처리
   for (let expIndex = 0; expIndex < 8; expIndex++) {
-    console.log(`[DEBUG] ${expIndex + 1}번째 원정대 처리 시작`);
     
     const expeditionDiv = document.createElement('div');
     expeditionDiv.className = 'col-12 col-md-6 col-lg-3 mb-4';
@@ -432,21 +378,16 @@ function displayExpeditionGold(stats) {
     
     // 이 원정대에 속한 캐릭터들
     const expeditionChars = state.expeditionSlots[expIndex]?.filter(char => char) || [];
-    console.log(`[DEBUG] ${expIndex + 1}번째 원정대 캐릭터들:`, expeditionChars);
     
     let totalGold = 0;
     
     // 모든 캐릭터의 레이드 배정 정보 한 번에 가져오기
-    console.log(`[DEBUG] 모든 캐릭터의 레이드 배정 정보 한 번에 조회 시작`);
     const allAssignments = getAllCharacterRaidAssignments();
     
     // 각 캐릭터의 레이드 배정 정보와 골드 계산
     const charDetails = expeditionChars.map(char => {
-      console.log(`[DEBUG] 캐릭터 처리:`, char);
-      
       // ID가 없으면 이름을 ID로 사용
       const characterId = char.id || char.name;
-      console.log(`[DEBUG] 캐릭터 ID: ${characterId} (원본 ID: ${char.id}, 이름: ${char.name})`);
       
       // 캐릭터 ID로 배정된 레이드 정보 가져오기
       const assignedRaids = allAssignments[characterId];
@@ -462,9 +403,6 @@ function displayExpeditionGold(stats) {
           raidInfo.push(`${raid.raidName} ${difficultyName}`);
         });
         totalGold += charGold;
-        console.log(`[DEBUG] 캐릭터 ${char.name}(${characterId})의 골드: ${charGold}, 배정된 레이드:`, raidInfo);
-      } else {
-        console.log(`[DEBUG] 캐릭터 ${char.name}(${characterId})는 배정된 레이드가 없음`);
       }
       
       return {
@@ -474,8 +412,6 @@ function displayExpeditionGold(stats) {
         charGold
       };
     });
-    
-    console.log(`[DEBUG] ${expIndex + 1}번째 원정대 총 골드: ${totalGold}`);
     
     // 원정대 카드 생성
     expeditionDiv.innerHTML = `

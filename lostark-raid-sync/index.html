@@ -35,6 +35,11 @@
                                 <i class="bi bi-bar-chart"></i> 통계
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showHistoryModal()">
+                                <i class="bi bi-clock-history"></i> 히스토리
+                            </a>
+                        </li>
                     </ul>
                     
                     <!-- 동기화 상태 표시 -->
@@ -71,7 +76,7 @@
                     <h1 class="h2">공대 관리</h1>
                     <div class="btn-toolbar mb-2 mb-md-0">
                         <div class="btn-group me-2">
-                            <button class="btn btn-sm btn-success" onclick="addRaidParty()">
+                            <button class="btn btn-sm btn-success" onclick="addNewRaid()">
                                 <i class="bi bi-plus-circle"></i> 공격대 추가
                             </button>
                             <button class="btn btn-sm btn-outline-secondary" onclick="autoAssign()">
@@ -138,6 +143,9 @@
                     <div class="mb-3">
                         <button class="btn btn-primary" onclick="exportRaidList()">
                             <i class="bi bi-download"></i> 내보내기
+                        </button>
+                        <button class="btn btn-success" onclick="generatePromotionText()">
+                            <i class="bi bi-megaphone"></i> 홍보글 생성
                         </button>
                         <button class="btn btn-secondary" onclick="captureRaidList()">
                             <i class="bi bi-camera"></i> 스크린샷
@@ -517,6 +525,8 @@
     <script src="js/modals.js"></script>
     <script src="js/autosave.js"></script>
     <script src="js/statistics.js"></script>
+    <script src="js/operation-lock.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/history.js"></script>
 </body>
 </html>

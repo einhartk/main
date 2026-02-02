@@ -54,6 +54,7 @@ function renderRaidParties() {
   const container = document.getElementById('raidParties');
   if (!container) return;
 
+  // 전체 컨테이너를 비우고 다시 렌더링 (중복 방지)
   container.innerHTML = '';
 
   const parties = getCurrentTabParties();
@@ -61,6 +62,7 @@ function renderRaidParties() {
   parties.forEach((party) => {
     const partyDiv = document.createElement('div');
     partyDiv.className = 'col-md-6';
+    container.appendChild(partyDiv);
 
     // 원정대에서 상세 정보를 가져와서 계산
     const validMembers = party.members.filter(m => m !== null);
@@ -74,7 +76,7 @@ function renderRaidParties() {
     const supportBadge = supportCount > party.maxSupports ? 'bg-danger' : 'bg-secondary';
 
     partyDiv.innerHTML = `
-      <div class="card shadow-sm">
+      <div class="card shadow-sm party-card">
         <div class="card-header" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); color: #2c3e50; border-bottom: 1px solid #dee2e6; padding: 15px;">
           <div class="row align-items-center mb-3">
             <div class="col-md-10">
@@ -83,11 +85,11 @@ function renderRaidParties() {
                   <span class="input-group-text" style="background: white; color: #2c3e50; border: 1px solid #ced4da; font-size: 0.85rem;">
                     <i class="bi bi-people-fill"></i>
                   </span>
-                  <input type="text" class="form-control" id="partyName-${party.uniqueId}" 
-                         value="${party.name || `${party.raidName} ${party.difficultyName} ${party.id}`}" 
-                         placeholder="공대 이름" 
-                         style="font-size: 0.9rem;"
-                         onchange="updatePartyName('${party.id}', this.value)">
+                  <input type="text" class="form-control" id="raidName-${party.id}" 
+                         value="${party.name || `${party.raidName} ${party.difficultyName} ${party.displayName || party.id}`}" 
+                         placeholder="파티 이름" 
+                         oninput="updateRaidName('${party.id}', this.value)"
+                         onchange="updateRaidName('${party.id}', this.value)">
                   <button class="btn btn-outline-secondary" type="button" onclick="this.previousElementSibling.focus()" style="font-size: 0.85rem;">
                     <i class="bi bi-pencil"></i>
                   </button>
@@ -96,7 +98,7 @@ function renderRaidParties() {
             </div>
             <div class="col-md-2">
               <div class="d-flex align-items-center justify-content-end">
-                <button class="btn btn-sm btn-outline-danger" onclick="removeRaidParty('${party.id}')" style="padding: 6px 10px; font-size: 0.85rem;">
+                <button class="btn btn-sm btn-outline-danger" onclick="removeRaid('${party.id}')" style="padding: 6px 10px; font-size: 0.85rem;">
                   <i class="bi bi-x-lg"></i>
                 </button>
               </div>
@@ -113,7 +115,7 @@ function renderRaidParties() {
             </div>
             <div class="col-md-4">
               <div class="d-flex align-items-center justify-content-center">
-                <span id="support-${party.uniqueId}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.8rem; padding: 5px 10px;">
+                <span id="support-${party.id}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.8rem; padding: 5px 10px;">
                   <i class="bi bi-shield-fill me-1"></i>서폿 ${supportCount}/${party.maxSupports}
                 </span>
               </div>
@@ -121,12 +123,12 @@ function renderRaidParties() {
             <div class="col-md-4">
               <div class="d-flex align-items-center justify-content-end gap-2">
                 <div class="btn-group btn-group-sm" role="group">
-                  <input type="radio" class="btn-check" name="partySize-${party.uniqueId}" id="size4-${party.uniqueId}" value="4" ${party.size === 4 ? 'checked' : ''} onchange="setPartySize('${party.id}', 4)">
-                  <label class="btn ${party.size === 4 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size4-${party.uniqueId}" style="font-size: 0.8rem;">
+                  <input type="radio" class="btn-check" name="partySize-${party.id}" id="size4-${party.id}" value="4" ${party.size === 4 ? 'checked' : ''} onchange="setRaidSize('${party.id}', 4)">
+                  <label class="btn ${party.size === 4 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size4-${party.id}" style="font-size: 0.8rem;">
                     4인
                   </label>
-                  <input type="radio" class="btn-check" name="partySize-${party.uniqueId}" id="size8-${party.uniqueId}" value="8" ${party.size === 8 ? 'checked' : ''} onchange="setPartySize('${party.id}', 8)">
-                  <label class="btn ${party.size === 8 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size8-${party.uniqueId}" style="font-size: 0.8rem;">
+                  <input type="radio" class="btn-check" name="partySize-${party.id}" id="size8-${party.id}" value="8" ${party.size === 8 ? 'checked' : ''} onchange="setRaidSize('${party.id}', 8)">
+                  <label class="btn ${party.size === 8 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size8-${party.id}" style="font-size: 0.8rem;">
                     8인
                   </label>
                 </div>
@@ -141,22 +143,22 @@ function renderRaidParties() {
               <div class="d-flex flex-column gap-2">
                 <div class="input-group input-group-sm" style="flex: 0 0 auto;">
                   <span class="input-group-text">최소 레벨</span>
-                  <input type="number" class="form-control" id="minIlvl-${party.uniqueId}" 
+                  <input type="number" class="form-control" id="minIlvl-${party.id}" 
                          value="${party.minIlvl || 0}" 
                          placeholder="0" 
                          min="0" 
                          step="10"
-                         onchange="updatePartyRequirements('${party.id}', 'minIlvl', this.value)">
+                         onchange="updateRaidRequirements('${party.id}', 'minIlvl', this.value)">
                   <span class="input-group-text">Lv</span>
                 </div>
                 <div class="input-group input-group-sm" style="flex: 0 0 auto;">
                   <span class="input-group-text">최소 전투력</span>
-                  <input type="number" class="form-control" id="minCombatPower-${party.uniqueId}" 
+                  <input type="number" class="form-control" id="minCombatPower-${party.id}" 
                          value="${party.minCombatPower || 0}" 
                          placeholder="0" 
                          min="0" 
                          style="width: 100px;"
-                         oninput="updatePartyRequirements('${party.id}', 'minCombatPower', this.value)">
+                         oninput="updateRaidRequirements('${party.id}', 'minCombatPower', this.value)">
                   <span class="input-group-text">CP</span>
                 </div>
               </div>
@@ -229,7 +231,9 @@ function setupRaidEventListeners() {
 
 // 드래그 리프 이벤트 핸들러
 function handleDragLeave(event) {
-  event.currentTarget.classList.remove('dragover');
+  if (event.currentTarget && event.currentTarget.classList) {
+    event.currentTarget.classList.remove('dragover');
+  }
 }
 
 // 원정대 렌더링 (사이드 패널용 - 공격대 제작 전용)
@@ -237,13 +241,11 @@ function renderExpedition() {
   const container = document.getElementById('expeditionPanel');
   if (!container) return;
 
-  console.log('🔄 [EXPEDITION] Rendering expedition for raid creation, slots:', state.expeditionSlots.length);
-
+  
   container.innerHTML = '';
 
   state.expeditionSlots.forEach((slot, index) => {
-    console.log(`🔄 [EXPEDITION] Rendering slot ${index}:`, slot.length, 'characters');
-
+    
     const slotDiv = document.createElement('div');
     slotDiv.className = 'col-12 col-md-6 col-lg-3'; 
 
@@ -281,21 +283,18 @@ function renderExpedition() {
     container.appendChild(slotDiv);
   });
   
-  console.log('🔄 [EXPEDITION] Expedition rendering completed');
-}
+  }
 
 // 원정대 모달 렌더링 (조회/수정용)
 function renderExpeditionModal() {
   const container = document.getElementById('expedition');
   if (!container) return;
 
-  console.log('🔄 [EXPEDITION MODAL] Rendering expedition modal, slots:', state.expeditionSlots.length);
-
+  
   container.innerHTML = '';
 
   state.expeditionSlots.forEach((slot, index) => {
-    console.log(`🔄 [EXPEDITION MODAL] Rendering slot ${index}:`, slot.length, 'characters');
-
+    
     const slotDiv = document.createElement('div');
     slotDiv.className = 'col-md-3';
 
@@ -327,8 +326,7 @@ function renderExpeditionModal() {
     container.appendChild(slotDiv);
   });
   
-  console.log('🔄 [EXPEDITION MODAL] Expedition modal rendering completed');
-}
+  }
 
 // 서포터 수 업데이트
 function updateSupportCount() {

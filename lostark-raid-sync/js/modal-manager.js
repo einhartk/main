@@ -341,8 +341,7 @@ class ModalManager {
         // html 스타일 정리
         document.documentElement.style.overflow = '';
         
-        console.log('✅ 긴급 backdrop 정리 완료');
-    }
+            }
 
     // 모달 정리 헬퍼 함수
     cleanupModal(modalId) {

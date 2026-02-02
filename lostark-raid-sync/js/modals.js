@@ -31,16 +31,31 @@ async function confirmRemoveCharacter(characterId, partyId, slotIndex) {
     confirmText: '삭제',
     cancelText: '취소',
     confirmClass: 'btn-danger',
-    onConfirm: () => {
+    onConfirm: async () => {
+      // 히스토리 기록
+      const oldMember = party.members[slotIndex];
+      if (typeof recordHistory === 'function') {
+        await recordHistory(
+          'delete',
+          {
+            type: 'character',
+            id: `${partyId}_slot${slotIndex}`,
+            path: `party.members[${slotIndex}]`
+          },
+          oldMember,
+          null,
+          `${partyId} 파티 ${slotIndex}번 슬롯에서 ${characterName} 캐릭터 삭제`
+        );
+      }
+      
       // 캐릭터 삭제
       party.members[slotIndex] = null;
 
       // 드래그 상태가 남아 있으면 정리
-      if (draggedData && draggedData.fromRaid && draggedData.partyId === partyId && draggedData.slotIndex === slotIndex) {
+      if (draggedData && draggedData.charId === characterId) {
         draggedData = null;
       }
-      
-      // UI 업데이트
+
       renderRaidParties();
       renderExpedition();
       
@@ -116,8 +131,7 @@ async function searchCharacters() {
   // 중복 클릭 방지 - 즉시 버튼 비활성화
   const searchButton = document.getElementById('searchButton');
   if (searchButton.disabled) {
-    console.log('🚫 [SEARCH] Search already in progress, ignoring duplicate click');
-    return;
+        return;
   }
   
   // 즉시 버튼 비활성화 (다른 코드보다 먼저 실행)
@@ -527,7 +541,7 @@ function showRaidCharacterSelectorModal(characters, partyId, slotIndex) {
             <div id="characterListContainer" class="row">
               ${characters.map(char => `
                 <div class="col-md-6 mb-3 character-item" data-character-name="${char.name.toLowerCase()}">
-                  <div class="card h-100 cursor-pointer" onclick="selectRaidCharacter('${partyId}', ${slotIndex}, '${char.name}')" style="cursor: pointer;">
+                  <div class="card h-100 cursor-pointer" onclick="selectRaidCharacter('${char.name}', '${partyId}', ${slotIndex})" style="cursor: pointer;">
                     <div class="card-body">
                       <div class="d-flex align-items-center">
                         <img src="${char.image || 'img/default-character.png'}" alt="${char.name}" style="width: 50px; height: 50px; border-radius: 50%; margin-right: 15px;">
@@ -628,7 +642,7 @@ function clearCharacterSearch() {
 }
 
 // 공격대 캐릭터 선택 처리
-async function selectRaidCharacter(partyId, slotIndex, characterName) {
+async function selectRaidCharacter(characterName, partyId, slotIndex) {
   try {
     const parties = getCurrentTabParties();
     const party = parties.find(p => p.id === partyId);
@@ -644,26 +658,71 @@ async function selectRaidCharacter(partyId, slotIndex, characterName) {
       return;
     }
 
-    // 제약 조건 최종 확인
-    const partyValidation = Constraints.canAddCharacterToParty(party, charDetails);
-    if (!partyValidation.valid) {
+    // 제약 조건 최종 확인 (최적화: 기본 조건만 먼저 체크)
+    const basicValidation = {
+      valid: true,
+      message: ''
+    };
+    
+    // 기본적인 조건만 먼저 체크 (성능 향상)
+    if (charDetails && party) {
+      // 1. 기본적인 레벨/전투력 체크
+      const characterIlvl = parseCompareNumber(charDetails.ilvl || '0');
+      const requiredIlvl = party.minIlvl || 0;
+      const characterCp = parseCompareNumber(charDetails.combatPower || '0');
+      const requiredCp = party.minCombatPower || 0;
+      
+      if (characterIlvl < requiredIlvl) {
+        basicValidation.valid = false;
+        basicValidation.message = `${characterName} 캐릭터의 아이템 레벨이 부족합니다. (필요: ${requiredIlvl})`;
+      } else if (characterCp < requiredCp) {
+        basicValidation.valid = false;
+        basicValidation.message = `${characterName} 캐릭터의 전투력이 부족합니다. (필요: ${requiredCp})`;
+      }
+    }
+    
+    // 기본 조건 통과 시에만 상세 제약 조건 체크
+    if (basicValidation.valid) {
+      const partyValidation = Constraints.canAddCharacterToParty(party, charDetails);
+      if (!partyValidation.valid) {
+        window.modalManager.showAlert({
+          title: '제약 조건 위반',
+          message: partyValidation.message
+        });
+        return;
+      }
+    } else {
       window.modalManager.showAlert({
         title: '제약 조건 위반',
-        message: partyValidation.message
+        message: basicValidation.message
       });
       return;
     }
 
+    // 히스토리 기록
+    const oldMember = party.members[slotIndex];
+    const newMember = { name: characterName };
+    
+    if (typeof recordHistory === 'function') {
+      await recordHistory(
+        'add',
+        {
+          type: 'character',
+          id: `${partyId}_slot${slotIndex}`,
+          path: `party.members[${slotIndex}]`
+        },
+        oldMember,
+        newMember,
+        `${partyId} 파티 ${slotIndex}번 슬롯에 ${characterName} 캐릭터 선택 추가`
+      );
+    }
+
     // 공격대에 캐릭터 이름만 저장
-    party.members[slotIndex] = { name: characterName };
+    party.members[slotIndex] = newMember;
 
     // 모달 닫기
     const modal = bootstrap.Modal.getInstance(document.getElementById('raidCharacterSelectorModal'));
     modal.hide();
-
-    // UI 업데이트
-    renderRaidParties();
-    renderExpedition();
 
     // 자동 저장
     scheduleAutoSave();
@@ -672,6 +731,10 @@ async function selectRaidCharacter(partyId, slotIndex, characterName) {
       title: '캐릭터 배정 완료',
       message: `${characterName} 캐릭터가 공격대에 배정되었습니다.`
     });
+
+    // UI 업데이트 (마지막에 한 번만)
+    renderRaidParties();
+    renderExpedition();
 
   } catch (error) {
     console.error('❌ [SELECT RAID CHARACTER ERROR]:', error);
@@ -683,7 +746,7 @@ async function selectRaidCharacter(partyId, slotIndex, characterName) {
 }
 
 // 조회 결과 표시
-function displaySearchResults(characters, successCount, failCount, failedNames) {
+async function displaySearchResults(characters, successCount, failCount, failedNames) {
   // 프로그레스 모달 닫기
   const progressModals = document.querySelectorAll('#progressModal');
   progressModals.forEach(modal => {
@@ -721,6 +784,33 @@ function displaySearchResults(characters, successCount, failCount, failedNames) 
     className: char.className,
     level: char.level
   }));
+  
+  // 히스토리 기록 (최적화: 대량 변경 시 간단히 기록)
+  const oldSlot = state.expeditionSlots[currentTargetSlot] || [];
+  if (typeof recordHistory === 'function' && flattenedCharacters.length > 0) {
+    // 대량 변경 시에는 간단한 기록만 남기고 자세한 diff는 건너뜀
+    const simplifiedOldSlot = oldSlot.length > 0 ? { 
+      count: oldSlot.length, 
+      firstCharacter: oldSlot[0]?.name || '' 
+    } : null;
+    
+    const simplifiedNewSlot = flattenedCharacters.length > 0 ? { 
+      count: flattenedCharacters.length, 
+      firstCharacter: flattenedCharacters[0]?.name || '' 
+    } : null;
+    
+    await recordHistory(
+      'update',
+      {
+        type: 'expedition',
+        id: `expeditionSlot_${currentTargetSlot}`,
+        path: `expeditionSlots[${currentTargetSlot}]`
+      },
+      simplifiedOldSlot,
+      simplifiedNewSlot,
+      `원정대 슬롯 ${currentTargetSlot + 1}에 ${flattenedCharacters.length}명 캐릭터 설정`
+    );
+  }
   
   // 현재 슬롯을 조회된 캐릭터들로 교체
   state.expeditionSlots[currentTargetSlot] = flattenedCharacters;
