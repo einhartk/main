@@ -74,6 +74,10 @@ async function selectRaid(raidId) {
     if (raid) {
       state.selectedRaid = raid;
       state.selectedDifficulty = raid.difficulties[0]; // 기본 난이도 선택
+      
+      // 개인별 선택 정보 로컬 저장
+      savePersonalSettings();
+      
       renderRaidTabs();
       renderRaidParties();
       scheduleAutoSave();
@@ -110,6 +114,10 @@ async function selectDifficulty(difficultyId) {
     const difficulty = state.selectedRaid.difficulties.find(d => d.id === difficultyId);
     if (difficulty) {
       state.selectedDifficulty = difficulty;
+      
+      // 개인별 선택 정보 로컬 저장
+      savePersonalSettings();
+      
       renderRaidTabs();
       renderRaidParties();
       scheduleAutoSave();
@@ -630,10 +638,31 @@ async function saveCharacterEdit() {
   
   if (!window.currentEditPosition) return;
   
-  const { expeditionIndex, characterIndex } = window.currentEditPosition;
-  const character = state.expeditionSlots[expeditionIndex][characterIndex];
+  const { expeditionIndex, characterIndex, partyId, slotIndex } = window.currentEditPosition;
   
-  if (!character) return;
+  let character = null;
+  let characterLocation = '';
+  
+  if (partyId !== null && slotIndex !== null) {
+    // 공격대 파티 캐릭터
+    const parties = getCurrentTabParties();
+    const party = parties.find(p => p.id === partyId);
+    if (party && party.members[slotIndex]) {
+      character = party.members[slotIndex];
+      characterLocation = `공격대 ${partyId} 슬롯 ${slotIndex}`;
+    }
+  } else {
+    // 원정대 캐릭터
+    if (state.expeditionSlots[expeditionIndex] && state.expeditionSlots[expeditionIndex][characterIndex]) {
+      character = state.expeditionSlots[expeditionIndex][characterIndex];
+      characterLocation = `원정대 슬롯 ${expeditionIndex + 1}-${characterIndex + 1}`;
+    }
+  }
+  
+  if (!character) {
+    console.error('❌ [SAVE ERROR] 캐릭터를 찾을 수 없습니다:', { expeditionIndex, characterIndex, partyId, slotIndex });
+    return;
+  }
   
   // 버튼 비활성화
   saveButton.disabled = true;
@@ -646,8 +675,23 @@ async function saveCharacterEdit() {
     const newRole = document.querySelector('input[name="editRole"]:checked').value;
     
     // 정보 업데이트
+    console.log('🔧 [EDIT] 수정 전:', {
+      expeditionIndex,
+      characterIndex,
+      oldCombatPower: character.combatPower,
+      oldRole: character.role,
+      newCombatPower,
+      newRole
+    });
+    
     character.combatPower = newCombatPower;
     character.role = newRole;
+    
+    console.log('🔧 [EDIT] 수정 후:', {
+      updatedCombatPower: character.combatPower,
+      updatedRole: character.role,
+      stateCharacter: state.expeditionSlots[expeditionIndex][characterIndex]
+    });
     
     // 히스토리 기록
     if (typeof recordHistory === 'function') {
@@ -664,7 +708,28 @@ async function saveCharacterEdit() {
       );
     }
     
-    // UI 업데이트
+    // 데이터 즉시 저장
+    if (window.realtimeSync && window.realtimeSync.isSyncActive()) {
+      // 실시간 동기화가 켜져있으면 즉시 동기화
+      if (typeof window.realtimeSync.syncToFirebaseWithLock === 'function') {
+        await window.realtimeSync.syncToFirebaseWithLock();
+      } else {
+        await window.realtimeSync.syncToFirebase();
+      }
+    } else {
+      // 실시간 동기화가 꺼져있으면 즉시 DB 저장
+      await autoSaveToDatabase();
+    }
+    
+    // 모달 입력 필드 즉시 업데이트 (모달이 열려있을 경우)
+    const editCombatPowerInput = document.getElementById('editCombatPower');
+    const originalCombatPowerSpan = document.getElementById('originalCombatPower');
+    if (editCombatPowerInput && originalCombatPowerSpan) {
+      editCombatPowerInput.value = newCombatPower;
+      originalCombatPowerSpan.textContent = newCombatPower;
+    }
+    
+    // UI 업데이트 (저장 후)
     renderExpedition();
     
     // 모달 닫기
@@ -1331,10 +1396,61 @@ async function loadFromDatabase() {
   }
 }
 
+// 개인별 설정 저장
+function savePersonalSettings() {
+  try {
+    const personalSettings = {
+      selectedRaidId: state.selectedRaid ? state.selectedRaid.id : null,
+      selectedDifficultyId: state.selectedDifficulty ? state.selectedDifficulty.id : null
+    };
+    localStorage.setItem('lostarkRaidPersonalSettings', JSON.stringify(personalSettings));
+    console.log('💾 [PERSONAL] 개인별 설정 저장됨:', personalSettings);
+  } catch (error) {
+    console.error('❌ [PERSONAL] 개인별 설정 저장 실패:', error);
+  }
+}
+
+// 개인별 설정 로드
+function loadPersonalSettings() {
+  try {
+    const saved = localStorage.getItem('lostarkRaidPersonalSettings');
+    if (saved) {
+      const personalSettings = JSON.parse(saved);
+      
+      // 저장된 레이드 선택
+      if (personalSettings.selectedRaidId) {
+        const raid = state.raidsData.find(r => r.id === personalSettings.selectedRaidId);
+        if (raid) {
+          state.selectedRaid = raid;
+          
+          // 저장된 난이도 선택
+          if (personalSettings.selectedDifficultyId) {
+            const difficulty = raid.difficulties.find(d => d.id === personalSettings.selectedDifficultyId);
+            if (difficulty) {
+              state.selectedDifficulty = difficulty;
+            } else {
+              state.selectedDifficulty = raid.difficulties[0] || null;
+            }
+          } else {
+            state.selectedDifficulty = raid.difficulties[0] || null;
+          }
+        }
+      }
+      
+      console.log('📂 [PERSONAL] 개인별 설정 로드됨:', personalSettings);
+    }
+  } catch (error) {
+    console.error('❌ [PERSONAL] 개인별 설정 로드 실패:', error);
+  }
+}
+
 // 페이지 로드 시 초기화
 window.addEventListener('load', function() {
   // 먼저 레이드 데이터 로드
   loadRaidsData().then(() => {
+    // 개인별 설정 로드
+    loadPersonalSettings();
+    
     // 그 다음 DB에서 저장된 데이터 로드
     loadFromDatabase();
   });

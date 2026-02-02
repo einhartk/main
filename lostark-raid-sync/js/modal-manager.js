@@ -14,7 +14,7 @@ class ModalManager {
             confirmClass = 'btn-primary',
             onConfirm = null,
             onCancel = null,
-            zIndex = 1080
+            zIndex = 9999
         } = options;
 
         const modalId = generateUniqueId('confirmModal_');
@@ -70,7 +70,7 @@ class ModalManager {
                 confirmText = '확인',
                 cancelText = '취소',
                 confirmClass = 'btn-primary',
-                zIndex = 1080
+                zIndex = 9999
             } = options;
 
             const modalId = generateUniqueId('confirmSyncModal_');
@@ -130,7 +130,7 @@ class ModalManager {
             buttonText = '확인',
             buttonClass = 'btn-primary',
             onClose = null,
-            zIndex = 1080
+            zIndex = 9999
         } = options;
 
         const modalId = generateUniqueId('alertModal_');
@@ -183,7 +183,7 @@ class ModalManager {
             confirmClass = 'btn-primary',
             onConfirm = null,
             onCancel = null,
-            zIndex = 1080
+            zIndex = 9999
         } = options;
 
         const modalId = generateUniqueId('inputModal_');

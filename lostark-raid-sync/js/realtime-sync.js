@@ -262,26 +262,8 @@ class RealtimeSync {
                 }
             }
             
-            // selectedRaid 역직렬화
-            if (compressedData.sr) {
-                // 레이드 데이터에서 찾아 복원
-                const raid = state.raidsData.find(r => r.id === compressedData.sr);
-                if (raid) {
-                    state.selectedRaid = raid;
-                }
-            }
-
-            // selectedDifficulty 역직렬화
-            if (state.selectedRaid) {
-                const desiredDiffId = compressedData.sd;
-                if (desiredDiffId) {
-                    const diff = state.selectedRaid.difficulties?.find(d => d.id === desiredDiffId);
-                    state.selectedDifficulty = diff || state.selectedRaid.difficulties?.[0] || null;
-                } else {
-                    // 이전 데이터/호환: 난이도 정보가 없으면 첫 난이도로 고정
-                    state.selectedDifficulty = state.selectedRaid.difficulties?.[0] || null;
-                }
-            }
+            // selectedRaid와 selectedDifficulty는 개인별 설정이므로 동기화하지 않음
+            // 사용자가 직접 선택한 상태 유지
         }
         
         // UI 업데이트 (무한 루프 방지)
@@ -482,8 +464,7 @@ class RealtimeSync {
         const compressedData = {
             rt: serializedRaidTabs, // raidTabs -> rt (JSON string)
             es: serializedExpedition, // expeditionSlots -> es (JSON string)
-            sr: state.selectedRaid ? state.selectedRaid.id : null, // selectedRaid -> sr
-            sd: state.selectedDifficulty ? state.selectedDifficulty.id : null, // selectedDifficulty -> sd
+            // sr과 sd 제외 - 개인별 선택 정보는 동기화하지 않음
             t: Date.now(), // timestamp -> t
             u: this.currentUser // user -> u
         };

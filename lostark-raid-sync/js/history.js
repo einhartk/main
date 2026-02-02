@@ -136,6 +136,27 @@ async function recordHistory(action, target, before, after, description) {
   }
 }
 
+// 원정대에서 이름으로 캐릭터 찾기
+function findCharacterByNameInExpedition(characterName) {
+  for (const slot of state.expeditionSlots) {
+    for (const character of slot) {
+      if (character && character.name === characterName) {
+        return {
+          id: character.id,
+          name: character.name,
+          ilvl: character.ilvl || '0',
+          combatPower: character.combatPower || '0',
+          role: character.role,
+          image: character.image || 'img/default-character.png',
+          className: character.className,
+          level: character.level
+        };
+      }
+    }
+  }
+  return null;
+}
+
 // 히스토리 모달 표시
 function showHistoryModal() {
   const modalHtml = `
@@ -688,6 +709,20 @@ async function rollbackAdd(entry) {
 async function rollbackDelete(entry) {
   console.log('🔄 [ROLLBACK] Rolling back DELETE operation:', entry);
   console.log('🔄 [ROLLBACK] Entry data structure:', entry);
+  console.log('🔄 [ROLLBACK] All changes:', JSON.stringify(entry.changes, null, 2));
+  console.log('🔄 [ROLLBACK] All change keys:', Object.keys(entry.changes));
+  
+  // 각 change의 상세 구조 확인
+  for (const [key, change] of Object.entries(entry.changes)) {
+    console.log(`🔄 [ROLLBACK] Change key: ${key}`, {
+      before: change.before,
+      after: change.after,
+      beforeType: typeof change.before,
+      afterType: typeof change.after,
+      beforeIsArray: Array.isArray(change.before),
+      afterIsArray: Array.isArray(change.after)
+    });
+  }
   
   // 삭제된 항목 복원
   if (entry.target.type === 'character') {
@@ -705,9 +740,58 @@ async function rollbackDelete(entry) {
       
       if (party && !party.members[slotIndex]) {
         // before 데이터에서 삭제된 캐릭터 정보 찾아 복원
-        const deletedCharacter = entry.changes['party.members']?.before?.[slotIndex];
+        // 실제 히스토리 데이터 구조: {root: {before: {name: 'CharmingDo'}}}
+        let deletedCharacter = null;
         
-        console.log('🔄 [ROLLBACK] Deleted character data:', deletedCharacter);
+        // 경로 1: root.before에서 캐릭터 정보 찾기
+        const rootBefore = entry.changes['root']?.before;
+        if (rootBefore && rootBefore.name) {
+          // 원정대에서 캐릭터 정보 찾기 (name으로 검색)
+          deletedCharacter = findCharacterByNameInExpedition(rootBefore.name);
+          console.log('🔄 [ROLLBACK] Found character by name:', rootBefore.name, deletedCharacter);
+        }
+        
+        // 경로 2: 다른 키 구조 시도 (이전 로직 유지)
+        if (!deletedCharacter) {
+          const firebaseKey = `party_members_${slotIndex}`;
+          deletedCharacter = entry.changes[firebaseKey]?.before;
+          console.log('🔄 [ROLLBACK] Firebase key result:', firebaseKey, deletedCharacter);
+        }
+        
+        if (!deletedCharacter) {
+          deletedCharacter = entry.changes['party.members']?.before?.[slotIndex];
+          console.log('🔄 [ROLLBACK] Original key result:', deletedCharacter);
+        }
+        
+        // 경로 3: 모든 키에서 찾기
+        if (!deletedCharacter) {
+          for (const [key, change] of Object.entries(entry.changes)) {
+            if (key.includes('party') && change.before) {
+              if (Array.isArray(change.before)) {
+                const indexMatch = key.match(/_(\d+)$/);
+                const index = indexMatch ? parseInt(indexMatch[1]) : -1;
+                if (index === slotIndex) {
+                  deletedCharacter = change.before;
+                  console.log('🔄 [ROLLBACK] Matched key result:', key, deletedCharacter);
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        // 경로 4: 배열 before에서 직접 찾기
+        if (!deletedCharacter) {
+          for (const [key, change] of Object.entries(entry.changes)) {
+            if (key.includes('party') && change.before && Array.isArray(change.before)) {
+              deletedCharacter = change.before[slotIndex];
+              console.log('🔄 [ROLLBACK] Array before result:', deletedCharacter);
+              if (deletedCharacter) break;
+            }
+          }
+        }
+        
+        console.log('🔄 [ROLLBACK] Final deleted character data:', deletedCharacter);
         
         if (deletedCharacter) {
           // 히토리 기록 (삭제 취소)

@@ -40,7 +40,7 @@ async function autoSaveToDatabase() {
     const saveData = {
       rt: serializedRaidTabs, // raidTabs -> rt (JSON string)
       es: serializedExpedition, // expeditionSlots -> es (JSON string)
-      sr: state.selectedRaid ? state.selectedRaid.id : null, // selectedRaid -> sr
+      // sr 제외 - 개인별 선택 정보는 저장하지 않음
       t: new Date().toISOString(), // time -> t
       m: Date.now() // modified -> m
     };
