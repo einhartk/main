@@ -8,6 +8,9 @@ let clickCount = 0;
 // 캐릭터 선택 모달 중복 방지 플래그
 let isCharacterSelectorModalOpen = false;
 
+// 드롭 처리 중복 방지 플래그
+let isDropProcessing = false;
+
 // ID로 캐릭터 정보 조회
 function findCharacterById(charId) {
   // 모든 원정대 슬롯에서 캐릭터 검색
@@ -62,26 +65,60 @@ function handleDragStart(event, charId, fromRaid, partyId, slotIndex, expedition
     partyId,
     slotIndex,
     expeditionIndex,
-    expeditionSlotIndex
+    expeditionSlotIndex,
+    processed: false
   };
   
-  // ID만 전송
+  // ID만 전송 (최소한의 데이터)
   event.dataTransfer.setData('text/plain', charId);
+  event.dataTransfer.effectAllowed = 'move';
+  
+  // 드래그 시작 시간 기록 (성능 측정용)
+  draggedData.startTime = performance.now();
+  
+  // CSS 클래스 추가 (애니메이션 최적화)
   if (event.target && event.target.classList) {
     event.target.classList.add('dragging');
+    // 하드웨어 가속 활성화
+    event.target.style.transform = 'translateZ(0)';
+    event.target.style.willChange = 'transform';
   }
 }
 
 function handleDragEnd(event) {
   if (event.target && event.target.classList) {
     event.target.classList.remove('dragging');
+    // 하드웨어 가속 정리
+    event.target.style.transform = '';
+    event.target.style.willChange = '';
   }
-  // 드래그 데이터 초기화
+  
+  // 성능 로그
+  if (draggedData && draggedData.startTime) {
+    const duration = performance.now() - draggedData.startTime;
+    console.log(`🚀 [DRAG] 드래그 완료: ${duration.toFixed(2)}ms`);
+  }
+  
+  // 드래그 데이터 및 플래그 초기화
   draggedData = null;
+  isDropProcessing = false;
 }
 
 function handleDragOver(event) {
   event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  
+  // 쓰로틀링으로 성능 최적화
+  if (draggedData && draggedData.lastOverTime) {
+    const now = performance.now();
+    if (now - draggedData.lastOverTime < 16) { // 60fps 제한
+      return;
+    }
+    draggedData.lastOverTime = now;
+  } else if (draggedData) {
+    draggedData.lastOverTime = performance.now();
+  }
+  
   if (event.currentTarget && event.currentTarget.classList) {
     event.currentTarget.classList.add('dragover');
   }
@@ -100,12 +137,24 @@ async function handleDrop(event, partyId, slotIndex) {
   const charId = event.dataTransfer.getData('text/plain');
   if (!charId) return;
   
-  // 중복 실행 방지 (드래그 데이터 초기화)
+  // 전역 중복 방지 플래그 확인
+  if (isDropProcessing) {
+    console.log('🔄 [DROP] Drop already processing, skipping');
+    return;
+  }
+  
+  // 드래그 데이터 중복 실행 방지
   if (draggedData.processed) {
     console.log('🔄 [DROP] Already processed, skipping');
     return;
   }
+  
+  // 중복 방지 플래그 설정
+  isDropProcessing = true;
   draggedData.processed = true;
+  
+  // 드롭 처리 시작 시간 기록
+  const dropStartTime = performance.now();
   
   try {
     // 원정대에서 온 캐릭터인 경우 공격대에 추가
@@ -123,16 +172,19 @@ async function handleDrop(event, partyId, slotIndex) {
       }
       
       // 모든 파티의 빈 슬롯 찾기
+      let added = false;
+      let violationMessage = null;
+      
       for (const party of parties) {
         const emptyIndex = party.members.findIndex(m => m === null);
         if (emptyIndex !== -1) {
           // 제약 조건 확인
           const partyValidation = Constraints.canAddCharacterToParty(party, character);
           if (!partyValidation.valid) {
-            window.modalManager.showAlert({
-              title: '제약 조건 위반',
-              message: partyValidation.message
-            });
+            // 첫 번째 위반 메시지만 저장
+            if (!violationMessage) {
+              violationMessage = partyValidation.message;
+            }
             continue;
           }
           
@@ -159,27 +211,43 @@ async function handleDrop(event, partyId, slotIndex) {
           }
           
           party.members[emptyIndex] = newMember;
+          added = true;
           
-          // 자동 저장
-          scheduleAutoSave();
+          // UI 업데이트 (즉시 반영)
+          renderRaidParties();
+          renderExpedition();
+          
+          // 비동기 저장 (UI 블로킹 방지)
+          setTimeout(() => {
+            scheduleAutoSave();
+          }, 0);
+          
+          // 성능 로그
+          const dropDuration = performance.now() - dropStartTime;
+          console.log(`🚀 [DROP] 드롭 처리 완료: ${dropDuration.toFixed(2)}ms`);
           
           window.modalManager.showAlert({
             title: '캐릭터 추가 완료',
             message: `${character.name} 캐릭터가 공격대에 추가되었습니다.`
           });
           
-          // UI 업데이트 (마지막에 한 번만)
-          renderRaidParties();
-          renderExpedition();
           return; // 첫 번째 빈 슬롯에 추가 후 바로 종료
         }
       }
       
       if (!added) {
-        window.modalManager.showAlert({
-          title: '알림',
-          message: '빈 슬롯이 없습니다. 새로운 공격대를 생성해주세요.'
-        });
+        if (violationMessage) {
+          // 제약 조건 위반 메시지 표시
+          window.modalManager.showAlert({
+            title: '제약 조건 위반',
+            message: violationMessage
+          });
+        } else {
+          window.modalManager.showAlert({
+            title: '알림',
+            message: '빈 슬롯이 없습니다. 새로운 공격대를 생성해주세요.'
+          });
+        }
       }
     }
     
@@ -189,15 +257,36 @@ async function handleDrop(event, partyId, slotIndex) {
       title: '오류',
       message: '캐릭터를 추가하는 중 오류가 발생했습니다.'
     });
+  } finally {
+    // 중복 방지 플래그 초기화
+    isDropProcessing = false;
+    draggedData = null;
   }
-  
-  draggedData = null;
 }
 
 // 원정대에서 공격대로 드래 앤 드롭 핸들러
 async function handleExpeditionDrop(event, expeditionIndex) {
   event.preventDefault();
+  event.stopPropagation(); // 이벤트 버블링 방지
   event.currentTarget.classList.remove('dragover');
+  
+  // 전역 중복 방지 플래그 확인
+  if (isDropProcessing) {
+    console.log('🔄 [EXPEDITION DROP] Drop already processing, skipping');
+    return;
+  }
+  
+  // 드래그 데이터 중복 실행 방지
+  if (draggedData && draggedData.processed) {
+    console.log('🔄 [EXPEDITION DROP] Already processed, skipping');
+    return;
+  }
+  
+  // 중복 방지 플래그 설정
+  isDropProcessing = true;
+  if (draggedData) {
+    draggedData.processed = true;
+  }
   
   try {
     // 슬롯 단위 락: 원정대 슬롯(검색/등록 대상)에 타인 락이면 차단
@@ -259,5 +348,8 @@ async function handleExpeditionDrop(event, expeditionIndex) {
       title: '캐릭터 이동 오류',
       message: '캐릭터를 이동하는 중 오류가 발생했습니다: ' + error.message
     });
+  } finally {
+    // 중복 방지 플래그 초기화
+    isDropProcessing = false;
   }
 }

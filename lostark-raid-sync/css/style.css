@@ -123,6 +123,9 @@ main {
 .expedition-side-panel .expedition-char.dragging {
     opacity: 0.5;
     cursor: grabbing;
+    transform: translateZ(0);
+    will-change: transform, opacity;
+    transition: opacity 0.1s ease-out;
 }
 
 .expedition-side-panel .expedition-char.support {
@@ -187,6 +190,9 @@ main {
 .raid-slot.dragover {
     border-color: #28a745;
     background: #d4edda;
+    transform: translateZ(0);
+    will-change: border-color, background;
+    transition: border-color 0.1s ease-out, background 0.1s ease-out;
 }
 
 .char-box {
@@ -207,6 +213,9 @@ main {
 
 .char-box.dragging {
     opacity: 0.5;
+    transform: translateZ(0);
+    will-change: transform, opacity;
+    transition: opacity 0.1s ease-out;
 }
 
 .char-box.dps {

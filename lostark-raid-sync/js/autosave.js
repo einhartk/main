@@ -6,7 +6,7 @@ function scheduleAutoSave() {
 
   autoSaveTimer = setTimeout(() => {
     autoSaveToDatabase();
-  }, 250);
+  }, 500); // 250ms -> 500ms로 증가 (더 긴 디바운스)
 }
 
 let partyConfigSaveTimer = null;
