@@ -297,6 +297,14 @@ class RealtimeSync {
             renderRaidParties();
             renderExpedition();
             
+            // 원정대 관리 모달이 열려있으면 모달 내용도 업데이트
+            const expeditionModal = document.getElementById('expeditionModal');
+            if (expeditionModal && expeditionModal.classList.contains('show')) {
+                if (typeof renderExpeditionModal === 'function') {
+                    renderExpeditionModal();
+                }
+            }
+            
             // 다시 동기화 활성화
             this.isConnected = wasConnected;
         } catch (error) {

@@ -5,6 +5,9 @@ let draggedData = null;
 let clickTimer = null;
 let clickCount = 0;
 
+// 캐릭터 선택 모달 중복 방지 플래그
+let isCharacterSelectorModalOpen = false;
+
 // ID로 캐릭터 정보 조회
 function findCharacterById(charId) {
   // 모든 원정대 슬롯에서 캐릭터 검색
@@ -23,35 +26,33 @@ function handleClickEvent(event, singleClickCallback, doubleClickCallback) {
   event.preventDefault();
   event.stopPropagation();
   
+  // 이미 처리 중인 클릭이 있으면 무시
+  if (clickTimer) {
+    return;
+  }
+  
   clickCount++;
   
   if (clickCount === 1) {
     clickTimer = setTimeout(() => {
       // 싱글 클릭
       clickCount = 0;
+      clickTimer = null;
       singleClickCallback();
     }, 250);
   } else if (clickCount === 2) {
     // 더블 클릭
     clearTimeout(clickTimer);
     clickCount = 0;
+    clickTimer = null;
     doubleClickCallback();
   }
 }
 
-// 공격대 캐릭터 클릭 처리
+// 공격대 캐릭터 클릭 처리 (더블클릭 기능 제거, 우클릭으로 변경)
 function handleCharacterClick(event, charId, partyId, slotIndex) {
-  handleClickEvent(
-    event,
-    // 싱글 클릭: 캐릭터 선택 모달
-    () => {
-      openRaidCharacterSelector(partyId, slotIndex);
-    },
-    // 더블 클릭: 캐릭터 삭제
-    () => {
-      confirmRemoveCharacter(charId, partyId, slotIndex);
-    }
-  );
+  // 이 함수는 더 이상 사용되지 않음 (우클릭으로 삭제 기능으로 변경)
+  console.log('⚠️ [DEPRECATED] handleCharacterClick 함수는 더 이상 사용되지 않습니다. 우클릭을 사용하세요.');
 }
 
 function handleDragStart(event, charId, fromRaid, partyId, slotIndex, expeditionIndex, expeditionSlotIndex) {

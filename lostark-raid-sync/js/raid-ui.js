@@ -88,8 +88,8 @@ function renderRaidParties() {
                   <input type="text" class="form-control" id="raidName-${party.id}" 
                          value="${party.name || `${party.raidName} ${party.difficultyName} ${party.displayName || party.id}`}" 
                          placeholder="파티 이름" 
-                         oninput="updateRaidName('${party.id}', this.value)"
-                         onchange="updateRaidName('${party.id}', this.value)">
+                         onchange="updateRaidName('${party.id}', this.value)"
+                         onblur="updateRaidName('${party.id}', this.value)">
                   <button class="btn btn-outline-secondary" type="button" onclick="this.previousElementSibling.focus()" style="font-size: 0.85rem;">
                     <i class="bi bi-pencil"></i>
                   </button>
@@ -148,7 +148,8 @@ function renderRaidParties() {
                          placeholder="0" 
                          min="0" 
                          step="10"
-                         onchange="updateRaidRequirements('${party.id}', 'minIlvl', this.value)">
+                         onchange="updateRaidRequirements('${party.id}', 'minIlvl', this.value)"
+                         onblur="updateRaidRequirements('${party.id}', 'minIlvl', this.value)">
                   <span class="input-group-text">Lv</span>
                 </div>
                 <div class="input-group input-group-sm" style="flex: 0 0 auto;">
@@ -158,7 +159,8 @@ function renderRaidParties() {
                          placeholder="0" 
                          min="0" 
                          style="width: 100px;"
-                         oninput="updateRaidRequirements('${party.id}', 'minCombatPower', this.value)">
+                         onchange="updateRaidRequirements('${party.id}', 'minCombatPower', this.value)"
+                         onblur="updateRaidRequirements('${party.id}', 'minCombatPower', this.value)">
                   <span class="input-group-text">CP</span>
                 </div>
               </div>
@@ -178,7 +180,7 @@ function renderRaidParties() {
                 ${isFirstInParty && party.size === 8 ? `<div class="party-label">파티 ${partyNumber}</div>` : ''}
                 <div class="raid-slot" ondrop="handleDrop(event, '${party.id}', ${slotIndex})" ondragover="handleDragOver" ondragleave="handleDragLeave" onclick="event.stopPropagation(); openRaidCharacterSelector('${party.id}', ${slotIndex})" style="cursor: pointer;" title="클릭하여 캐릭터 선택">
                   ${charDetails ? `
-                    <div class="char-box ${charDetails.role} ${!meetsRequirements(charDetails, party) ? 'requirement-failed' : ''}" draggable="true" ondragstart="handleDragStart(event, '${charDetails.id}', '${party.id}', ${slotIndex})" ondragend="handleDragEnd(event)" onclick="event.stopPropagation(); handleCharacterClick(event, '${charDetails.id}', '${party.id}', ${slotIndex})" style="cursor: pointer;" title="클릭하여 캐릭터 변경, 더블클릭하여 삭제">
+                    <div class="char-box ${charDetails.role} ${!meetsRequirements(charDetails, party) ? 'requirement-failed' : ''}" draggable="true" ondragstart="handleDragStart(event, '${charDetails.id}', '${party.id}', ${slotIndex})" ondragend="handleDragEnd(event)" onclick="event.stopPropagation(); openRaidCharacterSelector('${party.id}', ${slotIndex})" oncontextmenu="event.preventDefault(); event.stopPropagation(); confirmRemoveCharacter('${charDetails.id}', '${party.id}', ${slotIndex})" style="cursor: pointer;" title="좌클릭: 캐릭터 변경, 우클릭: 삭제">
                       <img src="${charDetails.image || 'img/default-character.png'}" alt="${charDetails.name}" style="width: 40px; height: 40px; border-radius: 50%; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto;">
                       <div class="fw-bold small">${charDetails.name}</div>
                       <div class="small text-muted">Lv ${charDetails.ilvl || '0'}</div>
@@ -240,6 +242,12 @@ function handleDragLeave(event) {
 function renderExpedition() {
   const container = document.getElementById('expeditionPanel');
   if (!container) return;
+  
+  // 원정대 관리 모달이 열려있으면 모달 내용도 업데이트
+  const expeditionModal = document.getElementById('expeditionModal');
+  if (expeditionModal && expeditionModal.classList.contains('show')) {
+    renderExpeditionModal();
+  }
 
   
   container.innerHTML = '';
@@ -308,7 +316,7 @@ function renderExpeditionModal() {
         </h6>
         <div class="expedition-slots">
           ${slot.length > 0 ? slot.map((char, charIndex) => `
-            <div class="expedition-char ${char.role}" draggable="true" ondragstart="handleDragStart(event, '${char.id}', null, null, ${index}, ${charIndex})" ondragend="handleDragEnd(event)" onclick="event.stopPropagation(); editCharacter(${index}, ${charIndex})" style="cursor: pointer;" title="클릭하여 수정, 드래그하여 공격대로 이동">
+            <div class="expedition-char ${char.role}" draggable="true" ondragstart="handleDragStart(event, '${char.id}', null, null, ${index}, ${charIndex})" ondragend="handleDragEnd(event)" onclick="event.stopPropagation(); editCharacter(${index}, ${charIndex})" oncontextmenu="event.preventDefault(); event.stopPropagation(); confirmRemoveExpeditionCharacter(${index}, ${charIndex})" style="cursor: pointer;" title="좌클릭: 수정, 우클릭: 삭제, 드래그: 공격대로 이동">
               <img src="${char.image || 'img/default-character.png'}" alt="${char.name}" style="width: 40px; height: 40px; border-radius: 50%; margin-bottom: 2px; display: block;">
               <div class="flex-grow-1" style="font-size: 0.7rem;">
                 <div class="fw-bold">${char.name}</div>

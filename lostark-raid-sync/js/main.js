@@ -298,7 +298,7 @@ async function updateRaidName(partyId, newName) {
   if (!state.selectedRaid || !state.selectedDifficulty) return;
   const parties = getCurrentTabParties();
   const party = parties.find(p => p.id === partyId);
-  if (party) {
+  if (party && party.name !== newName) {
     const oldName = party.name;
     
     // 히스토리 기록
@@ -328,22 +328,25 @@ function updateRaidRequirements(partyId, requirementType, value) {
     const oldValue = party[requirementType] || 0;
     const newValue = parseInt(value) || 0;
     
-    // 히스토리 기록
-    recordHistory(
-      'update',
-      {
-        type: 'party',
-        id: partyId,
-        path: `party.${requirementType}`
-      },
-      { [requirementType]: oldValue },
-      { [requirementType]: newValue },
-      `${partyId} 파티 ${requirementType} 변경: ${oldValue} → ${newValue}`
-    );
-    
-    party[requirementType] = newValue;
-    renderRaidParties();
-    schedulePartyConfigSave();
+    // 값이 변경된 경우에만 처리
+    if (oldValue !== newValue) {
+      // 히스토리 기록
+      recordHistory(
+        'update',
+        {
+          type: 'party',
+          id: partyId,
+          path: `party.${requirementType}`
+        },
+        { [requirementType]: oldValue },
+        { [requirementType]: newValue },
+        `${partyId} 파티 ${requirementType} 변경: ${oldValue} → ${newValue}`
+      );
+      
+      party[requirementType] = newValue;
+      renderRaidParties();
+      scheduleAutoSave();
+    }
   }
 }
 
@@ -690,22 +693,39 @@ async function saveCharacterEdit() {
     console.log('🔧 [EDIT] 수정 후:', {
       updatedCombatPower: character.combatPower,
       updatedRole: character.role,
-      stateCharacter: state.expeditionSlots[expeditionIndex][characterIndex]
+      characterLocation,
+      isRaidCharacter: partyId !== null && slotIndex !== null
     });
     
     // 히스토리 기록
     if (typeof recordHistory === 'function') {
-      recordHistory(
-        'update',
-        {
-          type: 'character',
-          id: `expeditionSlot_${expeditionIndex}_${characterIndex}`,
-          path: `expeditionSlots[${expeditionIndex}][${characterIndex}]`
-        },
-        oldCharacter,
-        { ...character },
-        `원정대 슬롯 ${expeditionIndex + 1} 캐릭터 ${character.name} 정보 수정`
-      );
+      if (partyId !== null && slotIndex !== null) {
+        // 공격대 파티 캐릭터
+        recordHistory(
+          'update',
+          {
+            type: 'character',
+            id: `raid_${partyId}_${slotIndex}`,
+            path: `raidTabs.${state.selectedRaid.id}.${state.selectedDifficulty.id}.${partyId}.members[${slotIndex}]`
+          },
+          oldCharacter,
+          { ...character },
+          `${characterLocation} 캐릭터 ${character.name} 정보 수정`
+        );
+      } else {
+        // 원정대 캐릭터
+        recordHistory(
+          'update',
+          {
+            type: 'character',
+            id: `expeditionSlot_${expeditionIndex}_${characterIndex}`,
+            path: `expeditionSlots[${expeditionIndex}][${characterIndex}]`
+          },
+          oldCharacter,
+          { ...character },
+          `${characterLocation} 캐릭터 ${character.name} 정보 수정`
+        );
+      }
     }
     
     // 데이터 즉시 저장
@@ -730,7 +750,19 @@ async function saveCharacterEdit() {
     }
     
     // UI 업데이트 (저장 후)
-    renderExpedition();
+    if (partyId !== null && slotIndex !== null) {
+      // 공격대 파티 캐릭터 수정 시
+      renderRaidParties();
+    } else {
+      // 원정대 캐릭터 수정 시
+      renderExpedition();
+      
+      // 원정대 관리 모달이 열려있으면 모달 내용도 업데이트
+      const expeditionModal = document.getElementById('expeditionModal');
+      if (expeditionModal && expeditionModal.classList.contains('show')) {
+        renderExpeditionModal();
+      }
+    }
     
     // 모달 닫기
     const modal = bootstrap.Modal.getInstance(document.getElementById('characterEditModal'));
