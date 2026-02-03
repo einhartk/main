@@ -13,6 +13,7 @@ const state = {
     maxEntries: 50
   },
   expeditionSlots: Array.from({length:8}, () => []),
+  expeditionSlotNames: Array.from({length:8}, (_, i) => `원정대 ${i + 1}`),
   raidsData: [],
   selectedRaid: null,
   selectedDifficulty: null,
@@ -1223,15 +1224,23 @@ function showStatisticsModal() {
   calculateAndDisplayStatistics();
 }
 
-
 // 초기화
 async function initializeRaids() {
+  console.log('🔧 [INIT] initializeRaids() 호출됨');
+  
   // loadRaidsData가 이미 호출되었는지 확인
   if (!state.raidsData || state.raidsData.length === 0) {
+    console.log('📊 [INIT] 레이드 데이터 로드 필요');
     await loadRaidsData();
   }
-  if (!state.selectedRaid || !state.selectedDifficulty) return;
   
+  if (!state.selectedRaid || !state.selectedDifficulty) {
+    console.log('⚠️ [INIT] 선택된 레이드 또는 난이도 없음, 초기화 중단');
+    return;
+  }
+  
+  // UI 렌더링 (개인 설정이 이미 적용된 상태여야 함)
+  console.log('🎨 [INIT] UI 렌더링 (현재 상태 유지)');
   renderRaidTabs();
   
   // 레드 크기에 따라 파티 자동 생성 (이미 파티가 없는 경우에만)
@@ -1241,6 +1250,7 @@ async function initializeRaids() {
   
   // 현재 파티 수가 예상보다 적을 때만 생성
   if (currentParties.length < expectedPartyCount) {
+    console.log(`👥 [INIT] 파티 자동 생성: ${currentParties.length} -> ${expectedPartyCount}`);
     const partiesToAdd = expectedPartyCount - currentParties.length;
     for (let i = 0; i < partiesToAdd; i++) {
       addNewRaid(true);  // 데이터 로드 시 히스토리 기록 건너뜀
@@ -1249,7 +1259,7 @@ async function initializeRaids() {
   
   applyRecommendedRequirements();
   renderRaidParties();
-  renderExpedition(); // 원정대도 초기화 시 렌더링
+  console.log('✅ [INIT] initializeRaids() 완료');
 }
 
 // DB에서 데이터 불러오기 (Realtime Database)
@@ -1280,6 +1290,7 @@ async function loadFromDatabase() {
       let expeditionData = null;
       let raidTabsData = null;
       let selectedRaidData = null;
+      let expeditionSlotNamesData = null;
       
       if (syncCode && data.d) {
         // 동기화 세션 데이터 (compressed format)
@@ -1288,12 +1299,14 @@ async function loadFromDatabase() {
         expeditionData = compressedData.es; // expeditionSlots
         raidTabsData = compressedData.rt; // raidTabs
         selectedRaidData = compressedData.sr; // selectedRaid
+        expeditionSlotNamesData = compressedData.esn; // expeditionSlotNames
         
               } else if (!syncCode) {
         // 일반 데이터
                 expeditionData = data.es;
         raidTabsData = data.rt;
         selectedRaidData = data.sr;
+        expeditionSlotNamesData = data.esn; // expeditionSlotNames
       } else {
               }
       
@@ -1386,6 +1399,25 @@ async function loadFromDatabase() {
         console.log('⚠️ [LOAD] No expeditionSlots data found');
       }
       
+      // expeditionSlotNames 복원
+      if (expeditionSlotNamesData) {
+        try {
+          const parsedSlotNames = JSON.parse(expeditionSlotNamesData);
+          console.log('📝 [LOAD] Parsed expedition slot names:', parsedSlotNames);
+          
+          state.expeditionSlotNames = parsedSlotNames;
+          console.log('✅ [LOAD] Expedition slot names restored:', state.expeditionSlotNames);
+        } catch (error) {
+          console.error('❌ [LOAD] Failed to parse expeditionSlotNames:', error);
+          console.error('❌ [LOAD] Raw expeditionSlotNames data:', expeditionSlotNamesData);
+          // 기본값으로 복원
+          state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
+        }
+      } else {
+        console.log('⚠️ [LOAD] No expeditionSlotNames data found, using defaults');
+        state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
+      }
+      
       // selectedRaid 복원
       if (selectedRaidData) {
         const raid = state.raidsData.find(r => r.id === selectedRaidData);
@@ -1446,30 +1478,62 @@ function savePersonalSettings() {
 function loadPersonalSettings() {
   try {
     const saved = localStorage.getItem('lostarkRaidPersonalSettings');
+    console.log('📂 [PERSONAL] localStorage에서 설정 조회:', saved);
+    
     if (saved) {
       const personalSettings = JSON.parse(saved);
+      console.log('📂 [PERSONAL] 파싱된 설정:', personalSettings);
+      console.log('📂 [PERSONAL] 로드 전 상태:', {
+        selectedRaid: state.selectedRaid?.id,
+        selectedDifficulty: state.selectedDifficulty?.id
+      });
       
       // 저장된 레이드 선택
       if (personalSettings.selectedRaidId) {
         const raid = state.raidsData.find(r => r.id === personalSettings.selectedRaidId);
+        console.log('📂 [PERSONAL] 찾은 레이드:', raid?.id);
+        
         if (raid) {
+          const oldRaid = state.selectedRaid;
           state.selectedRaid = raid;
+          console.log('📂 [PERSONAL] 레이드 변경:', {
+            from: oldRaid?.id,
+            to: raid.id
+          });
           
           // 저장된 난이도 선택
           if (personalSettings.selectedDifficultyId) {
             const difficulty = raid.difficulties.find(d => d.id === personalSettings.selectedDifficultyId);
+            console.log('📂 [PERSONAL] 찾은 난이도:', difficulty?.id);
+            
             if (difficulty) {
+              const oldDifficulty = state.selectedDifficulty;
               state.selectedDifficulty = difficulty;
+              console.log('📂 [PERSONAL] 난이도 변경:', {
+                from: oldDifficulty?.id,
+                to: difficulty.id
+              });
             } else {
+              console.log('📂 [PERSONAL] 난이도를 기본값으로 설정');
               state.selectedDifficulty = raid.difficulties[0] || null;
             }
           } else {
+            console.log('📂 [PERSONAL] 난이도를 기본값으로 설정 (저장된 값 없음)');
             state.selectedDifficulty = raid.difficulties[0] || null;
           }
+        } else {
+          console.log('📂 [PERSONAL] 저장된 레이드를 찾을 수 없음');
         }
+      } else {
+        console.log('📂 [PERSONAL] 저장된 레이드 ID 없음');
       }
       
-      console.log('📂 [PERSONAL] 개인별 설정 로드됨:', personalSettings);
+      console.log('📂 [PERSONAL] 최종 상태:', {
+        selectedRaid: state.selectedRaid?.id,
+        selectedDifficulty: state.selectedDifficulty?.id
+      });
+    } else {
+      console.log('📂 [PERSONAL] 저장된 설정 없음');
     }
   } catch (error) {
     console.error('❌ [PERSONAL] 개인별 설정 로드 실패:', error);
@@ -1478,17 +1542,26 @@ function loadPersonalSettings() {
 
 // 페이지 로드 시 초기화
 window.addEventListener('load', function() {
+  console.log('🚀 [INIT] 페이지 로드 시작');
+  
   // 먼저 레이드 데이터 로드
   loadRaidsData().then(() => {
+    console.log('📊 [INIT] 레이드 데이터 로드 완료');
+    
     // 개인별 설정 로드
     loadPersonalSettings();
     
+    // 설정이 적용된 후 UI 렌더링
+    console.log('🎨 [INIT] UI 렌더링 시작');
+    renderRaidTabs();
+    renderRaidParties();
+    renderExpedition();
+    
     // 그 다음 DB에서 저장된 데이터 로드
     loadFromDatabase();
+    
+    console.log('✅ [INIT] 초기화 완료');
   });
-  
-  // 원정대 초기 렌더링
-  renderExpedition();
   
   // URL에서 동기화 코드 확인
   const syncCode = window.realtimeSync.getSyncCode();
@@ -1496,16 +1569,67 @@ window.addEventListener('load', function() {
     console.log(`🔄 [SYNC] Found sync code in URL: ${syncCode}`);
     window.realtimeSync.init(syncCode);
     
-    // 동기화 모드에서도 기본 초기화는 필요
-    // 단, 이미 초기화되었는지 확인
-    if (!state.raidsData || state.raidsData.length === 0) {
-      initializeRaids();
-    }
+    // 동기화 모드에서는 개인 설정만 적용하고 UI 렌더링만 수행
+    // initializeRaids()는 호출하지 않음 (개인 설정이 이미 적용됨)
   } else {
-    // 일반 초기화
-    initializeRaids();
+    // 일반 모드에서도 이미 초기화가 완료되었으므로 추가 초기화 불필요
+    console.log('📋 [INIT] 일반 모드 - 초기화 완료');
   }
 });
+
+// 원정대 슬롯 이름 변경
+function renameExpeditionSlot(slotIndex) {
+  const currentName = state.expeditionSlotNames[slotIndex];
+  
+  window.modalManager.showInput({
+    title: '원정대 이름 변경',
+    message: `${currentName}의 새 이름을 입력하세요:`,
+    placeholder: '새 이름 입력',
+    defaultValue: currentName,
+    confirmText: '변경',
+    cancelText: '취소',
+    onConfirm: (newName) => {
+      if (newName && newName.trim() && newName.trim() !== currentName) {
+        const trimmedName = newName.trim();
+        
+        // 히스토리 기록
+        if (typeof recordHistory === 'function') {
+          recordHistory(
+            'update',
+            {
+              type: 'expedition_slot_rename',
+              id: `expedition_slot_rename_${slotIndex}`,
+              path: `expedition_slot_names.${slotIndex}`
+            },
+            {
+              slotIndex,
+              oldName: currentName,
+              newName: trimmedName
+            },
+            {
+              slotIndex,
+              oldName: currentName,
+              newName: trimmedName
+            },
+            `원정대 슬롯 ${slotIndex + 1} 이름을 "${currentName}"에서 "${trimmedName}"으로 변경`
+          );
+        }
+        
+        // 이름 변경
+        state.expeditionSlotNames[slotIndex] = trimmedName;
+        
+        // UI 업데이트
+        renderExpedition();
+        renderExpeditionModal();
+        
+        // 자동 저장
+        scheduleAutoSave();
+        
+        console.log(`📝 [EXPEDITION] 원정대 슬롯 ${slotIndex + 1} 이름 변경: "${currentName}" -> "${trimmedName}"`);
+      }
+    }
+  });
+}
 
 // 원정대 패널 토글
 function toggleExpeditionPanel() {

@@ -262,6 +262,21 @@ class RealtimeSync {
                 }
             }
             
+            // expeditionSlotNames 역직렬화
+            if (compressedData.esn) {
+                try {
+                    state.expeditionSlotNames = JSON.parse(compressedData.esn);
+                    console.log('✅ [SYNC] Expedition slot names restored from sync');
+                } catch (error) {
+                    console.error('❌ [SYNC] Failed to parse expeditionSlotNames:', error);
+                    // 기본값으로 복원
+                    state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
+                }
+            } else {
+                console.log('⚠️ [SYNC] No expeditionSlotNames data in sync, using defaults');
+                state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
+            }
+            
             // selectedRaid와 selectedDifficulty는 개인별 설정이므로 동기화하지 않음
             // 사용자가 직접 선택한 상태 유지
         }
@@ -468,10 +483,12 @@ class RealtimeSync {
         // Firestore는 중첩 배열을 지원하지 않으므로 JSON 문자열로 직렬화
         const serializedRaidTabs = JSON.stringify(state.raidTabs);
         const serializedExpedition = JSON.stringify(state.expeditionSlots);
+        const serializedExpeditionSlotNames = JSON.stringify(state.expeditionSlotNames);
         
         const compressedData = {
             rt: serializedRaidTabs, // raidTabs -> rt (JSON string)
             es: serializedExpedition, // expeditionSlots -> es (JSON string)
+            esn: serializedExpeditionSlotNames, // expeditionSlotNames -> esn (JSON string)
             // sr과 sd 제외 - 개인별 선택 정보는 동기화하지 않음
             t: Date.now(), // timestamp -> t
             u: this.currentUser // user -> u

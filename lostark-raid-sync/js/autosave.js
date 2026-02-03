@@ -36,10 +36,12 @@ async function autoSaveToDatabase() {
     // Realtime Database는 중첩 배열을 지원하지 않으므로 JSON 문자열로 직렬화
     const serializedRaidTabs = JSON.stringify(state.raidTabs);
     const serializedExpedition = JSON.stringify(state.expeditionSlots);
+    const serializedExpeditionSlotNames = JSON.stringify(state.expeditionSlotNames);
     
     const saveData = {
       rt: serializedRaidTabs, // raidTabs -> rt (JSON string)
       es: serializedExpedition, // expeditionSlots -> es (JSON string)
+      esn: serializedExpeditionSlotNames, // expeditionSlotNames -> esn (JSON string)
       // sr 제외 - 개인별 선택 정보는 저장하지 않음
       t: new Date().toISOString(), // time -> t
       m: Date.now() // modified -> m

@@ -347,6 +347,12 @@ class ModalManager {
     cleanupModal(modalId) {
         const modalElement = document.getElementById(modalId);
         if (modalElement) {
+            // ARIA 경고 방지: 모달이 닫히기 전에 포커스된 요소에서 포커스 제거
+            const focusedElement = document.activeElement;
+            if (focusedElement && modalElement.contains(focusedElement)) {
+                focusedElement.blur();
+            }
+            
             modalElement.remove();
         }
         this.activeModals.delete(modalId);
