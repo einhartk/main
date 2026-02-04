@@ -19,6 +19,12 @@ class RealtimeSync {
         this._lastPushedEs = null;
         this._lastPushedEsn = null;
         this._lastPushedAt = 0;
+        this.pageVisibility = null;
+        this.isPageActive = true;
+        this.lastActivityTime = Date.now();
+        this.staleTabThreshold = 5 * 60 * 1000; // 5분
+        this.heartbeatInterval = 30000; // 기본 30초
+        this.inactiveHeartbeatInterval = 120000; // 비활성 시 2분
     }
 
     // userId에서 브라우저/기기 suffix를 제거한 "base user" 키
@@ -262,17 +268,28 @@ class RealtimeSync {
         // 자동 동기화 설정
         this.setupAutoSync();
         
+        // 페이지 가시성 감지 설정
+        this.setupPageVisibilityDetection();
+        
         this.isConnected = true;
     }
 
-    // 원격 데이터 처리 - 역직렬화 버전
+    // 원격 데이터 처리 - 역직렬화 버전 (오래된 탭 방지 강화)
     handleRemoteUpdate(data) {
         if (!data) return;
         if (!data.d) return;
 
         const compressedData = data.d;
-        // 우리가 방금 보낸 업데이트 에코면 스킵 (불필요한 파싱/리렌더·메모리 절감)
         const now = Date.now();
+        
+        // 오래된 탭에서의 동기화 방지: 10분 이상 비활성 상태였으면 동기화 건너뛰기
+        const inactiveTime = now - this.lastActivityTime;
+        if (inactiveTime > 10 * 60 * 1000 && !this.isPageActive) {
+            console.warn('⚠️ [SYNC] Skipping sync from inactive tab');
+            return;
+        }
+        
+        // 우리가 방금 보낸 업데이트 에코면 스킵 (불필요한 파싱/리렌더·메모리 절감)
         if (this._lastPushedAt && (now - this._lastPushedAt) < 4000 &&
             compressedData.rt === this._lastPushedRt &&
             compressedData.es === this._lastPushedEs &&
@@ -358,7 +375,10 @@ class RealtimeSync {
             uniqueId: this.currentUser, // 고유 ID
             joinedAt: Date.now(),
             lastSeen: Date.now(),
-            color: this.getUserColor()
+            color: this.getUserColor(),
+            isActive: this.isPageActive,
+            pageVisibility: this.pageVisibility,
+            tabId: this.getBrowserId() // 탭별 고유 ID
         };
         
         this.userRef.set(userData);
@@ -369,11 +389,173 @@ class RealtimeSync {
         // 주기적으로 활동 시간 업데이트
         this.presenceInterval = setInterval(() => {
             if (this.isConnected) {
-                this.userRef.update({ lastSeen: Date.now() });
+                this.updatePresence();
             }
-        }, 30000);
+        }, this.heartbeatInterval);
         
             }
+    
+    // 페이지 가시성 감지 설정
+    setupPageVisibilityDetection() {
+        // 페이지 가시성 변경 감지
+        document.addEventListener('visibilitychange', () => {
+            this.handleVisibilityChange();
+        });
+        
+        // 페이지 활동 감지 (마우스, 키보드)
+        ['mousedown', 'keydown', 'scroll', 'click'].forEach(event => {
+            document.addEventListener(event, () => {
+                this.lastActivityTime = Date.now();
+                if (!this.isPageActive) {
+                    this.isPageActive = true;
+                    this.adjustHeartbeatInterval();
+                }
+            }, { passive: true });
+        });
+        
+        // 주기적으로 비활성 상태 체크
+        setInterval(() => {
+            this.checkInactivity();
+        }, 60000); // 1분마다 체크
+    }
+    
+    // 가시성 변경 처리
+    handleVisibilityChange() {
+        this.isPageActive = !document.hidden;
+        this.pageVisibility = !document.hidden;
+        
+        if (this.isPageActive) {
+            // 페이지가 활성화되면 데이터 동기화 확인
+            this.verifyDataFreshness();
+        }
+        
+        this.adjustHeartbeatInterval();
+        this.updateUserPresence();
+    }
+    
+    // 비활성 상태 체크
+    checkInactivity() {
+        const now = Date.now();
+        const inactiveTime = now - this.lastActivityTime;
+        
+        if (inactiveTime > this.staleTabThreshold && this.isPageActive) {
+            this.isPageActive = false;
+            this.adjustHeartbeatInterval();
+            this.showStaleTabWarning();
+        }
+    }
+    
+    // 하트비트 간격 조정
+    adjustHeartbeatInterval() {
+        const newInterval = this.isPageActive ? this.heartbeatInterval : this.inactiveHeartbeatInterval;
+        
+        if (this.presenceInterval) {
+            clearInterval(this.presenceInterval);
+        }
+        
+        this.presenceInterval = setInterval(() => {
+            if (this.isConnected) {
+                this.updatePresence();
+            }
+        }, newInterval);
+    }
+    
+    // 사용자 접속 정보 업데이트
+    updatePresence() {
+        if (this.userRef) {
+            this.userRef.update({ 
+                lastSeen: Date.now(),
+                isActive: this.isPageActive,
+                pageVisibility: this.pageVisibility
+            });
+        }
+    }
+    
+    // 사용자 접속 정보 업데이트 (상태 변경 시)
+    updateUserPresence() {
+        if (this.userRef) {
+            this.userRef.update({
+                isActive: this.isPageActive,
+                pageVisibility: this.pageVisibility,
+                lastSeen: Date.now()
+            });
+        }
+    }
+    
+    // 데이터 신선도 확인
+    async verifyDataFreshness() {
+        if (!this.isConnected) return;
+        
+        try {
+            const now = Date.now();
+            const snapshot = await this.dbRef.child('a').once('value');
+            const lastUpdateTime = snapshot.val() || 0;
+            
+            // 마지막 업데이트가 1분 이상이면 데이터 새로고침
+            if (now - lastUpdateTime > 60000) {
+                console.log('🔄 [SYNC] Stale tab detected, refreshing data...');
+                await this.forceDataRefresh();
+            }
+        } catch (error) {
+            console.error('❌ [SYNC] Error verifying data freshness:', error);
+        }
+    }
+    
+    // 강제 데이터 새로고침
+    async forceDataRefresh() {
+        try {
+            const snapshot = await this.dbRef.child('d').once('value');
+            const data = snapshot.val();
+            
+            if (data) {
+                this.handleRemoteUpdate({ d: data });
+                this.showNotification('데이터가 새로고침되었습니다.', 'info');
+            }
+        } catch (error) {
+            console.error('❌ [SYNC] Error refreshing data:', error);
+        }
+    }
+    
+    // 오래된 탭 경고 표시
+    showStaleTabWarning() {
+        this.showNotification(
+            '오래된 탭입니다. 데이터 동기화를 위해 새로고침해주세요.', 
+            'warning',
+            10000
+        );
+    }
+    
+    // 알림 표시 함수
+    showNotification(message, type = 'info', duration = 5000) {
+        // 기존 알림이 있으면 제거
+        const existingNotification = document.getElementById('syncNotification');
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+        
+        const notification = document.createElement('div');
+        notification.id = 'syncNotification';
+        notification.className = `alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3`; 
+        notification.style.zIndex = '9999';
+        notification.style.minWidth = '300px';
+        notification.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle me-2"></i>
+                <span>${message}</span>
+                <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        if (duration > 0) {
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, duration);
+        }
+    }
     
     // 표시 이름 가져오기
     getDisplayName() {
@@ -499,9 +681,16 @@ class RealtimeSync {
         
             }
 
-    // Firebase에 데이터 동기화 (Realtime Database) - 변경이 있을 때만 전송
+    // Firebase에 데이터 동기화 (Realtime Database) - 변경이 있을 때만 전송 (오래된 탭 방지)
     syncToFirebase() {
         if (!this.isConnected) return;
+        
+        // 오래된 탭에서의 동기화 방지
+        const inactiveTime = Date.now() - this.lastActivityTime;
+        if (inactiveTime > 10 * 60 * 1000 && !this.isPageActive) {
+            console.warn('⚠️ [SYNC] Blocking sync from inactive tab');
+            return Promise.resolve();
+        }
 
         const serializedRaidTabs = JSON.stringify(state.raidTabs);
         const serializedExpedition = JSON.stringify(state.expeditionSlots);
@@ -586,8 +775,12 @@ class RealtimeSync {
                 // 중복 사용자 제거 (같은 기본 사용자 이름)
                 const uniqueUsers = {};
                 Object.values(users).forEach(user => {
-                    if (!uniqueUsers[user.name]) {
-                        uniqueUsers[user.name] = user;
+                    // 같은 baseUser가 여러 탭에 있으면 가장 활성적인 것만 표시
+                    const baseUser = this.getBaseUserKey(user.uniqueId);
+                    if (!uniqueUsers[baseUser] || 
+                        (user.isActive && !uniqueUsers[baseUser].isActive) ||
+                        (user.lastSeen > uniqueUsers[baseUser].lastSeen)) {
+                        uniqueUsers[baseUser] = user;
                     }
                 });
                 

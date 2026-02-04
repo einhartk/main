@@ -44,10 +44,14 @@ async function confirmRemoveExpeditionCharacter(expeditionIndex, characterIndex)
         // 데이터 저장
         scheduleAutoSave();
         
-        window.modalManager.showAlert({
-          title: '삭제 완료',
-          message: `${characterName} 캐릭터가 원정대에서 삭제되었습니다.`
-        });
+        // 동기화 중이 아니면 알림 표시
+        const isSyncMode = window.realtimeSync && window.realtimeSync.isSyncActive();
+        if (!isSyncMode) {
+          window.modalManager.showAlert({
+            title: '삭제 완료',
+            message: `${characterName} 캐릭터가 원정대에서 삭제되었습니다.`
+          });
+        }
         
       } catch (error) {
         console.error('❌ [EXPEDITION DELETE ERROR]:', error);
@@ -144,10 +148,14 @@ async function confirmRemoveCharacter(characterId, partyId, slotIndex) {
         }
       }, 100);
 
-      window.modalManager.showAlert({
-        title: '삭제 완료',
-        message: `${characterName} 캐릭터가 공격대에서 삭제되었습니다.`
-      });
+      // 동기화 중이 아니면 알림 표시
+      const isSyncMode = window.realtimeSync && window.realtimeSync.isSyncActive();
+      if (!isSyncMode) {
+        window.modalManager.showAlert({
+          title: '삭제 완료',
+          message: `${characterName} 캐릭터가 공격대에서 삭제되었습니다.`
+        });
+      }
     }
   });
 }
@@ -847,10 +855,14 @@ async function selectRaidCharacter(characterName, partyId, slotIndex) {
     // 자동 저장
     scheduleAutoSave();
 
-    window.modalManager.showAlert({
-      title: '캐릭터 배정 완료',
-      message: `${characterName} 캐릭터가 공격대에 배정되었습니다.`
-    });
+    // 동기화 중이 아니면 알림 표시
+    const isSyncMode = window.realtimeSync && window.realtimeSync.isSyncActive();
+    if (!isSyncMode) {
+      window.modalManager.showAlert({
+        title: '캐릭터 배정 완료',
+        message: `${characterName} 캐릭터가 공격대에 배정되었습니다.`
+      });
+    }
 
     // UI 업데이트 (마지막에 한 번만)
     renderRaidParties();
@@ -959,10 +971,14 @@ async function displaySearchResults(characters, successCount, failCount, failedN
     message += `\n\n조회 실패: ${failedNames.join(', ')}`;
   }
   
-  window.modalManager.showAlert({
-    title: '원정대 설정 완료',
-    message: message
-  });
+  // 동기화 중이 아니면 알림 표시
+  const isSyncMode = window.realtimeSync && window.realtimeSync.isSyncActive();
+  if (!isSyncMode) {
+    window.modalManager.showAlert({
+      title: '원정대 설정 완료',
+      message: message
+    });
+  }
   
   // 모달 닫기
   const modal = bootstrap.Modal.getInstance(document.getElementById('characterSearchModal'));

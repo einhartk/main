@@ -604,3 +604,621 @@ body.modal-open {
     border-top-right-radius: 6px;
     border-bottom-right-radius: 6px;
 }
+
+/* btn-group 내의 label 요소에도 라운드 적용 */
+.btn-group label.btn:first-child {
+    border-top-left-radius: 6px !important;
+    border-bottom-left-radius: 6px !important;
+}
+
+.btn-group label.btn:last-child {
+    border-top-right-radius: 6px !important;
+    border-bottom-right-radius: 6px !important;
+}
+
+/* 더 강력한 선택자 추가 */
+.party-card .btn-group label.btn:first-child {
+    border-top-left-radius: 6px !important;
+    border-bottom-left-radius: 6px !important;
+}
+
+.party-card .btn-group label.btn:last-child {
+    border-top-right-radius: 6px !important;
+    border-bottom-right-radius: 6px !important;
+}
+
+/* Bootstrap 기본 스타일 덮어쓰기 */
+.btn-group > label.btn:first-child {
+    border-top-left-radius: 6px !important;
+    border-bottom-left-radius: 6px !important;
+}
+
+.btn-group > label.btn:last-child {
+    border-top-right-radius: 6px !important;
+    border-bottom-right-radius: 6px !important;
+}
+
+/* Timeline Styles */
+.timeline {
+    position: relative;
+    padding: 20px 0;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 50px;
+    margin-bottom: 30px;
+}
+
+.timeline-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 12px;
+    top: 5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    border: 2px solid #007bff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    z-index: 1;
+}
+
+.timeline-item.past .timeline-marker {
+    border-color: #6c757d;
+}
+
+.timeline-item.today .timeline-marker {
+    border-color: #ffc107;
+}
+
+.timeline-content {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.timeline-content:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.timeline-item.past .timeline-content {
+    opacity: 0.8;
+}
+
+.timeline-item.today .timeline-content {
+    border-left: 4px solid #ffc107;
+}
+
+/* Scheduler Container */
+.scheduler-container {
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .timeline::before {
+        left: 10px;
+    }
+    
+    .timeline-item {
+        padding-left: 30px;
+    }
+    
+    .timeline-marker {
+        left: 2px;
+        width: 16px;
+        height: 16px;
+    }
+}
+
+/* Schedule by Weekday Styles */
+.schedule-by-weekday {
+    padding: 10px 0;
+}
+
+.weekday-section {
+    border-left: 4px solid #007bff;
+    padding-left: 15px;
+    margin-bottom: 25px;
+}
+
+.weekday-title {
+    color: #007bff;
+    font-weight: 600;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+}
+
+.weekday-section .card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.weekday-section .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 공격대 헤더 UI 개선 스타일 */
+.party-card .card-header {
+    position: relative;
+}
+
+.party-card .badge.bg-gradient {
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+    transition: all 0.2s ease;
+}
+
+.party-card .badge.bg-gradient:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.party-card .form-check-input {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.party-card .form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.party-card .btn-group {
+    transition: all 0.2s ease;
+}
+
+.party-card .btn-group:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15) !important;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .party-card .card-header .row {
+        gap: 0.5rem;
+    }
+    
+    .party-card .col-md-3,
+    .party-card .col-md-6 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .party-card .d-flex.justify-content-end {
+        justify-content: flex-start !important;
+        gap: 1rem !important;
+    }
+    
+    .party-card .border-start {
+        display: none;
+    }
+    
+    .party-card .badge {
+        font-size: 0.7rem !important;
+        padding: 4px 8px !important;
+    }
+    
+    .party-card .btn-group .btn {
+        font-size: 0.7rem !important;
+        padding: 3px 6px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .party-card .input-group {
+        width: 100% !important;
+        margin-bottom: 0.5rem;
+    }
+    
+    .party-card .d-flex.align-items-center.gap-3 {
+        flex-wrap: wrap;
+        gap: 0.5rem !important;
+    }
+    
+    .party-card .form-check {
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* 다크모드 스타일 - 완전히 재설계 */
+.dark-mode {
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+    color: #e1e8ed;
+    min-height: 100vh;
+}
+
+.dark-mode body {
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+    color: #e1e8ed;
+}
+
+.dark-mode .sidebar {
+    background: linear-gradient(180deg, #1e1e2e 0%, #2d2d44 100%);
+    border-right: 1px solid #3a3a5c;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .sidebar-heading {
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    font-weight: 600;
+}
+
+.dark-mode .nav-link {
+    color: #b8c5d6;
+    border-radius: 8px;
+    margin: 2px 0;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.dark-mode .nav-link:hover {
+    background: linear-gradient(90deg, #3a3a5c 0%, #4a4a6c 100%);
+    color: #ffffff;
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .nav-link.active {
+    background: linear-gradient(90deg, #4a69bd 0%, #5f7cdb 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(74, 105, 189, 0.3);
+}
+
+.dark-mode .card {
+    background: linear-gradient(145deg, #2d2d44 0%, #3a3a5c 100%);
+    border: 1px solid #4a4a6c;
+    color: #e1e8ed;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.dark-mode .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    border-color: #5a5a7c;
+}
+
+.dark-mode .card-header {
+    background: linear-gradient(90deg, #3a3a5c 0%, #4a4a6c 100%);
+    border-bottom: 1px solid #5a5a7c;
+    color: #ffffff;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .modal-content {
+    background: linear-gradient(145deg, #2d2d44 0%, #3a3a5c 100%);
+    border: 1px solid #4a4a6c;
+    color: #e1e8ed;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.dark-mode .modal-header {
+    background: linear-gradient(90deg, #3a3a5c 0%, #4a4a6c 100%);
+    border-bottom: 1px solid #5a5a7c;
+    color: #ffffff;
+}
+
+.dark-mode .modal-body {
+    background: transparent;
+    color: #e1e8ed;
+}
+
+.dark-mode .form-control {
+    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
+    border: 1px solid #5a5a7c;
+    color: #e1e8ed;
+    transition: all 0.3s ease;
+}
+
+.dark-mode .form-control:focus {
+    background: linear-gradient(145deg, #4a4a6c 0%, #5a5a7c 100%);
+    border-color: #4a69bd;
+    color: #ffffff;
+    box-shadow: 0 0 0 0.2rem rgba(74, 105, 189, 0.25);
+}
+
+.dark-mode .btn-outline-primary {
+    border-color: #4a69bd;
+    color: #4a69bd;
+    background: transparent;
+    transition: all 0.3s ease;
+}
+
+.dark-mode .btn-outline-primary:hover {
+    background: linear-gradient(90deg, #4a69bd 0%, #5f7cdb 100%);
+    border-color: #5f7cdb;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74, 105, 189, 0.3);
+}
+
+.dark-mode .btn-primary {
+    background: linear-gradient(90deg, #4a69bd 0%, #5f7cdb 100%);
+    border-color: #4a69bd;
+    transition: all 0.3s ease;
+}
+
+.dark-mode .btn-primary:hover {
+    background: linear-gradient(90deg, #5f7cdb 0%, #74a0f7 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(74, 105, 189, 0.3);
+}
+
+.dark-mode .btn-secondary {
+    background: linear-gradient(90deg, #6c757d 0%, #868e96 100%);
+    border-color: #6c757d;
+}
+
+.dark-mode .table {
+    color: #e1e8ed;
+    background: transparent;
+}
+
+.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > td,
+.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > th {
+    background: linear-gradient(90deg, rgba(58, 58, 92, 0.3) 0%, rgba(74, 74, 108, 0.3) 100%);
+}
+
+.dark-mode .alert {
+    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
+    border: 1px solid #5a5a7c;
+    color: #e1e8ed;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .alert-success {
+    background: linear-gradient(145deg, #1e3a28 0%, #2d5a3d 100%);
+    border-color: #38a169;
+    color: #d4edda;
+}
+
+.dark-mode .alert-warning {
+    background: linear-gradient(145deg, #856404 0%, #b8870a 100%);
+    border-color: #ffc107;
+    color: #fff3cd;
+}
+
+.dark-mode .alert-danger {
+    background: linear-gradient(145deg, #721c24 0%, #a02c37 100%);
+    border-color: #dc3545;
+    color: #f8d7da;
+}
+
+.dark-mode .badge {
+    background: linear-gradient(145deg, #4a4a6c 0%, #5a5a7c 100%);
+    color: #e1e8ed;
+    border: 1px solid #6a6a8c;
+}
+
+.dark-mode .badge.bg-primary {
+    background: linear-gradient(145deg, #3a5ca5 0%, #4a69bd 100%) !important;
+    border-color: #5f7cdb;
+}
+
+.dark-mode .badge.bg-success {
+    background: linear-gradient(145deg, #28a745 0%, #34ce57 100%) !important;
+    border-color: #34ce57;
+}
+
+.dark-mode .badge.bg-warning {
+    background: linear-gradient(145deg, #ffc107 0%, #ffcd39 100%) !important;
+    color: #212529;
+    border-color: #ffcd39;
+}
+
+.dark-mode .badge.bg-danger {
+    background: linear-gradient(145deg, #dc3545 0%, #e4606d 100%) !important;
+    border-color: #e4606d;
+}
+
+.dark-mode .badge.bg-info {
+    background: linear-gradient(145deg, #17a2b8 0%, #20c997 100%) !important;
+    border-color: #20c997;
+}
+
+.dark-mode .badge.bg-secondary {
+    background: linear-gradient(145deg, #6c757d 0%, #868e96 100%) !important;
+    border-color: #868e96;
+}
+
+.dark-mode .nav-tabs .nav-link {
+    color: #b8c5d6;
+    border-color: #4a4a6c;
+    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
+    transition: all 0.3s ease;
+}
+
+.dark-mode .nav-tabs .nav-link.active {
+    background: linear-gradient(145deg, #4a69bd 0%, #5f7cdb 100%);
+    border-color: #4a69bd;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(74, 105, 189, 0.3);
+}
+
+.dark-mode .nav-tabs .nav-link:hover {
+    background: linear-gradient(145deg, #4a4a6c 0%, #5a5a7c 100%);
+    border-color: #5a5a7c;
+    color: #ffffff;
+}
+
+.dark-mode .tab-content {
+    background: transparent;
+}
+
+.dark-mode .form-check-input {
+    background-color: #4a4a6c;
+    border-color: #6a6a8c;
+}
+
+.dark-mode .form-check-input:checked {
+    background-color: #4a69bd;
+    border-color: #4a69bd;
+}
+
+.dark-mode .char-box {
+    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
+    border: 1px solid #5a5a7c;
+    color: #e1e8ed;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.dark-mode .char-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border-color: #6a6a8c;
+}
+
+.dark-mode .char-slot {
+    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
+    border: 2px dashed #5a5a7c;
+}
+
+.dark-mode .expedition-side-panel .card {
+    background: linear-gradient(145deg, #2d2d44 0%, #3a3a5c 100%);
+    border: 1px solid #4a4a6c;
+}
+
+.dark-mode .expedition-side-panel .card-header {
+    background: linear-gradient(90deg, #3a3a5c 0%, #4a4a6c 100%);
+    color: #ffffff;
+}
+
+.dark-mode .party-card .badge.bg-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 다크모드 전환 애니메이션 강화 */
+body {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card, .modal-content, .form-control, .btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 다크모드 전환 효과 */
+.dark-mode * {
+    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+                color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.party-card .form-switch .form-check-input {
+    width: 2.5rem !important;
+    height: 1.25rem !important;
+    background-color: #ffffff !important;
+    border: 1px solid #ced4da !important;
+    position: relative;
+    cursor: pointer;
+    /* Bootstrap 기본 ::before 숨기기 */
+    background-image: none !important;
+}
+
+.party-card .form-switch .form-check-input::after {
+    content: "";
+    position: absolute;
+    height: 0.875rem;
+    width: 0.875rem;
+    left: 0.0625rem;
+    top: 0.125rem;
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
+    border-radius: 50%;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.party-card .form-switch .form-check-input:checked::after {
+    transform: translateX(1.25rem);
+    background-color: #ffffff;
+    border-color: #28a745;
+}
+
+.party-card .form-switch .form-check-input:checked {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.dark-mode .party-card .form-switch .form-check-input {
+    background-color: #4a5568 !important;
+    border-color: #718096 !important;
+    background-image: none !important;
+}
+
+.dark-mode .party-card .form-switch .form-check-input::after {
+    background-color: #e9ecef;
+    border-color: #718096;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .party-card .form-switch .form-check-input:checked::after {
+    background-color: #e9ecef;
+    border-color: #38a169;
+}
+
+.dark-mode .party-card .form-switch .form-check-input:checked {
+    background-color: #38a169 !important;
+    border-color: #38a169 !important;
+}
+
+.dark-mode .char-box {
+    background-color: #4a5568;
+    border-color: #718096;
+    color: #e9ecef;
+}
+
+.dark-mode .char-slot {
+    background-color: #4a5568;
+    border-color: #718096;
+}
+
+.dark-mode .expedition-side-panel .card {
+    background-color: #2d3748;
+    border-color: #4a5568;
+}
+
+.dark-mode .expedition-side-panel .card-header {
+    background-color: #4a5568;
+    color: #e9ecef;
+}
+
+.dark-mode .party-card .badge.bg-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: #ffffff !important;
+}
+
+/* 다크모드 전환 애니메이션 */
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.card, .modal-content, .form-control {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}

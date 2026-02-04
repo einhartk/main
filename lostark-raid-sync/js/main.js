@@ -243,6 +243,11 @@ async function addNewRaid(skipHistory = false) {
     difficultyId: state.selectedDifficulty.id,
     raidName: state.selectedRaid.name,
     difficultyName: state.selectedDifficulty.name,
+    cleared: false, // 클리어 상태 기본값
+    scheduledWeekday: null, // 약속 요일
+    scheduledHour: null, // 약속 시간
+    scheduledTime: null, // 기존 호환성 (ISO 문자열)
+    scheduledTimeDisplay: '', // 기존 호환성 (표시용 시간 문자열)
     members: Array(4).fill(null), // 기본 4인
     maxSupports: 1, // 4인 1서폿 / 8인 2서폿
     size: 4, // 현재 파티 크기
@@ -1265,11 +1270,15 @@ function renderRaidListModal() {
           
           html += `
             <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-              <div class="card border-0 shadow-sm" style="font-size: 0.7rem;">
-                <div class="card-header bg-light py-1">
+              <div class="card border-0 shadow-sm ${party.cleared ? 'bg-light' : ''}" style="font-size: 0.7rem;">
+                <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
                   <h6 class="card-title mb-0" style="font-size: 0.75rem;">
                     <i class="bi bi-people-fill me-1"></i>${party.name}
                   </h6>
+                  ${party.cleared ? 
+                    '<span class="badge bg-success" style="font-size: 0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>클리어</span>' : 
+                    '<span class="badge bg-secondary" style="font-size: 0.6rem;"><i class="bi bi-circle me-1"></i>미클리어</span>'
+                  }
                 </div>
                 <div class="card-body p-1">
                   <div class="text-center mb-1">
@@ -1432,6 +1441,25 @@ async function loadFromDatabase() {
               parties.forEach(party => {
                 party.raidId = raidId;
                 party.difficultyId = difficultyId;
+                
+                // cleared 속성이 없으면 기본값으로 설정
+                if (party.cleared === undefined) {
+                  party.cleared = false;
+                }
+                
+                // 시간 관련 속성이 없으면 기본값으로 설정
+                if (party.scheduledTime === undefined) {
+                  party.scheduledTime = null;
+                }
+                if (party.scheduledTimeDisplay === undefined) {
+                  party.scheduledTimeDisplay = '';
+                }
+                if (party.scheduledWeekday === undefined) {
+                  party.scheduledWeekday = null;
+                }
+                if (party.scheduledHour === undefined) {
+                  party.scheduledHour = null;
+                }
                 
                 // 기존 파티가 단일 문자 ID(A, B 등)인 경우 고유 ID로 변경
                 if (party.id && party.id.length === 1 && /^[A-Z]$/.test(party.id)) {
@@ -1928,10 +1956,14 @@ async function autoAssign() {
   // 저장
   scheduleAutoSave();
 
-  window.modalManager.showAlert({
-    title: '자동 추천 완료',
-    message: `${assignedCount}명의 캐릭터를 공격대에 배치했습니다.\n서폿 우선 배치: ${supports.length}명 남음\nDPS 배치: ${dps.length}명 남음\n(모든 제약 조건 적용 완료)`
-  });
+  // 동기화 중이 아니면 알림 표시
+  const isSyncMode = window.realtimeSync && window.realtimeSync.isSyncActive();
+  if (!isSyncMode) {
+    window.modalManager.showAlert({
+      title: '자동 추천 완료',
+      message: `${assignedCount}명의 캐릭터를 공격대에 배치했습니다.\n서폿 우선 배치: ${supports.length}명 남음\nDPS 배치: ${dps.length}명 남음\n(모든 제약 조건 적용 완료)`
+    });
+  }
   } finally {
     // 잠금 해제 (안전한 확인)
     if (window.operationLock && typeof window.operationLock.release === 'function') {
@@ -2143,19 +2175,642 @@ async function balancedAssign() {
       supports: supportCount
     };
   });
-
-  const statsMessage = partyStats.map(stat => 
-    `${stat.name}: ${stat.members}명 (평균 CP: ${stat.avgCp}, 서폿: ${stat.supports})`
-  ).join('\n');
-
-  window.modalManager.showAlert({
-    title: '균등 분배 완료',
-    message: `${assignedCount}명의 캐릭터를 균등하게 분배했습니다.\n\n${statsMessage}\n\n(모든 제약 조건 적용 완료)`
-  });
   } finally {
-    // 잠금 해제 (안전한 확인)
+    // 잠금 해제
     if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('클리어 상태 변경');
       window.operationLock.release('균등 분배');
     }
   }
 }
+
+// === 클리어 체크 기능 ===
+
+// 공격대 클리어 상태 토글
+async function toggleRaidClear(partyId, isCleared) {
+  // 작업 잠금 확인
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    window.modalManager.showAlert({
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
+    });
+    return;
+  }
+  
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('클리어 상태 변경');
+  }
+  
+  if (!acquired) return;
+  
+  try {
+    // 파티 찾기
+    const parties = getCurrentTabParties();
+    const party = parties.find(p => p.id === partyId);
+    
+    if (!party) {
+      console.error('❌ [CLEAR] 파티를 찾을 수 없음:', partyId);
+      return;
+    }
+    
+    // 클리어 상태 업데이트
+    party.cleared = isCleared;
+    
+    // raidsData에도 클리어 상태 반영 (안전한 처리)
+    const raidId = party.raidId || (state.selectedRaid?.id);
+    const difficultyId = party.difficultyId || (state.selectedDifficulty?.id);
+    
+    if (raidId && difficultyId) {
+      const raid = state.raidsData.find(r => r.id === raidId);
+      if (raid) {
+        const difficulty = raid.difficulties.find(d => d.id === difficultyId);
+        if (difficulty) {
+          difficulty.cleared = isCleared;
+        }
+      }
+    }
+    
+    // UI 업데이트
+    renderRaidParties();
+    
+    // 동기화
+    if (window.realtimeSync && window.realtimeSync.isSyncActive()) {
+      await window.realtimeSync.syncToFirebaseWithLock();
+    } else {
+      scheduleAutoSave();
+    }
+    
+    // 알림
+    const message = isCleared ? 
+      `${party.name || partyId} 클리어 완료!` : 
+      `${party.name || partyId} 클리어 취소`;
+    
+    showNotification(message, isCleared ? 'success' : 'info');
+    
+  } finally {
+    // 잠금 해제
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('클리어 상태 변경');
+    }
+  }
+}
+
+// 주간 리셋 체크 및 자동 리셋
+function checkWeeklyReset() {
+  const now = new Date();
+  const currentDay = now.getDay(); // 0: 일요일, 1: 월요일, ..., 3: 수요일
+  const currentHour = now.getHours();
+  
+  // 수요일 오전 10시에 리셋
+  if (currentDay === 3 && currentHour === 10) {
+    const lastReset = localStorage.getItem('lastWeeklyReset');
+    const today = now.toDateString();
+    
+    // 오늘 이미 리셋했으면 건너뛰기
+    if (lastReset === today) {
+      return;
+    }
+    
+    performWeeklyReset();
+    localStorage.setItem('lastWeeklyReset', today);
+  }
+}
+
+// 주간 리셋 실행
+async function performWeeklyReset() {
+  console.log('🔄 [WEEKLY RESET] 주간 리셋 실행...');
+  
+  try {
+    // 모든 공격대 클리어 상태 초기화
+    state.raidsData.forEach(raid => {
+      raid.difficulties.forEach(difficulty => {
+        difficulty.cleared = false;
+      });
+    });
+    
+    // 모든 파티 클리어 상태 초기화
+    Object.keys(state.raidTabs).forEach(raidId => {
+      Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+        const parties = state.raidTabs[raidId][difficultyId];
+        if (Array.isArray(parties)) {
+          parties.forEach(party => {
+            if (party) {
+              party.cleared = false;
+            }
+          });
+        }
+      });
+    });
+    
+    // UI 업데이트
+    renderRaidParties();
+    
+    // 동기화
+    if (window.realtimeSync && window.realtimeSync.isSyncActive()) {
+      await window.realtimeSync.syncToFirebaseWithLock();
+    } else {
+      scheduleAutoSave();
+    }
+    
+    // 알림
+    showNotification('주간 리셋이 완료되었습니다. 모든 공격대 클리어 상태가 초기화되었습니다.', 'success', 10000);
+    
+    console.log('✅ [WEEKLY RESET] 주간 리셋 완료');
+    
+  } catch (error) {
+    console.error('❌ [WEEKLY RESET] 리셋 실패:', error);
+    showNotification('주간 리셋 중 오류가 발생했습니다.', 'error');
+  }
+}
+
+// 수동 리셋 함수 (관리자용)
+async function manualWeeklyReset() {
+  const confirmed = confirm('정말로 모든 공격대 클리어 상태를 초기화하시겠습니까?\\n이 작업은 되돌릴 수 없습니다.');
+  
+  if (!confirmed) return;
+  
+  await performWeeklyReset();
+}
+
+// 알림 표시 함수
+function showNotification(message, type = 'info', duration = 5000) {
+  // 기존 알림이 있으면 제거
+  const existingNotification = document.getElementById('appNotification');
+  if (existingNotification) {
+    existingNotification.remove();
+  }
+  
+  const notification = document.createElement('div');
+  notification.id = 'appNotification';
+  notification.className = `alert alert-${type} position-fixed top-0 start-50 translate-middle-x mt-3`; 
+  notification.style.zIndex = '9999';
+  notification.style.minWidth = '300px';
+  notification.innerHTML = `
+    <div class="d-flex align-items-center">
+      <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info-circle'} me-2"></i>
+      <span>${message}</span>
+      <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+    </div>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  if (duration > 0) {
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, duration);
+  }
+}
+
+// 주간 리셋 체크 타이머 설정 (매시간 체크)
+setInterval(checkWeeklyReset, 60 * 60 * 1000);
+
+// 페이지 로드시 즉시 체크
+checkWeeklyReset();
+
+// === 시간 스케줄러 기능 ===
+
+// 🔥 **핵심 수정: 스케줄러 관련 함수 전역 노출**
+window.updateRaidScheduledTime = updateRaidScheduledTime;
+window.clearRaidScheduledTime = clearRaidScheduledTime;
+window.openSchedulerModal = openSchedulerModal;
+window.refreshScheduler = refreshScheduler;
+window.exportSchedule = exportSchedule;
+
+// 공격대 약속 시간 업데이트
+async function updateRaidScheduledTime(partyId, weekday, hour) {
+  // 작업 잠금 확인
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    return;
+  }
+  
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('약속 시간 변경');
+  }
+  
+  if (!acquired) return;
+  
+  try {
+    // 파티 찾기
+    const parties = getCurrentTabParties();
+    const party = parties.find(p => p.id === partyId);
+    
+    if (!party) {
+      console.error('❌ [SCHEDULE] 파티를 찾을 수 없음:', partyId);
+      return;
+    }
+    
+    // 요일/시간 업데이트
+    party.scheduledWeekday = weekday || null;
+    party.scheduledHour = hour || null;
+    
+    // 표시용 시간 문자열 생성 (기존 호환성)
+    if (weekday && hour) {
+      const weekdayNames = {
+        'monday': '월요일',
+        'tuesday': '화요일',
+        'wednesday': '수요일',
+        'thursday': '목요일',
+        'friday': '금요일',
+        'saturday': '토요일',
+        'sunday': '일요일'
+      };
+      party.scheduledTimeDisplay = `${weekdayNames[weekday]} ${hour}`;
+      
+      // 다음 해당 요일의 날짜 계산 (기존 호환성)
+      const today = new Date();
+      const todayDay = today.getDay(); // 0=일요일, 1=월요일, ...
+      const weekdayMap = {
+        'sunday': 0,
+        'monday': 1,
+        'tuesday': 2,
+        'wednesday': 3,
+        'thursday': 4,
+        'friday': 5,
+        'saturday': 6
+      };
+      
+      const targetDay = weekdayMap[weekday];
+      let daysUntilTarget = targetDay - todayDay;
+      if (daysUntilTarget <= 0) {
+        daysUntilTarget += 7; // 다음 주로
+      }
+      
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + daysUntilTarget);
+      
+      const [hours, minutes] = hour.split(':');
+      targetDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      party.scheduledTime = targetDate.toISOString();
+    } else {
+      party.scheduledTimeDisplay = '';
+      party.scheduledTime = null;
+    }
+    
+    // UI 업데이트
+    renderRaidParties();
+    
+    // 동기화
+    if (window.realtimeSync && window.realtimeSync.isSyncActive()) {
+      await window.realtimeSync.syncToFirebaseWithLock();
+    } else {
+      scheduleAutoSave();
+    }
+    
+    // 알림
+    const message = (weekday && hour) ? 
+      `${party.name || partyId} 약속 시간이 설정되었습니다.` : 
+      `${party.name || partyId} 약속 시간이 초기화되었습니다.`;
+    
+    showNotification(message, 'info');
+    
+  } finally {
+    // 잠금 해제
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('약속 시간 변경');
+    }
+  }
+}
+
+// 약속 시간 초기화
+async function clearRaidScheduledTime(partyId) {
+  const weekdaySelect = document.getElementById(`scheduledWeekday-${partyId}`);
+  const hourInput = document.getElementById(`scheduledHour-${partyId}`);
+  
+  if (weekdaySelect) {
+    weekdaySelect.value = '';
+  }
+  if (hourInput) {
+    hourInput.value = '';
+  }
+  
+  await updateRaidScheduledTime(partyId, null, null);
+}
+
+// 시간 스케줄러 모달 열기
+function openSchedulerModal() {
+  const modalId = 'schedulerModal';
+  
+  // 기존 모달이 있으면 제거
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // 모달 HTML 생성
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-calendar-week me-2"></i>
+              시간 스케줄러
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-md-12">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6>전체 공격대 일정</h6>
+                  <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" onclick="refreshScheduler()">
+                      <i class="bi bi-arrow-clockwise"></i> 새로고침
+                    </button>
+                    <button class="btn btn-outline-success" onclick="exportSchedule()">
+                      <i class="bi bi-download"></i> 내보내기
+                    </button>
+                  </div>
+                </div>
+                <div id="schedulerContent" class="scheduler-container">
+                  <!-- 스케줄 내용이 여기에 표시됨 -->
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  const modalElement = document.getElementById(modalId);
+  const modal = new bootstrap.Modal(modalElement);
+  
+  // 모달 표시
+  modal.show();
+  
+  // 스케줄 내용 로드
+  loadSchedulerContent();
+  
+  // 모달 닫힐 때 정리
+  modalElement.addEventListener('hidden.bs.modal', () => {
+    modalElement.remove();
+  }, { once: true });
+}
+
+// 스케줄 내용 로드
+function loadSchedulerContent() {
+  const container = document.getElementById('schedulerContent');
+  if (!container) return;
+  
+  // 모든 파티 데이터 수집
+  const allParties = [];
+  
+  Object.keys(state.raidTabs).forEach(raidId => {
+    Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+      const parties = state.raidTabs[raidId][difficultyId];
+      if (Array.isArray(parties)) {
+        parties.forEach(party => {
+          if (party && party.scheduledWeekday && party.scheduledHour) {
+            allParties.push({
+              ...party,
+              raidId,
+              difficultyId
+            });
+          }
+        });
+      }
+    });
+  });
+  
+  // 요일순 정렬 (월요일부터 일요일까지)
+  const weekdayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  allParties.sort((a, b) => {
+    const aWeekdayIndex = weekdayOrder.indexOf(a.scheduledWeekday);
+    const bWeekdayIndex = weekdayOrder.indexOf(b.scheduledWeekday);
+    
+    if (aWeekdayIndex !== bWeekdayIndex) {
+      return aWeekdayIndex - bWeekdayIndex;
+    }
+    
+    // 같은 요일이면 시간순 정렬
+    return a.scheduledHour.localeCompare(b.scheduledHour);
+  });
+  
+  // 요일별 그룹화 HTML 생성
+  let timelineHtml = '';
+  
+  if (allParties.length === 0) {
+    timelineHtml = `
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+        <p class="mt-3">예약된 공격대가 없습니다.</p>
+        <p>파티에 약속 시간을 설정해주세요.</p>
+      </div>
+    `;
+  } else {
+    timelineHtml = '<div class="schedule-by-weekday">';
+    
+    // 요일별로 그룹화
+    const partiesByWeekday = {};
+    allParties.forEach(party => {
+      if (!partiesByWeekday[party.scheduledWeekday]) {
+        partiesByWeekday[party.scheduledWeekday] = [];
+      }
+      partiesByWeekday[party.scheduledWeekday].push(party);
+    });
+    
+    weekdayOrder.forEach(weekday => {
+      const parties = partiesByWeekday[weekday];
+      if (parties && parties.length > 0) {
+        const weekdayNames = {
+          'monday': '월요일',
+          'tuesday': '화요일',
+          'wednesday': '수요일',
+          'thursday': '목요일',
+          'friday': '금요일',
+          'saturday': '토요일',
+          'sunday': '일요일'
+        };
+        
+        timelineHtml += `
+          <div class="weekday-section mb-4">
+            <h5 class="weekday-title">
+              <i class="bi bi-calendar-week me-2"></i>${weekdayNames[weekday]}
+            </h5>
+            <div class="row g-3">
+        `;
+        
+        parties.forEach(party => {
+          timelineHtml += `
+            <div class="col-md-6 col-lg-4">
+              <div class="card ${party.cleared ? 'bg-light' : ''}">
+                <div class="card-body">
+                  <h6 class="card-title mb-1">
+                    ${party.name || party.displayName || party.id}
+                    ${party.cleared ? '<span class="badge bg-success ms-2">클리어</span>' : ''}
+                  </h6>
+                  <p class="card-text text-muted mb-2">
+                    <i class="bi bi-geo-alt"></i> ${party.raidName} ${party.difficultyName}
+                    <br>
+                    <i class="bi bi-clock"></i> ${party.scheduledHour}
+                  </p>
+                  
+                  <!-- 파티 멤버 정보 -->
+                  <div class="mt-2">
+                    <small class="text-muted">
+                      멤버: ${party.members.filter(m => m !== null).length}/${party.size}명
+                      ${party.members.filter(m => m !== null).length > 0 ? 
+                        ` (${party.members.filter(m => m !== null).map(m => m.name).join(', ')})` : 
+                        ' (미정)'
+                      }
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        
+        timelineHtml += `
+            </div>
+          </div>
+        `;
+      }
+    });
+    
+    timelineHtml += '</div>';
+  }
+  
+  container.innerHTML = timelineHtml;
+}
+
+// 스케줄 새로고침
+function refreshScheduler() {
+  loadSchedulerContent();
+  showNotification('스케줄이 새로고침되었습니다.', 'info');
+}
+
+// 스케줄 내보내기
+function exportSchedule() {
+  const allParties = [];
+  
+  Object.keys(state.raidTabs).forEach(raidId => {
+    Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+      const parties = state.raidTabs[raidId][difficultyId];
+      if (Array.isArray(parties)) {
+        parties.forEach(party => {
+          if (party && party.scheduledWeekday && party.scheduledHour) {
+            allParties.push({
+              ...party,
+              raidId,
+              difficultyId
+            });
+          }
+        });
+      }
+    });
+  });
+  
+  // 요일순 정렬
+  const weekdayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  allParties.sort((a, b) => {
+    const aWeekdayIndex = weekdayOrder.indexOf(a.scheduledWeekday);
+    const bWeekdayIndex = weekdayOrder.indexOf(b.scheduledWeekday);
+    
+    if (aWeekdayIndex !== bWeekdayIndex) {
+      return aWeekdayIndex - bWeekdayIndex;
+    }
+    
+    return a.scheduledHour.localeCompare(b.scheduledHour);
+  });
+  
+  // 텍스트 생성
+  let scheduleText = '=== 공격대 스케줄 ===\n\n';
+  
+  // 요일별로 그룹화
+  const partiesByWeekday = {};
+  allParties.forEach(party => {
+    if (!partiesByWeekday[party.scheduledWeekday]) {
+      partiesByWeekday[party.scheduledWeekday] = [];
+    }
+    partiesByWeekday[party.scheduledWeekday].push(party);
+  });
+  
+  const weekdayNames = {
+    'monday': '월요일',
+    'tuesday': '화요일',
+    'wednesday': '수요일',
+    'thursday': '목요일',
+    'friday': '금요일',
+    'saturday': '토요일',
+    'sunday': '일요일'
+  };
+  
+  weekdayOrder.forEach(weekday => {
+    const parties = partiesByWeekday[weekday];
+    if (parties && parties.length > 0) {
+      scheduleText += `📅 ${weekdayNames[weekday]}\n`;
+      scheduleText += '=' .repeat(20) + '\n';
+      
+      parties.forEach(party => {
+        scheduleText += `⏰ ${party.scheduledHour} - ${party.name || party.displayName || party.id}\n`;
+        scheduleText += `📍 ${party.raidName} ${party.difficultyName}\n`;
+        scheduleText += `👥 멤버: ${party.members.filter(m => m !== null).length}/${party.size}명\n`;
+        if (party.members.filter(m => m !== null).length > 0) {
+          scheduleText += `   ${party.members.filter(m => m !== null).map(m => m.name).join(', ')}\n`;
+        }
+        scheduleText += `${party.cleared ? '✅ 클리어 완료' : '⏳ 진행 예정'}\n\n`;
+      });
+      
+      scheduleText += '\n';
+    }
+  });
+  
+  if (allParties.length === 0) {
+    scheduleText += '예약된 공격대가 없습니다.\n';
+  }
+  
+  // 클립보드에 복사
+  navigator.clipboard.writeText(scheduleText).then(() => {
+    showNotification('스케줄이 클립보드에 복사되었습니다.', 'success');
+  }).catch(() => {
+    showNotification('클립보드 복사에 실패했습니다.', 'error');
+  });
+}
+
+// 다크모드 관련 함수
+function toggleDarkMode() {
+  const isDarkMode = document.getElementById('darkModeToggle').checked;
+  document.body.classList.toggle('dark-mode', isDarkMode);
+  
+  // 로컬 스토리지에 설정 저장
+  localStorage.setItem('darkMode', isDarkMode);
+  
+  // 아이콘 변경
+  updateDarkModeIcon(isDarkMode);
+}
+
+function updateDarkModeIcon(isDarkMode) {
+  const icon = document.querySelector('#darkModeToggle').closest('.nav-link').querySelector('i');
+  if (isDarkMode) {
+    icon.classList.remove('bi-moon-stars');
+    icon.classList.add('bi-sun');
+  } else {
+    icon.classList.remove('bi-sun');
+    icon.classList.add('bi-moon-stars');
+  }
+}
+
+function loadDarkModeSetting() {
+  const isDarkMode = localStorage.getItem('darkMode') === 'true';
+  document.getElementById('darkModeToggle').checked = isDarkMode;
+  document.body.classList.toggle('dark-mode', isDarkMode);
+  updateDarkModeIcon(isDarkMode);
+}
+
+// 페이지 로드 시 다크모드 설정 적용
+document.addEventListener('DOMContentLoaded', loadDarkModeSetting);

@@ -10,21 +10,24 @@
           "name": "나이트메어",
           "minIlvl": 1740,
           "minCombatPower": 4000,
-          "clearGold": 54000
+          "clearGold": 54000,
+          "cleared": false
         },
         {
           "id": "hard",
           "name": "하드",
           "minIlvl": 1730,
           "minCombatPower": 3000,
-          "clearGold": 44000
+          "clearGold": 44000,
+          "cleared": false
         },
         {
           "id": "normal",
           "name": "노말",
           "minIlvl": 1710,
           "minCombatPower": 2000,
-          "clearGold": 35000
+          "clearGold": 35000,
+          "cleared": false
         }
       ]
     },
@@ -38,14 +41,16 @@
           "name": "하드",
           "minIlvl": 1730,
           "minCombatPower": 3000,
-          "clearGold": 52000
+          "clearGold": 52000,
+          "cleared": false
         },
         {
           "id": "normal",
           "name": "노말",
           "minIlvl": 1710,
           "minCombatPower": 2000,
-          "clearGold": 40000
+          "clearGold": 40000,
+          "cleared": false
         }
       ]
     },
@@ -59,14 +64,16 @@
           "name": "하드",
           "minIlvl": 1720,
           "minCombatPower": 2500,
-          "clearGold": 42000
+          "clearGold": 42000,
+          "cleared": false
         },
         {
           "id": "normal",
           "name": "노말",
           "minIlvl": 1700,
           "minCombatPower": 1500,
-          "clearGold": 33000
+          "clearGold": 33000,
+          "cleared": false
         }
       ]
     }

@@ -48,7 +48,8 @@ function calculateStatistics() {
       totalMembers: validMembers.length,
       size: party.size || 4,
       avgCombatPower: avgCombatPower,
-      supportCount: supportCount
+      supportCount: supportCount,
+      cleared: party.cleared === true // 클리어 상태 추가
     });
 
     allCharacters.push(...validMembersWithDetails);
@@ -69,7 +70,11 @@ function calculateStatistics() {
     assignedCharacters,
     unassignedCharacters: totalCharacters - assignedCharacters.length,
     partyStats,
-    classStats
+    classStats,
+    // 클리어 관련 통계 추가
+    totalParties: partyStats.length,
+    clearedParties: partyStats.filter(p => p.cleared).length,
+    unclearedParties: partyStats.filter(p => !p.cleared).length
   };
 }
 
@@ -100,6 +105,22 @@ function displayBasicStatistics(stats) {
   const completionElement = document.getElementById('totalExpeditionGold');
   if (completionElement) {
     completionElement.textContent = `${completionRate}%`;
+  }
+  
+  // 클리어 상태 표시
+  const totalPartiesElement = document.getElementById('totalParties');
+  if (totalPartiesElement) {
+    totalPartiesElement.textContent = stats.totalParties || 0;
+  }
+  
+  const clearedPartiesElement = document.getElementById('clearedParties');
+  if (clearedPartiesElement) {
+    clearedPartiesElement.textContent = stats.clearedParties || 0;
+  }
+  
+  const unclearedPartiesElement = document.getElementById('unclearedParties');
+  if (unclearedPartiesElement) {
+    unclearedPartiesElement.textContent = stats.unclearedParties || 0;
   }
 }
 

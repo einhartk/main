@@ -81,8 +81,8 @@ function renderRaidParties() {
     partyDiv.innerHTML = `
       <div class="card shadow-sm party-card">
         <div class="card-header" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); color: #2c3e50; border-bottom: 1px solid #dee2e6; padding: 15px;">
-          <div class="row align-items-center mb-3">
-            <div class="col-md-10">
+          <div class="row align-items-center">
+            <div class="col-md-8">
               <div class="d-flex align-items-center gap-3">
                 <div class="input-group" style="width: 350px; font-size: 0.85rem;">
                   <span class="input-group-text" style="background: white; color: #2c3e50; border: 1px solid #ced4da; font-size: 0.85rem;">
@@ -97,6 +97,11 @@ function renderRaidParties() {
                     <i class="bi bi-pencil"></i>
                   </button>
                 </div>
+                ${party.scheduledWeekday && party.scheduledHour ? `
+                  <div class="badge bg-info text-white" style="font-size: 0.75rem; padding: 4px 8px;">
+                    <i class="bi bi-clock-fill me-1"></i>${getWeekdayName(party.scheduledWeekday)} ${party.scheduledHour}
+                  </div>
+                ` : ''}
               </div>
             </div>
             <div class="col-md-2">
@@ -108,31 +113,55 @@ function renderRaidParties() {
             </div>
           </div>
 
-          <div class="row align-items-center">
-            <div class="col-md-4">
-              <div class="d-flex align-items-center gap-3">
-                <span class="badge" style="background: #6c757d; color: white; font-size: 0.8rem; padding: 5px 10px;">
-                  <i class="bi bi-lightning-fill me-1"></i>평균 CP ${avgCombatPower.toLocaleString()}
+          <div class="row align-items-center mt-2">
+            <!-- 왼쪽: 전투력 정보 -->
+            <div class="col-md-3">
+              <div class="d-flex align-items-center">
+                <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #000000; font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; font-weight: 700;">
+                  <i class="bi bi-lightning-fill me-1"></i>
+                  <span class="fw-bold">평균 CP</span> ${avgCombatPower.toLocaleString()}
                 </span>
               </div>
             </div>
-            <div class="col-md-4">
+            
+            <!-- 중앙: 서폿 정보 -->
+            <div class="col-md-3">
               <div class="d-flex align-items-center justify-content-center">
-                <span id="support-${party.id}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.8rem; padding: 5px 10px;">
-                  <i class="bi bi-shield-fill me-1"></i>서폿 ${supportCount}/${maxSupports}
+                <span id="support-${party.id}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; font-weight: 600;">
+                  <i class="bi bi-shield-fill me-1"></i>
+                  <span class="fw-bold">서폿</span> ${supportCount}/${maxSupports}
                 </span>
               </div>
             </div>
-            <div class="col-md-4">
-              <div class="d-flex align-items-center justify-content-end gap-2">
-                <div class="btn-group btn-group-sm" role="group">
+            
+            <!-- 오른쪽: 컨트롤 버튼 그룹 -->
+            <div class="col-md-6">
+              <div class="d-flex align-items-center justify-content-end gap-3">
+                <!-- 클리어 상태 -->
+                <div class="form-check form-switch mb-0">
+                  <input class="form-check-input" type="checkbox" id="cleared-${party.id}" 
+                         ${party.cleared === true ? 'checked' : ''} 
+                         onchange="toggleRaidClear('${party.id}', this.checked)"
+                         style="cursor: pointer;">
+                  <label class="form-check-label d-flex align-items-center" for="cleared-${party.id}" 
+                         style="font-size: 0.8rem; color: ${party.cleared === true ? '#28a745' : '#6c757d'}; cursor: pointer; font-weight: 500; margin-left: 8px;">
+                    <i class="bi ${party.cleared === true ? 'bi-check-circle-fill text-success' : 'bi-circle text-secondary'} me-2"></i>
+                    <span class="${party.cleared === true ? 'text-success' : 'text-secondary'}">클리어</span>
+                  </label>
+                </div>
+                
+                <!-- 구분선 -->
+                <div class="border-start" style="height: 20px; border-color: #dee2e6;"></div>
+                
+                <!-- 파티 크기 선택 -->
+                <div class="btn-group btn-group-sm" role="group" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                   <input type="radio" class="btn-check" name="partySize-${party.id}" id="size4-${party.id}" value="4" ${party.size === 4 ? 'checked' : ''} onchange="setRaidSize('${party.id}', 4)">
-                  <label class="btn ${party.size === 4 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size4-${party.id}" style="font-size: 0.8rem;">
-                    4인
+                  <label class="btn ${party.size === 4 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size4-${party.id}" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 500; border-top-left-radius: 6px !important; border-bottom-left-radius: 6px !important;">
+                    <i class="bi bi-people-fill me-1"></i>4인
                   </label>
                   <input type="radio" class="btn-check" name="partySize-${party.id}" id="size8-${party.id}" value="8" ${party.size === 8 ? 'checked' : ''} onchange="setRaidSize('${party.id}', 8)">
-                  <label class="btn ${party.size === 8 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size8-${party.id}" style="font-size: 0.8rem;">
-                    8인
+                  <label class="btn ${party.size === 8 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size8-${party.id}" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 500; border-top-right-radius: 6px !important; border-bottom-right-radius: 6px !important;">
+                    <i class="bi bi-people-fill me-1"></i>8인
                   </label>
                 </div>
               </div>
@@ -144,6 +173,29 @@ function renderRaidParties() {
           <div class="row mb-3">
             <div class="col-12">
               <div class="d-flex flex-column gap-2">
+                <!-- 약속 시간 설정 -->
+                <div class="input-group input-group-sm" style="flex: 0 0 auto;">
+                  <span class="input-group-text">
+                    <i class="bi bi-clock"></i> 약속 시간
+                  </span>
+                  <select class="form-select" id="scheduledWeekday-${party.id}" 
+                          onchange="updateRaidScheduledTime('${party.id}', this.value, document.getElementById('scheduledHour-${party.id}').value)">
+                    <option value="">요일 선택</option>
+                    <option value="monday" ${party.scheduledWeekday === 'monday' ? 'selected' : ''}>월요일</option>
+                    <option value="tuesday" ${party.scheduledWeekday === 'tuesday' ? 'selected' : ''}>화요일</option>
+                    <option value="wednesday" ${party.scheduledWeekday === 'wednesday' ? 'selected' : ''}>수요일</option>
+                    <option value="thursday" ${party.scheduledWeekday === 'thursday' ? 'selected' : ''}>목요일</option>
+                    <option value="friday" ${party.scheduledWeekday === 'friday' ? 'selected' : ''}>금요일</option>
+                    <option value="saturday" ${party.scheduledWeekday === 'saturday' ? 'selected' : ''}>토요일</option>
+                    <option value="sunday" ${party.scheduledWeekday === 'sunday' ? 'selected' : ''}>일요일</option>
+                  </select>
+                  <input type="time" class="form-control" id="scheduledHour-${party.id}" 
+                         value="${party.scheduledHour || ''}" 
+                         onchange="updateRaidScheduledTime('${party.id}', document.getElementById('scheduledWeekday-${party.id}').value, this.value)">
+                  <button class="btn btn-outline-secondary" type="button" onclick="clearRaidScheduledTime('${party.id}')" title="시간 초기화">
+                    <i class="bi bi-x-circle"></i>
+                  </button>
+                </div>
                 <div class="input-group input-group-sm" style="flex: 0 0 auto;">
                   <span class="input-group-text">최소 레벨</span>
                   <input type="number" class="form-control" id="minIlvl-${party.id}" 
@@ -211,6 +263,21 @@ function renderRaidParties() {
 // 🔥 **핵심 수정: 전역 함수로 노출**
 window.renderRaidParties = renderRaidParties;
 window.getCharacterDetailsFromExpedition = getCharacterDetailsFromExpedition;
+window.getWeekdayName = getWeekdayName;
+
+// 요일 이름 반환 함수
+function getWeekdayName(weekday) {
+  const weekdays = {
+    'monday': '월요일',
+    'tuesday': '화요일', 
+    'wednesday': '수요일',
+    'thursday': '목요일',
+    'friday': '금요일',
+    'saturday': '토요일',
+    'sunday': '일요일'
+  };
+  return weekdays[weekday] || weekday;
+}
 
 // 원정대에서 캐릭터 상세 정보 조회 (캐릭터 이름으로 조회, 원정대에 저장된 데이터 반환)
 function getCharacterDetailsFromExpedition(characterNameOrId) {
