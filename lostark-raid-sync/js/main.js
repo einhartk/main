@@ -1,4 +1,4 @@
-// Global State
+// Global State - State Manager 충돌 방지를 위해 임시 비활성화
 const state = {
   expedition: {},
   raid: {},
@@ -138,7 +138,7 @@ async function selectDifficulty(difficultyId) {
   }
 }
 
-// 권장 요구사항 적용
+// 권장 요구사항 적용 (DB 저장값이 없을 때만)
 function applyRecommendedRequirements() {
   if (!state.selectedDifficulty) return;
   const parties = getCurrentTabParties();
@@ -146,8 +146,13 @@ function applyRecommendedRequirements() {
   const recommendedCombatPower = state.selectedDifficulty.minCombatPower || 0;
   
   parties.forEach(party => {
-    party.minIlvl = recommendedIlvl;
-    party.minCombatPower = recommendedCombatPower;
+    // DB 저장값이 없을 때만 JSON 값으로 설정
+    if (!party.minIlvl) {
+      party.minIlvl = recommendedIlvl;
+    }
+    if (!party.minCombatPower) {
+      party.minCombatPower = recommendedCombatPower;
+    }
   });
 }
 
@@ -158,13 +163,11 @@ function getCurrentTabParties() {
   const raidId = state.selectedRaid.id;
   const difficultyId = state.selectedDifficulty.id;
   
-  // state.raidTabs에서 공격대 데이터 가져오기
-  if (state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId]) {
-    return state.raidTabs[raidId][difficultyId];
-  }
-  
-  return [];
+  return state.raidTabs[raidId]?.[difficultyId] || [];
 }
+
+// 🔥 **핵심 수정: 전역 함수로 노출**
+window.getCurrentTabParties = getCurrentTabParties;
 
 // 통계용 공격대 데이터 가져오기 (디버그 로그 포함)
 function getCurrentTabPartiesForStats() {
@@ -274,12 +277,29 @@ async function addNewRaid(skipHistory = false) {
   }
 
   try {
-    state.raidTabs[raidId][difficultyId].push(newParty);
-    
-    renderRaidParties();
-    
-    // 저장 (자동)
-    scheduleAutoSave();
+    // State Manager가 없으면 기존 방식으로 처리
+    if (!window.stateManager || !window.stateManager.atomicUpdate) {
+      state.raidTabs[raidId][difficultyId].push(newParty);
+      renderRaidParties();
+      scheduleAutoSave();
+    } else {
+      // State Manager로 원자적 업데이트
+      await window.stateManager.atomicUpdate(`raidTabs.${raidId}.${difficultyId}`, async (currentParties) => {
+        const newParties = [...currentParties];
+        newParties.push(newParty);
+        return newParties;
+      }, {
+        recordHistory: true,
+        autoSave: true,
+        renderUI: true,
+        historyData: {
+          type: 'party',
+          operation: 'add',
+          target: { raidId, difficultyId, partyId: newParty.id },
+          description: `파티 추가: ${newParty.name}`
+        }
+      });
+    }
   } finally {
     // 잠금 해제 (안전한 확인)
     if (window.operationLock && typeof window.operationLock.release === 'function') {
@@ -358,6 +378,9 @@ function updateRaidSize(partyId, size) {
   
   if (!party || party.size === size) return;
   
+  const raidId = state.selectedRaid?.id;
+  const difficultyId = state.selectedDifficulty?.id;
+  
   // 8명에서 4명으로 변경할 때 확인 필요
   if (party.size === 8 && size === 4) {
     const occupiedSlots = party.members.filter(m => m !== null).length;
@@ -367,50 +390,91 @@ function updateRaidSize(partyId, size) {
         message: `현재 ${occupiedSlots}명의 캐릭터가 배치되어 있습니다. 4명으로 변경하면 ${occupiedSlots - 4}명의 캐릭터가 제거됩니다. 계속하시겠습니까?`,
         showConfirm: true,
         onConfirm: () => {
-          performRaidSizeChange(party, size);
+          performRaidSizeChange(party, size, raidId, difficultyId, partyId);
         }
       });
       return;
     }
   }
   
-  performRaidSizeChange(party, size);
+  performRaidSizeChange(party, size, raidId, difficultyId, partyId);
 }
 
 // 실제 레이드 크기 변경 수행
-function performRaidSizeChange(party, size) {
+async function performRaidSizeChange(party, size, raidId, difficultyId, partyId) {
   const oldSize = party.size;
-  
+
   party.size = size;
   
   if (size > party.members.length) {
     party.members.push(...Array(size - party.members.length).fill(null));
   } else {
-    // 잘려나가는 멤버들 기록 (히스토리용)
     const removedMembers = party.members.slice(size);
-    
-    // 멤버 자르기
     party.members = party.members.slice(0, size);
     
-    // 제거된 멤버 히스토리 기록
     if (removedMembers.some(m => m !== null)) {
-      recordHistory(
+      await recordHistory(
         'remove_members',
         {
           type: 'raid',
-          id: party.id,
-          path: `raidMembers[${party.id}]`
+          raidId: raidId,
+          difficultyId: difficultyId,
+          partyId: partyId
         },
-        removedMembers,
-        null,
-        `${party.id} 레이드 크기 변경: ${oldSize}명 → ${size}명 (${removedMembers.filter(m => m !== null).length}명 제거)`
+        { members: removedMembers },
+        { members: [] },
+        `파티 크기 조정으로 ${removedMembers.length}명의 멤버 제거됨`
       );
     }
   }
   
-  party.maxSupports = 1; // 레이드당 항상 1서폿
+  party.maxSupports = 1;
   renderRaidParties();
-  schedulePartyConfigSave();
+  scheduleAutoSave();
+  
+  window.modalManager.showAlert({
+    title: '레이드 크기 변경 완료',
+    message: `${party.name} 파티 크기가 ${oldSize}명에서 ${size}명으로 변경되었습니다.`
+  });
+  return;
+  
+  // State Manager로 원자적 업데이트
+  await window.stateManager.atomicUpdate(`raidTabs.${raidId}.${difficultyId}`, async (currentParties) => {
+    const newParties = [...currentParties];
+    const partyIndex = newParties.findIndex(p => p.id === partyId);
+    if (partyIndex === -1) return currentParties;
+    
+    const party = { ...newParties[partyIndex] };
+    const oldMembers = [...party.members];
+    
+    party.size = size;
+    
+    if (size > party.members.length) {
+      party.members = [...party.members, ...Array(size - party.members.length).fill(null)];
+    } else {
+      // 잘려나가는 멤버들 기록
+      const removedMembers = party.members.slice(size);
+      party.members = party.members.slice(0, size);
+      
+      // 제거된 멤버 히스토리를 위한 데이터 저장
+      party._removedMembers = removedMembers;
+    }
+    
+    party.maxSupports = 1; // 레이드당 항상 1서폿
+    newParties[partyIndex] = party;
+    
+    return newParties;
+  }, {
+    recordHistory: true,
+    autoSave: true,
+    renderUI: true,
+    historyData: {
+      type: 'raid',
+      operation: 'update',
+      target: { raidId, difficultyId, partyId },
+      description: `파티 크기 변경: ${oldSize} → ${size}`
+    }
+  });
   
   // 크기 변경 완료 알림
   window.modalManager.showAlert({
@@ -446,7 +510,11 @@ async function setRaidSize(partyId, size) {
     // 편집 실행 (동기화 모드에서는 확인 없이 바로 실행)
     const parties = getCurrentTabParties();
     const party = parties.find(p => p.id === partyId);
-    performRaidSizeChange(party, size);
+    
+    const raidId = state.selectedRaid?.id;
+    const difficultyId = state.selectedDifficulty?.id;
+
+    performRaidSizeChange(party, size, raidId, difficultyId, partyId);
     
     // 잠금 해제
     await window.realtimeSync.clearEditLock();
@@ -469,8 +537,6 @@ async function setRaidSize(partyId, size) {
 
 // 레이드 제거
 async function removeRaid(partyId) {
-  console.log('🗑️ [REMOVE] Attempting to remove party:', partyId);
-  
   // 작업 잠금 확인 (안전한 확인)
   if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
     window.modalManager.showAlert({
@@ -491,16 +557,14 @@ async function removeRaid(partyId) {
   // 충돌 감지
   if (!window.realtimeSync || !window.realtimeSync.isSyncActive()) {
     // 일반 모드에서는 바로 실행
+    const raidId = state.selectedRaid?.id;
+    const difficultyId = state.selectedDifficulty?.id;
     const parties = getCurrentTabParties();
-    console.log('🗑️ [REMOVE] Current parties before removal:', parties.map(p => p.id));
-    
     const index = parties.findIndex(p => p.id === partyId);
-    console.log('🗑️ [REMOVE] Party index to remove:', index);
-    
+
     if (index !== -1) {
       const removedParty = parties[index];
-      console.log('🗑️ [REMOVE] Party to remove:', removedParty);
-      
+
       // 히스토리 기록
       if (typeof recordHistory === 'function') {
         await recordHistory(
@@ -516,20 +580,52 @@ async function removeRaid(partyId) {
         );
       }
       
-      parties.splice(index, 1);
-      console.log('🗑️ [REMOVE] Parties after splice:', parties.map(p => p.id));
-      
-      try {
-        renderRaidParties();
-        scheduleAutoSave();
-      } finally {
-        // 잠금 해제
-        operationLock.release('파티 삭제');
+      // State Manager가 없으면 기존 방식으로 처리
+      if (!window.stateManager || !window.stateManager.atomicUpdate) {
+        parties.splice(index, 1);
+
+        try {
+          renderRaidParties();
+          scheduleAutoSave();
+        } finally {
+          if (window.operationLock && typeof window.operationLock.release === 'function') {
+            window.operationLock.release('파티 삭제');
+          }
+        }
+      } else {
+        // State Manager로 원자적 삭제
+        const newParties = parties.filter((_, i) => i !== index);
+        
+        await window.stateManager.atomicUpdate(`raidTabs.${raidId}.${difficultyId}`, async () => {
+          return newParties;
+        }, {
+          recordHistory: true,
+          autoSave: true,
+          renderUI: true,
+          historyData: {
+            type: 'party',
+            operation: 'delete',
+            target: { raidId, difficultyId, partyId },
+            description: `파티 삭제: ${removedParty.name}`
+          }
+        });
+
+        try {
+          if (window.operationLock && typeof window.operationLock.release === 'function') {
+            window.operationLock.release('파티 삭제');
+          }
+        } catch (e) {
+          console.error('❌ [REMOVE] Lock release error:', e);
+        }
       }
     } else {
-      console.log('🗑️ [REMOVE] Party not found with ID:', partyId);
-      // 잠금 해제
-      operationLock.release('파티 삭제');
+      try {
+        if (window.operationLock && typeof window.operationLock.release === 'function') {
+          window.operationLock.release('파티 삭제');
+        }
+      } catch (e) {
+        console.error('❌ [REMOVE] Lock release error:', e);
+      }
     }
     return;
   }
@@ -550,15 +646,13 @@ async function removeRaid(partyId) {
     
     // 편집 실행
     const parties = getCurrentTabParties();
-    console.log('🗑️ [REMOVE SYNC] Current parties before removal:', parties.map(p => p.id));
-    
+    const raidId = state.selectedRaid?.id;
+    const difficultyId = state.selectedDifficulty?.id;
     const index = parties.findIndex(p => p.id === partyId);
-    console.log('🗑️ [REMOVE SYNC] Party index to remove:', index);
-    
+
     if (index !== -1) {
       const removedParty = parties[index];
-      console.log('🗑️ [REMOVE SYNC] Party to remove:', removedParty);
-      
+
       // 히스토리 기록
       if (typeof recordHistory === 'function') {
         await recordHistory(
@@ -574,25 +668,25 @@ async function removeRaid(partyId) {
         );
       }
       
-      parties.splice(index, 1);
-      console.log('🗑️ [REMOVE SYNC] Parties after splice:', parties.map(p => p.id));
+      // 기존 방식으로 직접 삭제 (State Manager 비활성화)
+      const newParties = parties.filter((_, i) => i !== index);
       
-      renderRaidParties();
-    } else {
-      console.log('🗑️ [REMOVE SYNC] Party not found with ID:', partyId);
+      // state.raidTabs 업데이트
+      if (state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId]) {
+        state.raidTabs[raidId][difficultyId] = newParties;
+      }
     }
-    
+
     // 잠금 해제
     await window.realtimeSync.clearEditLock();
-    
-    // 저장 및 동기화
-    scheduleAutoSave();
     
   } catch (error) {
     console.error('❌ [PARTY REMOVE ERROR]:', error);
     
     // 에러 발생 시 잠금 해제
-    await window.realtimeSync.clearEditLock();
+    if (window.realtimeSync && typeof window.realtimeSync.clearEditLock === 'function') {
+      await window.realtimeSync.clearEditLock();
+    }
     
     window.modalManager.showAlert({
       title: '오류',
@@ -678,26 +772,9 @@ async function saveCharacterEdit() {
     const newCombatPower = document.getElementById('editCombatPower').value || '0';
     const newRole = document.querySelector('input[name="editRole"]:checked').value;
     
-    // 정보 업데이트
-    console.log('🔧 [EDIT] 수정 전:', {
-      expeditionIndex,
-      characterIndex,
-      oldCombatPower: character.combatPower,
-      oldRole: character.role,
-      newCombatPower,
-      newRole
-    });
-    
     character.combatPower = newCombatPower;
     character.role = newRole;
-    
-    console.log('🔧 [EDIT] 수정 후:', {
-      updatedCombatPower: character.combatPower,
-      updatedRole: character.role,
-      characterLocation,
-      isRaidCharacter: partyId !== null && slotIndex !== null
-    });
-    
+
     // 히스토리 기록
     if (typeof recordHistory === 'function') {
       if (partyId !== null && slotIndex !== null) {
@@ -809,6 +886,34 @@ function showRaidListModal() {
   renderRaidListModal();
   const modal = new bootstrap.Modal(document.getElementById('raidListModal'));
   modal.show();
+}
+
+// 공대 리스트 내보내기 (JSON)
+function exportRaidList() {
+  try {
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      selectedRaidId: state.selectedRaid?.id || null,
+      selectedDifficultyId: state.selectedDifficulty?.id || null,
+      expeditionSlotNames: state.expeditionSlotNames || [],
+      expeditionSlots: state.expeditionSlots || [],
+      raidTabs: state.raidTabs || {}
+    };
+    const jsonStr = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `공대_리스트_${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    window.modalManager?.showAlert?.({ title: '내보내기 완료', message: '공대 리스트가 JSON 파일로 저장되었습니다.' });
+  } catch (error) {
+    console.error('exportRaidList 오류:', error);
+    window.modalManager?.showAlert?.({ title: '오류', message: '내보내기 중 오류가 발생했습니다: ' + (error.message || error) });
+  }
 }
 
 // 홍보글 생성 함수
@@ -1226,40 +1331,29 @@ function showStatisticsModal() {
 
 // 초기화
 async function initializeRaids() {
-  console.log('🔧 [INIT] initializeRaids() 호출됨');
-  
-  // loadRaidsData가 이미 호출되었는지 확인
   if (!state.raidsData || state.raidsData.length === 0) {
-    console.log('📊 [INIT] 레이드 데이터 로드 필요');
     await loadRaidsData();
   }
-  
+
   if (!state.selectedRaid || !state.selectedDifficulty) {
-    console.log('⚠️ [INIT] 선택된 레이드 또는 난이도 없음, 초기화 중단');
     return;
   }
-  
-  // UI 렌더링 (개인 설정이 이미 적용된 상태여야 함)
-  console.log('🎨 [INIT] UI 렌더링 (현재 상태 유지)');
+
   renderRaidTabs();
-  
-  // 레드 크기에 따라 파티 자동 생성 (이미 파티가 없는 경우에만)
+
   const raidSize = state.selectedRaid.size || 4;
   const expectedPartyCount = raidSize === 8 ? 2 : 1;
   const currentParties = getCurrentTabParties();
-  
-  // 현재 파티 수가 예상보다 적을 때만 생성
+
   if (currentParties.length < expectedPartyCount) {
-    console.log(`👥 [INIT] 파티 자동 생성: ${currentParties.length} -> ${expectedPartyCount}`);
     const partiesToAdd = expectedPartyCount - currentParties.length;
     for (let i = 0; i < partiesToAdd; i++) {
-      addNewRaid(true);  // 데이터 로드 시 히스토리 기록 건너뜀
+      addNewRaid(true);
     }
   }
-  
+
   applyRecommendedRequirements();
   renderRaidParties();
-  console.log('✅ [INIT] initializeRaids() 완료');
 }
 
 // DB에서 데이터 불러오기 (Realtime Database)
@@ -1314,8 +1408,7 @@ async function loadFromDatabase() {
       if (raidTabsData) {
         try {
           state.raidTabs = JSON.parse(raidTabsData);
-          console.log('✅ [LOAD] Raid tabs restored:', state.raidTabs);
-          
+
           // 복원된 파티 객체에 raidId와 difficultyId 설정
           Object.keys(state.raidTabs).forEach(raidId => {
             Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
@@ -1366,55 +1459,33 @@ async function loadFromDatabase() {
               });
             });
           });
-          
-          console.log('✅ [LOAD] Party IDs updated for all parties');
         } catch (error) {
           console.error('❌ [LOAD] Failed to parse raidTabs:', error);
         }
-      } else {
-        console.log('⚠️ [LOAD] No raidTabs data found');
       }
       
       // expeditionSlots 복원
       if (expeditionData) {
         try {
           const parsedExpedition = JSON.parse(expeditionData);
-          console.log('📊 [LOAD] Parsed expedition data:', parsedExpedition);
-          console.log('📊 [LOAD] Parsed expedition type:', typeof parsedExpedition);
-          console.log('📊 [LOAD] Parsed expedition length:', parsedExpedition.length);
-          
           state.expeditionSlots = parsedExpedition;
-          console.log('✅ [LOAD] Expedition slots restored:', state.expeditionSlots);
-          console.log('✅ [LOAD] Final expeditionSlots length:', state.expeditionSlots.length);
-          
-          // 각 슬롯 상세 정보 로그
-          state.expeditionSlots.forEach((slot, index) => {
-            console.log(`📊 [LOAD] Slot ${index}: ${slot.length} characters`, slot);
-          });
         } catch (error) {
           console.error('❌ [LOAD] Failed to parse expeditionSlots:', error);
           console.error('❌ [LOAD] Raw expeditionSlots data:', expeditionData);
         }
-      } else {
-        console.log('⚠️ [LOAD] No expeditionSlots data found');
       }
       
       // expeditionSlotNames 복원
       if (expeditionSlotNamesData) {
         try {
           const parsedSlotNames = JSON.parse(expeditionSlotNamesData);
-          console.log('📝 [LOAD] Parsed expedition slot names:', parsedSlotNames);
-          
           state.expeditionSlotNames = parsedSlotNames;
-          console.log('✅ [LOAD] Expedition slot names restored:', state.expeditionSlotNames);
         } catch (error) {
           console.error('❌ [LOAD] Failed to parse expeditionSlotNames:', error);
           console.error('❌ [LOAD] Raw expeditionSlotNames data:', expeditionSlotNamesData);
-          // 기본값으로 복원
           state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
         }
       } else {
-        console.log('⚠️ [LOAD] No expeditionSlotNames data found, using defaults');
         state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
       }
       
@@ -1429,30 +1500,12 @@ async function loadFromDatabase() {
           } else {
             state.selectedDifficulty = raid.difficulties?.[0] || null;
           }
-          console.log('✅ [LOAD] Selected raid restored:', raid.name);
-        } else {
-          console.log('⚠️ [LOAD] Selected raid not found:', selectedRaidData);
         }
-      } else {
-        console.log('⚠️ [LOAD] No selectedRaid data found');
       }
-      
-      console.log('🔄 [LOAD] About to update UI...');
-      console.log('🔄 [LOAD] Final state before render:', {
-        expeditionSlots: state.expeditionSlots,
-        raidTabs: state.raidTabs,
-        selectedRaid: state.selectedRaid
-      });
-      
-      // UI 업데이트
+
       renderRaidTabs();
       renderRaidParties();
       renderExpedition();
-      
-      console.log('✅ [LOAD] All data loaded and UI updated');
-    } else {
-      console.log('ℹ️ [LOAD] No data found in path:', dataPath);
-      console.log('ℹ️ [LOAD] Default expeditionSlots:', state.expeditionSlots);
     }
   } catch (error) {
     console.error('❌ [LOAD ERROR]:', error);
@@ -1468,7 +1521,6 @@ function savePersonalSettings() {
       selectedDifficultyId: state.selectedDifficulty ? state.selectedDifficulty.id : null
     };
     localStorage.setItem('lostarkRaidPersonalSettings', JSON.stringify(personalSettings));
-    console.log('💾 [PERSONAL] 개인별 설정 저장됨:', personalSettings);
   } catch (error) {
     console.error('❌ [PERSONAL] 개인별 설정 저장 실패:', error);
   }
@@ -1478,102 +1530,183 @@ function savePersonalSettings() {
 function loadPersonalSettings() {
   try {
     const saved = localStorage.getItem('lostarkRaidPersonalSettings');
-    console.log('📂 [PERSONAL] localStorage에서 설정 조회:', saved);
-    
+
     if (saved) {
       const personalSettings = JSON.parse(saved);
-      console.log('📂 [PERSONAL] 파싱된 설정:', personalSettings);
-      console.log('📂 [PERSONAL] 로드 전 상태:', {
-        selectedRaid: state.selectedRaid?.id,
-        selectedDifficulty: state.selectedDifficulty?.id
-      });
-      
-      // 저장된 레이드 선택
+
       if (personalSettings.selectedRaidId) {
         const raid = state.raidsData.find(r => r.id === personalSettings.selectedRaidId);
-        console.log('📂 [PERSONAL] 찾은 레이드:', raid?.id);
-        
+
         if (raid) {
-          const oldRaid = state.selectedRaid;
           state.selectedRaid = raid;
-          console.log('📂 [PERSONAL] 레이드 변경:', {
-            from: oldRaid?.id,
-            to: raid.id
-          });
-          
-          // 저장된 난이도 선택
+
           if (personalSettings.selectedDifficultyId) {
             const difficulty = raid.difficulties.find(d => d.id === personalSettings.selectedDifficultyId);
-            console.log('📂 [PERSONAL] 찾은 난이도:', difficulty?.id);
-            
             if (difficulty) {
-              const oldDifficulty = state.selectedDifficulty;
               state.selectedDifficulty = difficulty;
-              console.log('📂 [PERSONAL] 난이도 변경:', {
-                from: oldDifficulty?.id,
-                to: difficulty.id
-              });
             } else {
-              console.log('📂 [PERSONAL] 난이도를 기본값으로 설정');
               state.selectedDifficulty = raid.difficulties[0] || null;
             }
           } else {
-            console.log('📂 [PERSONAL] 난이도를 기본값으로 설정 (저장된 값 없음)');
             state.selectedDifficulty = raid.difficulties[0] || null;
           }
-        } else {
-          console.log('📂 [PERSONAL] 저장된 레이드를 찾을 수 없음');
         }
-      } else {
-        console.log('📂 [PERSONAL] 저장된 레이드 ID 없음');
       }
-      
-      console.log('📂 [PERSONAL] 최종 상태:', {
-        selectedRaid: state.selectedRaid?.id,
-        selectedDifficulty: state.selectedDifficulty?.id
-      });
-    } else {
-      console.log('📂 [PERSONAL] 저장된 설정 없음');
     }
   } catch (error) {
     console.error('❌ [PERSONAL] 개인별 설정 로드 실패:', error);
   }
 }
 
-// 페이지 로드 시 초기화
+// 시크릿 커맨드 처리
+function handleSecretCommand(command) {
+  const parts = command.trim().split(' ');
+  const cmd = parts[0].toLowerCase();
+  const args = parts.slice(1);
+
+  switch (cmd) {
+    case '/broadcast':
+    case '/공지':
+      if (args.length === 0) return false;
+
+      const message = args.join(' ');
+      const type = 'info';
+      const duration = 5000;
+
+      if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
+        window.realtimeSync.sendBroadcastNotification(message, type, duration)
+          .then(success => {
+            if (success) {
+              window.modalManager.showAlert({
+                title: '공지 전송',
+                message: `공지가 성공적으로 전송되었습니다:\n${message}`,
+                confirmText: '확인'
+              });
+            } else {
+              console.error('❌ [SECRET COMMAND] 공지 전송 실패');
+            }
+          });
+      } else {
+        window.modalManager.showAlert({
+          title: '오류',
+          message: '실시간 동기화가 활성화되지 않았습니다.',
+          confirmText: '확인'
+        });
+      }
+      return true;
+
+    case '/warn':
+    case '/경고':
+      if (args.length === 0) return false;
+      if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
+        window.realtimeSync.sendBroadcastNotification(args.join(' '), 'warning', 8000);
+      }
+      return true;
+
+    case '/error':
+    case '/에러':
+      if (args.length === 0) return false;
+      if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
+        window.realtimeSync.sendBroadcastNotification(args.join(' '), 'error', 10000);
+      }
+      return true;
+
+    case '/success':
+    case '/성공':
+      if (args.length === 0) return false;
+      if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
+        window.realtimeSync.sendBroadcastNotification(args.join(' '), 'success', 3000);
+      }
+      return true;
+
+    case '/help':
+    case '/도움':
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+// 전역 키보드 이벤트 리스너 (시크릿 커맨드용)
+document.addEventListener('keydown', function(event) {
+  // Ctrl+Shift+K 조합으로 시크릿 커맨드 입력 모드 활성화
+  if (event.ctrlKey && event.shiftKey && event.key === 'K') {
+    event.preventDefault();
+    
+    window.modalManager.showInput({
+      title: '🔐 시크릿 커맨드',
+      message: '실행할 시크릿 커맨드를 입력하세요:',
+      placeholder: '/broadcast 메시지',
+      defaultValue: '',
+      confirmText: '실행',
+      cancelText: '취소',
+      onConfirm: (command) => {
+        if (command && command.trim()) {
+          handleSecretCommand(command.trim());
+        }
+      },
+      // 엔터키로 바로 전송 가능하도록 설정
+      allowEnterKey: true
+    });
+  }
+});
+
+// 전역 함수로 시크릿 커맨드 노출 (콘솔에서 직접 사용 가능)
+window.broadcast = function(message) {
+  if (typeof message === 'undefined' || message === null) return;
+  handleSecretCommand(`/broadcast ${message}`);
+};
+
+window.warn = function(message) {
+  if (typeof message === 'undefined' || message === null) return;
+  handleSecretCommand(`/warn ${message}`);
+};
+
+window.error = function(message) {
+  if (typeof message === 'undefined' || message === null) return;
+  handleSecretCommand(`/error ${message}`);
+};
+
+window.success = function(message) {
+  if (typeof message === 'undefined' || message === null) return;
+  handleSecretCommand(`/success ${message}`);
+};
+
+window.공지 = function(message) {
+  if (typeof message === 'undefined' || message === null) return;
+  handleSecretCommand(`/공지 ${message}`);
+};
+
+window.경고 = function(message) {
+  if (typeof message === 'undefined' || message === null) return;
+  handleSecretCommand(`/경고 ${message}`);
+};
+
+window.에러 = function(message) {
+  if (typeof message === 'undefined' || message === null) return;
+  handleSecretCommand(`/에러 ${message}`);
+};
+
+window.성공 = function(message) {
+  if (typeof message === 'undefined' || message === null) return;
+  handleSecretCommand(`/성공 ${message}`);
+};
+
+window.secretCommand = handleSecretCommand;
+
 window.addEventListener('load', function() {
-  console.log('🚀 [INIT] 페이지 로드 시작');
-  
-  // 먼저 레이드 데이터 로드
   loadRaidsData().then(() => {
-    console.log('📊 [INIT] 레이드 데이터 로드 완료');
-    
-    // 개인별 설정 로드
     loadPersonalSettings();
-    
-    // 설정이 적용된 후 UI 렌더링
-    console.log('🎨 [INIT] UI 렌더링 시작');
     renderRaidTabs();
     renderRaidParties();
     renderExpedition();
-    
-    // 그 다음 DB에서 저장된 데이터 로드
     loadFromDatabase();
-    
-    console.log('✅ [INIT] 초기화 완료');
   });
-  
-  // URL에서 동기화 코드 확인
+
   const syncCode = window.realtimeSync.getSyncCode();
   if (syncCode) {
-    console.log(`🔄 [SYNC] Found sync code in URL: ${syncCode}`);
     window.realtimeSync.init(syncCode);
-    
-    // 동기화 모드에서는 개인 설정만 적용하고 UI 렌더링만 수행
-    // initializeRaids()는 호출하지 않음 (개인 설정이 이미 적용됨)
-  } else {
-    // 일반 모드에서도 이미 초기화가 완료되었으므로 추가 초기화 불필요
-    console.log('📋 [INIT] 일반 모드 - 초기화 완료');
   }
 });
 
@@ -1624,8 +1757,6 @@ function renameExpeditionSlot(slotIndex) {
         
         // 자동 저장
         scheduleAutoSave();
-        
-        console.log(`📝 [EXPEDITION] 원정대 슬롯 ${slotIndex + 1} 이름 변경: "${currentName}" -> "${trimmedName}"`);
       }
     }
   });

@@ -9,44 +9,34 @@ const operationLock = {
   // 작업 잠금 획득
   async acquire(operationName, timeout = 30000) {
     if (this.isLocked) {
-      console.log(`🔒 [LOCK] ${operationName} waiting for lock. Current: ${this.currentOperation}`);
       return false;
     }
-    
+
     this.isLocked = true;
     this.currentOperation = operationName;
-    
-    console.log(`🔒 [LOCK] ${operationName} acquired`);
-    
-    // 타임아웃 설정
+
     if (timeout > 0) {
       setTimeout(() => {
         if (this.isLocked && this.currentOperation === operationName) {
-          console.warn(`⚠️ [LOCK] ${operationName} timeout, releasing lock`);
           this.release(operationName);
         }
       }, timeout);
     }
-    
+
     return true;
   },
-  
+
   // 작업 잠금 해제
   release(operationName) {
     if (!this.isLocked || this.currentOperation !== operationName) {
-      console.warn(`⚠️ [LOCK] Attempted to release lock by non-owner: ${operationName}, current: ${this.currentOperation}`);
       return false;
     }
-    
+
     this.isLocked = false;
-    const releasedOperation = this.currentOperation;
     this.currentOperation = null;
-    
-    console.log(`🔓 [LOCK] ${releasedOperation} released`);
-    
-    // 대기 중인 작업 처리
+
     this.processQueue();
-    
+
     return true;
   },
   
@@ -66,30 +56,21 @@ const operationLock = {
   // 대기열에 작업 추가
   addToQueue(operationName, callback) {
     this.lockQueue.push({ operationName, callback });
-    console.log(`📝 [LOCK] ${operationName} added to queue. Queue size: ${this.lockQueue.length}`);
   },
-  
+
   // 대기열 처리
   processQueue() {
     if (this.lockQueue.length > 0) {
       const next = this.lockQueue.shift();
-      console.log(`🔄 [LOCK] Processing next in queue: ${next.operationName}`);
-      setTimeout(() => next.callback(), 100); // 약간의 지연으로 UI 업데이트 허용
+      setTimeout(() => next.callback(), 100);
     }
   },
-  
+
   // 강제 잠금 해제 (비상용)
   forceRelease() {
-    const wasLocked = this.isLocked;
-    const operation = this.currentOperation;
-    
     this.isLocked = false;
     this.currentOperation = null;
     this.lockQueue = [];
-    
-    if (wasLocked) {
-      console.warn(`🚨 [LOCK] Force released lock from ${operation}`);
-    }
   }
 };
 
@@ -109,10 +90,7 @@ async function withOperationLock(operationName, operation, timeout = 30000) {
   }
   
   try {
-    // 작업 실행
-    console.log(`🔄 [LOCK] Executing ${operationName}`);
     const result = await operation();
-    console.log(`✅ [LOCK] ${operationName} completed successfully`);
     return result;
   } catch (error) {
     console.error(`❌ [LOCK] ${operationName} failed:`, error);

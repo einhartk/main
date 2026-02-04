@@ -91,6 +91,8 @@ function createHistoryEntry(action, target, before, after, description) {
     userId,
     action,
     target,
+    before: before,
+    after: after,
     changes: generateDiff(before, after),
     description
   };
@@ -100,40 +102,125 @@ function createHistoryEntry(action, target, before, after, description) {
 async function recordHistory(action, target, before, after, description) {
   try {
     const entry = createHistoryEntry(action, target, before, after, description);
-    
-    console.log('📝 [HISTORY] Creating entry:', {
-      action,
-      target,
-      description,
-      hasChanges: !!(entry.changes && Object.keys(entry.changes).length > 0),
-      entryId: entry.id
-    });
-    
-    // 변경 내역이 없으면 기록하지 않음
-    if (!entry.changes || Object.keys(entry.changes).length === 0) {
-      console.log('📝 [HISTORY] 변경 내역 없어 히스토리 기록 건너뜀:', description);
+
+    if (!entry.before || !entry.after || JSON.stringify(entry.before) === JSON.stringify(entry.after)) {
       return;
     }
-    
-    // 로컬 히스토리에 추가
+
     state.history.entries.push(entry);
-    
-    // 최대 개수 유지
-    if (state.history.entries.length > state.history.maxEntries) {
+
+    while (state.history.entries.length > state.history.maxEntries) {
       state.history.entries.shift();
     }
-    
-    console.log('📝 [HISTORY] 히스토리 기록 완료:', entry.description, '- 변경 항목:', Object.keys(entry.changes || {}).length, '- ID:', entry.id);
-    
-    // Firebase에 저장 (실시간 동기화 시)
-    if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
+
+    if (window.realtimeSync && typeof window.realtimeSync.isSyncActive === 'function' && window.realtimeSync.isSyncActive()) {
+      const cleanEntry = JSON.parse(JSON.stringify(entry, (key, value) => {
+        if (value === undefined) return null;
+        return value;
+      }));
+
+      const hasUndefined = JSON.stringify(cleanEntry).includes('undefined');
+      if (hasUndefined) {
+        console.error('📝 [HISTORY] 경고: 정제된 데이터에 여전히 undefined 값이 있습니다!');
+      }
+
       const historyRef = window.realtimeSync.dbRef.child('history');
-      await historyRef.push(entry);
-      console.log('📝 [HISTORY] Firebase에 히스토리 저장 완료');
+
+      try {
+        await historyRef.push(cleanEntry);
+      } catch (error) {
+        console.error('📝 [HISTORY] Firebase 저장 실패:', error);
+        if (error.message.includes('undefined')) {
+          return;
+        }
+      }
+
+      await cleanupFirebaseHistory();
+    }
+    
+    // 히스토리 리스트 즉시 업데이트
+    if (typeof renderHistoryList === 'function') {
+      renderHistoryList();
     }
   } catch (error) {
     console.error('📝 [HISTORY] 히스토리 기록 실패:', error);
   }
+}
+
+// Firebase 히스토리 정리
+async function cleanupFirebaseHistory() {
+  try {
+    if (!window.realtimeSync || typeof window.realtimeSync.isSyncActive !== 'function' || !window.realtimeSync.isSyncActive()) {
+      return;
+    }
+    
+    const historyRef = window.realtimeSync.dbRef.child('history');
+    const snapshot = await historyRef.once('value');
+    const allHistory = snapshot.val() || {};
+    
+    // Firebase 히스토리를 배열로 변환하고 정렬
+    const historyArray = Object.values(allHistory)
+      .filter(entry => entry && entry.timestamp)
+      .sort((a, b) => b.timestamp - a.timestamp);
+    
+    // 최대 개수 유지
+    if (historyArray.length > state.history.maxEntries) {
+      const toKeep = historyArray.slice(0, state.history.maxEntries);
+      const toRemove = historyArray.slice(state.history.maxEntries);
+      
+      // 오래된 항목 삭제
+      for (const oldEntry of toRemove) {
+        if (oldEntry.id) {
+          await historyRef.child(oldEntry.id).remove();
+        }
+      }
+      
+    }
+  } catch (error) {
+  }
+}
+
+// 로컬 히스토리 정리
+function cleanupLocalHistory() {
+  const beforeCount = state.history.entries.length;
+  
+  // 최대 개수 유지
+  while (state.history.entries.length > state.history.maxEntries) {
+    state.history.entries.shift();
+  }
+  
+  const afterCount = state.history.entries.length;
+  const removedCount = beforeCount - afterCount;
+  
+  if (removedCount > 0) {
+  }
+}
+
+// 히스토리 통계 정보
+function getHistoryStats() {
+  const entries = state.history.entries;
+  const now = Date.now();
+  const oneDayAgo = now - (24 * 60 * 60 * 1000);
+  const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
+  
+  const stats = {
+    total: entries.length,
+    maxEntries: state.history.maxEntries,
+    usage: Math.round((entries.length / state.history.maxEntries) * 100),
+    last24h: entries.filter(e => e.timestamp > oneDayAgo).length,
+    lastWeek: entries.filter(e => e.timestamp > oneWeekAgo).length,
+    oldestEntry: entries.length > 0 ? new Date(entries[0].timestamp).toLocaleString() : '없음',
+    newestEntry: entries.length > 0 ? new Date(entries[entries.length - 1].timestamp).toLocaleString() : '없음',
+    operations: {}
+  };
+  
+  // 작업 유형별 통계
+  entries.forEach(entry => {
+    const op = entry.operation || 'unknown';
+    stats.operations[op] = (stats.operations[op] || 0) + 1;
+  });
+  
+  return stats;
 }
 
 // 원정대에서 이름으로 캐릭터 찾기
@@ -170,18 +257,33 @@ function showHistoryModal() {
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
           <div class="modal-body">
-            <!-- 필터링 컨트롤 -->
+            <!-- 히스토리 통계 -->
+            <div class="alert alert-info mb-3" id="historyStats">
+              <div class="row">
+                <div class="col-md-3">
+                  <small class="text-muted">전체 개수</small>
+                  <div class="fw-bold" id="historyTotalCount">0</div>
+                </div>
+                <div class="col-md-3">
+                  <small class="text-muted">사용률</small>
+                  <div class="fw-bold" id="historyUsage">0%</div>
+                </div>
+                <div class="col-md-3">
+                  <small class="text-muted">최근 24시간</small>
+                  <div class="fw-bold" id="historyLast24h">0</div>
+                </div>
+                <div class="col-md-3">
+                  <small class="text-muted">최근 7일</small>
+                  <div class="fw-bold" id="historyLastWeek">0</div>
+                </div>
+              </div>
+            </div>
+            
             <div class="row mb-3">
               <div class="col-md-4">
-                <label class="form-label small">사용자 필터</label>
-                <select class="form-select form-select-sm" id="userFilter" onchange="filterHistory()">
-                  <option value="">모든 사용자</option>
-                </select>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label small">액션 필터</label>
-                <select class="form-select form-select-sm" id="actionFilter" onchange="filterHistory()">
-                  <option value="">모든 액션</option>
+                <label class="form-label small">필터</label>
+                <select class="form-select form-select-sm" id="historyFilter">
+                  <option value="all">전체</option>
                   <option value="add">추가</option>
                   <option value="update">수정</option>
                   <option value="delete">삭제</option>
@@ -196,6 +298,13 @@ function showHistoryModal() {
                   <button class="btn btn-sm btn-outline-warning" onclick="clearHistory()">
                     <i class="bi bi-trash"></i> 정리
                   </button>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small">최대 개수</label>
+                <div class="input-group input-group-sm">
+                  <input type="number" class="form-control" id="historyMaxEntries" value="50" min="10" max="500">
+                  <button class="btn btn-outline-secondary" onclick="updateHistoryMaxEntries()">적용</button>
                 </div>
               </div>
             </div>
@@ -229,20 +338,18 @@ function showHistoryModal() {
 async function loadHistory() {
   try {
     // Firebase에서 히스토리 로드 (실시간 동기화 시)
-    if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
+    if (window.realtimeSync && typeof window.realtimeSync.isSyncActive === 'function' && window.realtimeSync.isSyncActive()) {
       const historyRef = window.realtimeSync.dbRef.child('history');
       const snapshot = await historyRef.once('value');
       const remoteHistory = snapshot.val() || {};
-      
+
       // 원격 히스토리만 사용 (중복 방지)
       const remoteEntries = Object.values(remoteHistory)
         .map((entry, index) => {
-          console.log('📝 [HISTORY] Loading Firebase entry:', entry);
           
           // Firebase에서 로드된 데이터에 id가 없는 경우 생성
           if (!entry.id) {
             entry.id = `firebase_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`;
-            console.log('📝 [HISTORY] Generated ID for Firebase entry:', entry.id);
           }
           
           // 필수 필드 확인
@@ -258,12 +365,7 @@ async function loadHistory() {
         .sort((a, b) => b.timestamp - a.timestamp);
       
       state.history.entries = remoteEntries.slice(0, state.history.maxEntries);
-      console.log('📝 [HISTORY] Firebase 로드 완료:', remoteEntries.length, '개 항목');
       
-      console.log('원격 히스토리 로드:', remoteEntries.length, '개 항목');
-    } else {
-      // 실시간 동기화가 없을 때는 로컬 히스토리만 표시
-      console.log('로컬 히스토리 표시:', state.history.entries.length, '개 항목');
     }
   } catch (error) {
     console.error('히스토리 로드 실패:', error);
@@ -272,6 +374,9 @@ async function loadHistory() {
   // 필터 옵션 업데이트
   updateFilterOptions();
   renderHistoryList();
+  
+  // 통계 정보 업데이트
+  updateHistoryStats();
 }
 
 // 히스토리 목록 렌더링
@@ -280,8 +385,6 @@ function renderHistoryList() {
   if (!container) return;
   
   let entries = state.history.entries.sort((a, b) => b.timestamp - a.timestamp);
-  
-  // 필터링 적용
   entries = applyFilters(entries);
   
   const html = entries.map((entry, index) => {
@@ -383,12 +486,66 @@ function renderChangesPreview(changes) {
   }).join('');
 }
 
+// 히스토리 통계 업데이트
+function updateHistoryStats() {
+  const stats = getHistoryStats();
+  
+  document.getElementById('historyTotalCount').textContent = stats.total;
+  document.getElementById('historyUsage').textContent = `${stats.usage}%`;
+  document.getElementById('historyLast24h').textContent = stats.last24h;
+  document.getElementById('historyLastWeek').textContent = stats.lastWeek;
+  document.getElementById('historyMaxEntries').value = stats.maxEntries;
+  
+  // 사용률에 따른 색상 변경
+  const usageElement = document.getElementById('historyUsage');
+  if (stats.usage >= 90) {
+    usageElement.className = 'fw-bold text-danger';
+  } else if (stats.usage >= 70) {
+    usageElement.className = 'fw-bold text-warning';
+  } else {
+    usageElement.className = 'fw-bold text-success';
+  }
+}
+
+// 히스토리 최대 개수 변경
+function updateHistoryMaxEntries() {
+  const input = document.getElementById('historyMaxEntries');
+  const newMax = parseInt(input.value);
+  
+  if (isNaN(newMax) || newMax < 10 || newMax > 500) {
+    window.modalManager.showAlert({
+      title: '오류',
+      message: '최대 개수는 10에서 500 사이의 숫자여야 합니다.',
+      confirmText: '확인'
+    });
+    return;
+  }
+  
+  const oldMax = state.history.maxEntries;
+  state.history.maxEntries = newMax;
+  
+  // 새로운 최대 개수에 맞게 히스토리 정리
+  cleanupLocalHistory();
+  
+  // 통계 업데이트
+  updateHistoryStats();
+  
+  window.modalManager.showAlert({
+    title: '설정 변경',
+    message: `히스토리 최대 개수가 ${oldMax}에서 ${newMax}으로 변경되었습니다.`,
+    confirmText: '확인'
+  });
+}
+
 // 히스토리 새로고침
 async function refreshHistory() {
   await loadHistory();
+  updateHistoryStats();
+  
   window.modalManager.showAlert({
     title: '새로고침 완료',
-    message: `히스토리를 새로고쳤습니다. (${state.history.entries.length}개 항목)`
+    message: `히스토리를 새로고쳤습니다. (${state.history.entries.length}개 항목)`,
+    confirmText: '확인'
   });
 }
 
@@ -519,8 +676,6 @@ function renderDetailedChanges(changes) {
 
 // 롤백 기능
 async function rollbackToHistory(entryId) {
-  console.log('🔄 [ROLLBACK] Attempting rollback for entryId:', entryId);
-  console.log('🔄 [ROLLBACK] Available entries:', state.history.entries.map(e => ({ id: e.id, description: e.description })));
   
   // entryId 유효성 검사
   if (!entryId || typeof entryId !== 'string') {
@@ -538,10 +693,8 @@ async function rollbackToHistory(entryId) {
     // ID로 찾지 못하면 인덱스로 시도
     const index = parseInt(entryId.replace(/^[^0-9]*/, ''));
     if (!isNaN(index) && index >= 0 && index < state.history.entries.length) {
-      console.log('🔄 [ROLLBACK] Trying index-based lookup:', index);
       const fallbackEntry = state.history.entries[index];
       if (fallbackEntry) {
-        console.log('🔄 [ROLLBACK] Found entry by index, performing rollback');
         await performRollbackWithConfirmation(fallbackEntry);
         return;
       }
@@ -601,8 +754,6 @@ async function performRollbackWithConfirmation(entry) {
 
 // 롤백 수행 - 단일 히스토리 취소
 async function performRollback(entry) {
-  console.log('🔄 [ROLLBACK] Performing single history rollback:', entry);
-  
   // 액션별 롤백 처리
   switch (entry.action) {
     case 'add':
@@ -648,8 +799,6 @@ async function performRollback(entry) {
 
 // 생성 작업 롤백 (삭제)
 async function rollbackAdd(entry) {
-  console.log('🔄 [ROLLBACK] Rolling back ADD operation:', entry);
-  
   // 생성된 항목 찾아서 삭제
   if (entry.target.type === 'character') {
     // 캐릭터 추가 롤백 - 공격대에서 제거
@@ -677,7 +826,6 @@ async function rollbackAdd(entry) {
         );
         
         party.members[slotIndex] = null;
-        console.log('🔄 [ROLLBACK] Removed character from raid:', removedCharacter.name);
       }
     }
   } else if (entry.target.type === 'raid') {
@@ -691,7 +839,6 @@ async function rollbackAdd(entry) {
       
       if (partyIndex !== -1) {
         parties.splice(partyIndex, 1);
-        console.log('🔄 [ROLLBACK] Deleted raid party:', entry.target.id);
       }
     }
   } else if (entry.target.type === 'expedition') {
@@ -700,43 +847,19 @@ async function rollbackAdd(entry) {
     
     if (!isNaN(slotIndex) && state.expeditionSlots[slotIndex]) {
       state.expeditionSlots[slotIndex] = [];
-      console.log('🔄 [ROLLBACK] Cleared expedition slot:', slotIndex);
     }
   }
 }
 
 // 삭제 작업 롤백 (재생성)
 async function rollbackDelete(entry) {
-  console.log('🔄 [ROLLBACK] Rolling back DELETE operation:', entry);
-  console.log('🔄 [ROLLBACK] Entry data structure:', entry);
-  console.log('🔄 [ROLLBACK] All changes:', JSON.stringify(entry.changes, null, 2));
-  console.log('🔄 [ROLLBACK] All change keys:', Object.keys(entry.changes));
-  
-  // 각 change의 상세 구조 확인
-  for (const [key, change] of Object.entries(entry.changes)) {
-    console.log(`🔄 [ROLLBACK] Change key: ${key}`, {
-      before: change.before,
-      after: change.after,
-      beforeType: typeof change.before,
-      afterType: typeof change.after,
-      beforeIsArray: Array.isArray(change.before),
-      afterIsArray: Array.isArray(change.after)
-    });
-  }
-  
-  // 삭제된 항목 복원
   if (entry.target.type === 'character') {
-    // 캐릭터 삭제 롤백 - 공격대에 다시 추가
     const partyId = entry.target.id?.match(/(.+?)_slot\d+/)?.[1];
     const slotIndex = parseInt(entry.target.path?.match(/party\.members\[(.+?)\]/)?.[1]);
-    
-    console.log('🔄 [ROLLBACK] Character rollback - partyId:', partyId, 'slotIndex:', slotIndex);
-    
+
     if (partyId && !isNaN(slotIndex)) {
       const parties = getCurrentTabParties();
       const party = parties.find(p => p.id === partyId);
-      
-      console.log('🔄 [ROLLBACK] Found party:', party?.id, 'members:', party?.members);
       
       if (party && !party.members[slotIndex]) {
         // before 데이터에서 삭제된 캐릭터 정보 찾아 복원
@@ -748,19 +871,16 @@ async function rollbackDelete(entry) {
         if (rootBefore && rootBefore.name) {
           // 원정대에서 캐릭터 정보 찾기 (name으로 검색)
           deletedCharacter = findCharacterByNameInExpedition(rootBefore.name);
-          console.log('🔄 [ROLLBACK] Found character by name:', rootBefore.name, deletedCharacter);
         }
-        
+
         // 경로 2: 다른 키 구조 시도 (이전 로직 유지)
         if (!deletedCharacter) {
           const firebaseKey = `party_members_${slotIndex}`;
           deletedCharacter = entry.changes[firebaseKey]?.before;
-          console.log('🔄 [ROLLBACK] Firebase key result:', firebaseKey, deletedCharacter);
         }
         
         if (!deletedCharacter) {
           deletedCharacter = entry.changes['party.members']?.before?.[slotIndex];
-          console.log('🔄 [ROLLBACK] Original key result:', deletedCharacter);
         }
         
         // 경로 3: 모든 키에서 찾기
@@ -772,7 +892,6 @@ async function rollbackDelete(entry) {
                 const index = indexMatch ? parseInt(indexMatch[1]) : -1;
                 if (index === slotIndex) {
                   deletedCharacter = change.before;
-                  console.log('🔄 [ROLLBACK] Matched key result:', key, deletedCharacter);
                   break;
                 }
               }
@@ -785,13 +904,10 @@ async function rollbackDelete(entry) {
           for (const [key, change] of Object.entries(entry.changes)) {
             if (key.includes('party') && change.before && Array.isArray(change.before)) {
               deletedCharacter = change.before[slotIndex];
-              console.log('🔄 [ROLLBACK] Array before result:', deletedCharacter);
               if (deletedCharacter) break;
             }
           }
         }
-        
-        console.log('🔄 [ROLLBACK] Final deleted character data:', deletedCharacter);
         
         if (deletedCharacter) {
           // 히토리 기록 (삭제 취소)
@@ -808,7 +924,6 @@ async function rollbackDelete(entry) {
           );
           
           party.members[slotIndex] = deletedCharacter;
-          console.log('🔄 [ROLLBACK] Restored character to raid:', deletedCharacter.name);
         } else {
           console.error('🔄 [ROLLBACK] No deleted character data found in changes');
         }
@@ -830,7 +945,6 @@ async function rollbackDelete(entry) {
         // 삭제된 위치에 다시 추가
         const insertIndex = parseInt(entry.target.path?.match(/\[(.+?)\]$/)?.[1]) || parties.length;
         parties.splice(insertIndex, 0, deletedParty);
-        console.log('🔄 [ROLLBACK] Restored raid party:', deletedParty.id);
       }
     }
   }
@@ -838,8 +952,6 @@ async function rollbackDelete(entry) {
 
 // 수정 작업 롤백 (재수정)
 async function rollbackUpdate(entry) {
-  console.log('🔄 [ROLLBACK] Rolling back UPDATE operation:', entry);
-  
   // 수정된 항목 복원
   for (const [safePath, change] of Object.entries(entry.changes)) {
     const originalPath = safePath.replace(/_/g, '.');
@@ -907,7 +1019,7 @@ function clearHistory() {
       state.history.entries = [];
       
       // Firebase에서도 삭제 (실시간 동기화 시)
-      if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
+      if (window.realtimeSync && typeof window.realtimeSync.isSyncActive === 'function' && window.realtimeSync.isSyncActive()) {
         const historyRef = window.realtimeSync.dbRef.child('history');
         historyRef.remove();
       }

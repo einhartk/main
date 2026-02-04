@@ -52,7 +52,10 @@ function renderRaidTabs() {
 // 공격대 파티 렌더링
 function renderRaidParties() {
   const container = document.getElementById('raidParties');
-  if (!container) return;
+  if (!container) {
+    console.error('❌ [RENDER] raidParties 컨테이너를 찾을 수 없음');
+    return;
+  }
 
   // 전체 컨테이너를 비우고 다시 렌더링 (중복 방지)
   container.innerHTML = '';
@@ -205,6 +208,9 @@ function renderRaidParties() {
   setupRaidEventListeners();
 }
 
+// 🔥 **핵심 수정: 전역 함수로 노출**
+window.renderRaidParties = renderRaidParties;
+
 // 원정대에서 캐릭터 상세 정보 조회
 function getCharacterDetailsFromExpedition(characterName) {
   if (!characterName) return null;
@@ -295,6 +301,9 @@ function renderExpedition() {
   
   }
 
+// 🔥 **핵심 수정: 전역 함수로 노출**
+window.renderExpedition = renderExpedition;
+
 // 원정대 모달 렌더링 (조회/수정용)
 function renderExpeditionModal() {
   const container = document.getElementById('expedition');
@@ -340,6 +349,9 @@ function renderExpeditionModal() {
   
   }
 
+// 🔥 **핵심 수정: 전역 함수로 노출**
+window.renderExpeditionModal = renderExpeditionModal;
+
 // 서포터 수 업데이트
 function updateSupportCount() {
   const parties = getCurrentTabParties();
@@ -348,7 +360,6 @@ function updateSupportCount() {
     const badge = document.getElementById(`support-${party.uniqueId}`);
     if (badge) {
       badge.className = count > party.maxSupports ? "badge bg-danger text-white" : "badge bg-success text-white";
-      badge.textContent = `서폿 ${count}/${party.maxSupports}`;
     }
   });
 }
