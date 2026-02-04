@@ -94,6 +94,20 @@ async function confirmRemoveCharacter(characterId, partyId, slotIndex) {
     cancelText: '취소',
     confirmClass: 'btn-danger',
     onConfirm: async () => {
+      let isLocked = false;
+      if (window.realtimeSync && typeof window.realtimeSync.isSyncActive === 'function' && window.realtimeSync.isSyncActive()) {
+        const slotLockKey = `raidSlot:${state.selectedRaid.id}:${state.selectedDifficulty.id}:${partyId}:${slotIndex}`;
+        isLocked = await window.realtimeSync.isSlotLockedByOther(slotLockKey);
+      }
+
+      if (isLocked) {
+        window.modalManager.showAlert({
+          title: '삭제 불가',
+          message: '다른 사용자가 이 슬롯을 편집 중입니다. 잠시 후 다시 시도해주세요.'
+        });
+        return;
+      }
+      
       // 히스토리 기록
       const oldMember = party.members[slotIndex];
       if (typeof recordHistory === 'function') {
@@ -110,20 +124,26 @@ async function confirmRemoveCharacter(characterId, partyId, slotIndex) {
         );
       }
       
-      // 캐릭터 삭제
       party.members[slotIndex] = null;
 
-      // 드래그 상태가 남아 있으면 정리
       if (draggedData && draggedData.charId === characterId) {
         draggedData = null;
       }
 
       renderRaidParties();
       renderExpedition();
-      
-      // 자동 저장
       scheduleAutoSave();
-      
+
+      setTimeout(() => {
+        const slotElement = document.querySelector(`[data-party="${partyId}"][data-slot="${slotIndex}"]`);
+        if (slotElement) {
+          const slotContent = slotElement.innerHTML;
+          if (slotContent.includes('char-box')) {
+            console.error('❌ [DELETE] UI 확인 - 슬롯에 여전히 캐릭터가 있음 (삭제 실패)');
+          }
+        }
+      }, 100);
+
       window.modalManager.showAlert({
         title: '삭제 완료',
         message: `${characterName} 캐릭터가 공격대에서 삭제되었습니다.`
@@ -344,7 +364,6 @@ async function editCharacter(expeditionIndex, characterIndex, partyId = null, sl
     }
     
     if (!character) {
-      console.warn('⚠️ [EDIT] 캐릭터를 찾을 수 없습니다:', { expeditionIndex, characterIndex, partyId, slotIndex });
       return;
     }
     
@@ -504,29 +523,25 @@ function guessRole(className, arkpassive) {
 
 // 공격대 캐릭터 선택 모달 열기
 async function openRaidCharacterSelector(partyId, slotIndex) {
+  let slotLockKey = null; // 제약 실패/조기 return 시 락 해제용
   try {
-    // 전역 플래그로 모달 중복 방지
     if (isCharacterSelectorModalOpen) {
-      console.log('⚠️ [MODAL] 캐릭터 선택 모달이 이미 열려있습니다.');
       return;
     }
-    
-    // 이미 모달이 열려있는지 확인
+
     const existingModal = document.getElementById('raidCharacterSelectorModal');
     if (existingModal && existingModal.classList.contains('show')) {
-      console.log('⚠️ [MODAL] 캐릭터 선택 모달이 이미 열려있습니다.');
       return;
     }
-    
+
     // 모달 오픈 플래그 설정
     isCharacterSelectorModalOpen = true;
     // 슬롯 단위 락 확인
     if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
       if (state.selectedRaid && state.selectedDifficulty) {
-        const slotLockKey = `raidSlot:${state.selectedRaid.id}:${state.selectedDifficulty.id}:${partyId}:${slotIndex}`;
+        slotLockKey = `raidSlot:${state.selectedRaid.id}:${state.selectedDifficulty.id}:${partyId}:${slotIndex}`;
         const lockedByOther = await window.realtimeSync.isSlotLockedByOther(slotLockKey);
         if (lockedByOther) {
-          // 모달 오픈 플래그 초기화
           isCharacterSelectorModalOpen = false;
           window.modalManager.showAlert({
             title: '편집 중',
@@ -537,7 +552,6 @@ async function openRaidCharacterSelector(partyId, slotIndex) {
 
         const ok = await window.realtimeSync.acquireSlotLock(slotLockKey);
         if (!ok) {
-          // 모달 오픈 플래그 초기화
           isCharacterSelectorModalOpen = false;
           window.modalManager.showAlert({
             title: '편집 충돌',
@@ -551,7 +565,12 @@ async function openRaidCharacterSelector(partyId, slotIndex) {
     // 현재 파티 정보 가져오기
     const parties = getCurrentTabParties();
     const party = parties.find(p => p.id === partyId);
-    if (!party) return;
+    if (!party) {
+      if (slotLockKey && window.realtimeSync && typeof window.realtimeSync.releaseSlotLock === 'function') {
+        try { await window.realtimeSync.releaseSlotLock(slotLockKey); } catch (_) {}
+      }
+      return;
+    }
 
     // 원정대에서 사용 가능한 캐릭터 목록 가져오기
     const availableCharacters = [];
@@ -580,8 +599,18 @@ async function openRaidCharacterSelector(partyId, slotIndex) {
     }
 
     if (uniqueCharacters.length === 0) {
-      // 모달 오픈 플래그 초기화
       isCharacterSelectorModalOpen = false;
+      // 제약 조건 실패 시 이미 획득한 슬롯 락 반드시 해제 (락 미해제 시 슬롯이 계속 잠김)
+      if (slotLockKey && window.realtimeSync && typeof window.realtimeSync.releaseSlotLock === 'function') {
+        try {
+          await window.realtimeSync.releaseSlotLock(slotLockKey);
+        } catch (e) {
+          // 해제 실패해도 로컬 currentSlotLock은 releaseSlotLock 내부 finally에서 정리됨
+          if (window.realtimeSync.releaseSlotLock) {
+            await window.realtimeSync.releaseSlotLock(); // 인자 없이 호출 시 currentSlotLock 기준 해제 시도
+          }
+        }
+      }
       window.modalManager.showAlert({
         title: '선택 가능한 캐릭터 없음',
         message: '제약 조건을 만족하는 캐릭터가 없습니다.'
@@ -589,12 +618,15 @@ async function openRaidCharacterSelector(partyId, slotIndex) {
       return;
     }
 
-    // 캐릭터 선택 모달 생성
+    // 캐릭터 선택 모달 생성 (모달 닫을 때 슬롯 락 해제됨)
     showRaidCharacterSelectorModal(uniqueCharacters, partyId, slotIndex);
 
   } catch (error) {
-    // 모달 오픈 플래그 초기화
     isCharacterSelectorModalOpen = false;
+    // 예외 시 슬롯 락 해제
+    if (slotLockKey && window.realtimeSync && typeof window.realtimeSync.releaseSlotLock === 'function') {
+      try { await window.realtimeSync.releaseSlotLock(slotLockKey); } catch (_) {}
+    }
     console.error('❌ [RAID CHARACTER SELECTOR ERROR]:', error);
     window.modalManager.showAlert({
       title: '오류',
@@ -677,15 +709,15 @@ function showRaidCharacterSelectorModal(characters, partyId, slotIndex) {
   // 모달 닫힐 때 슬롯 락 해제 및 플래그 초기화
   const modalEl = document.getElementById('raidCharacterSelectorModal');
   modalEl.addEventListener('hidden.bs.modal', async () => {
-    // 모달 오픈 플래그 초기화
     isCharacterSelectorModalOpen = false;
-    
-    // 슬롯 락 해제
-    if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
+
+    if (window.realtimeSync && typeof window.realtimeSync.isSyncActive === 'function' && window.realtimeSync.isSyncActive()) {
       const slotLockKey = `raidSlot:${state.selectedRaid.id}:${state.selectedDifficulty.id}:${partyId}:${slotIndex}`;
       try {
         await window.realtimeSync.releaseSlotLock(slotLockKey);
-      } catch (_) {}
+      } catch (error) {
+        console.error('❌ [MODAL] 슬롯 락 해제 실패:', error);
+      }
     }
   }, { once: true });
 
@@ -900,11 +932,26 @@ async function displaySearchResults(characters, successCount, failCount, failedN
     );
   }
   
-  // 현재 슬롯을 조회된 캐릭터들로 교체
-  state.expeditionSlots[currentTargetSlot] = flattenedCharacters;
-  
-  // UI 업데이트
-  renderExpedition();
+  if (!window.stateManager || !window.stateManager.atomicUpdate) {
+    state.expeditionSlots[currentTargetSlot] = flattenedCharacters;
+    renderExpedition();
+    scheduleAutoSave();
+  } else {
+    // State Manager로 원자적 업데이트
+    await window.stateManager.atomicUpdate(`expeditionSlots.${currentTargetSlot}`, async (currentSlot) => {
+      return flattenedCharacters;
+    }, {
+      recordHistory: true,
+      autoSave: true,
+      renderUI: true,
+      historyData: {
+        type: 'expedition',
+        operation: 'update',
+        target: { slotIndex: currentTargetSlot },
+        description: `원정대 슬롯 ${currentTargetSlot + 1}에 ${flattenedCharacters.length}명 설정`
+      }
+    });
+  }
   
   // 결과 메시지
   let message = `${characters.length}명의 원정대가 슬롯 ${currentTargetSlot + 1}에 설정되었습니다.`;

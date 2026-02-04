@@ -1,21 +1,24 @@
 // Realtime Sync Manager
 class RealtimeSync {
     constructor() {
+        this.isConnected = false;
         this.syncCode = null;
         this.dbRef = null;
-        this.lastSyncTime = 0;
-        this.currentUser = this.getCurrentUser();
+        this.currentUser = null;
         this.userRef = null;
-        this.isConnected = false;
-        this.syncInterval = null;
         this.presenceInterval = null;
-        this.unsubscribe = null;
+        this.lastSyncTime = 0;
+        this.currentSlotLock = null;
+        this.slotLockHeartbeat = null;
+        this.editLockTimeout = null;
+        this.lastBroadcastId = null; // 마지막 수신 공지 ID
         this.isEditing = false; // 편집 상태
         this.editingUser = null; // 현재 편집 중인 사용자
-        this.editLockTimeout = null; // 편집 잠금 타임아웃
-
-        this.currentSlotLock = null; // { key, ref }
-        this.slotLockHeartbeat = null;
+        // 변경 시에만 동기화: 마지막으로 보낸 payload (에코 스킵 + 더티 체크용)
+        this._lastPushedRt = null;
+        this._lastPushedEs = null;
+        this._lastPushedEsn = null;
+        this._lastPushedAt = 0;
     }
 
     // userId에서 브라우저/기기 suffix를 제거한 "base user" 키
@@ -100,12 +103,15 @@ class RealtimeSync {
         const encodedKey = this.encodeSlotKey(keyToRelease);
         const lockRef = this.dbRef.child('slotLocks').child(encodedKey);
         const meBase = this.getBaseUserKey(this.currentUser);
+        const isMyLock = this.currentSlotLock && this.currentSlotLock.key === keyToRelease;
 
         try {
             const snap = await lockRef.once('value');
             const v = snap.val();
             const ownerBase = v?.baseUser || this.getBaseUserKey(v?.user);
-            if (v && ownerBase && meBase && ownerBase === meBase) {
+            const ownerMatch = v && ownerBase && meBase && ownerBase === meBase;
+            // 본인 소유로 확인되거나, 이 클라이언트가 획득한 락이면 반드시 제거 (제약 실패 등 조기 return 시 락 해제 보장)
+            if (ownerMatch || isMyLock) {
                 await lockRef.remove();
             }
         } catch (e) {
@@ -223,6 +229,30 @@ class RealtimeSync {
             this.handleRemoteUpdate({ d });
         });
         
+        // 공지 수신 리스너
+        this.dbRef.child('broadcast').on('value', (snapshot) => {
+            const notification = snapshot.val();
+            if (notification && notification.isBroadcast) {
+                const now = Date.now();
+                
+                // 만료된 공지는 무시하고 삭제
+                if (notification.expiry && now > notification.expiry) {
+                    this.dbRef.child('broadcast').remove();
+                    return;
+                }
+
+                // 중복 수신 방지: 같은 ID의 공지는 다시 표시하지 않음
+                if (this.lastBroadcastId !== notification.id) {
+                    this.lastBroadcastId = notification.id;
+                    this.handleBroadcastNotification(notification);
+
+                    setTimeout(() => {
+                        this.dbRef.child('broadcast').remove();
+                    }, 1000);
+                }
+            }
+        });
+        
         // 사용자 접속 정보 등록
         this.registerUserPresence();
         
@@ -238,49 +268,44 @@ class RealtimeSync {
     // 원격 데이터 처리 - 역직렬화 버전
     handleRemoteUpdate(data) {
         if (!data) return;
-        
-                
+        if (!data.d) return;
+
+        const compressedData = data.d;
+        // 우리가 방금 보낸 업데이트 에코면 스킵 (불필요한 파싱/리렌더·메모리 절감)
+        const now = Date.now();
+        if (this._lastPushedAt && (now - this._lastPushedAt) < 4000 &&
+            compressedData.rt === this._lastPushedRt &&
+            compressedData.es === this._lastPushedEs &&
+            compressedData.esn === this._lastPushedEsn) {
+            return;
+        }
+
         // 역직렬화
-        if (data.d) { // compressed data
-            const compressedData = data.d;
-            
-            // raidTabs 역직렬화
-            if (compressedData.rt) {
-                try {
-                    state.raidTabs = JSON.parse(compressedData.rt);
-                } catch (error) {
-                    console.error('❌ [SYNC] Failed to parse raidTabs:', error);
-                }
+        if (compressedData.rt) {
+            try {
+                state.raidTabs = JSON.parse(compressedData.rt);
+            } catch (error) {
+                console.error('❌ [SYNC] Failed to parse raidTabs:', error);
             }
-            
-            // expeditionSlots 역직렬화
-            if (compressedData.es) {
-                try {
-                    state.expeditionSlots = JSON.parse(compressedData.es);
-                } catch (error) {
-                    console.error('❌ [SYNC] Failed to parse expeditionSlots:', error);
-                }
+        }
+        if (compressedData.es) {
+            try {
+                state.expeditionSlots = JSON.parse(compressedData.es);
+            } catch (error) {
+                console.error('❌ [SYNC] Failed to parse expeditionSlots:', error);
             }
-            
-            // expeditionSlotNames 역직렬화
-            if (compressedData.esn) {
-                try {
-                    state.expeditionSlotNames = JSON.parse(compressedData.esn);
-                    console.log('✅ [SYNC] Expedition slot names restored from sync');
-                } catch (error) {
-                    console.error('❌ [SYNC] Failed to parse expeditionSlotNames:', error);
-                    // 기본값으로 복원
-                    state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
-                }
-            } else {
-                console.log('⚠️ [SYNC] No expeditionSlotNames data in sync, using defaults');
+        }
+        if (compressedData.esn) {
+            try {
+                state.expeditionSlotNames = JSON.parse(compressedData.esn);
+            } catch (error) {
+                console.error('❌ [SYNC] Failed to parse expeditionSlotNames:', error);
                 state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
             }
-            
-            // selectedRaid와 selectedDifficulty는 개인별 설정이므로 동기화하지 않음
-            // 사용자가 직접 선택한 상태 유지
+        } else {
+            state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
         }
-        
+
         // UI 업데이트 (무한 루프 방지)
         this.updateUISafely();
         
@@ -296,9 +321,7 @@ class RealtimeSync {
             if (updateUser === this.currentUser) return;
 
             // 조용히 처리 (UI 토스트 등은 추후 확장 가능)
-        } catch (e) {
-            console.log('⚠️ [SYNC] showUpdateNotification failed', e);
-        }
+        } catch (e) {}
     }
 
     // 안전한 UI 업데이트 (무한 루프 방지)
@@ -476,29 +499,41 @@ class RealtimeSync {
         
             }
 
-    // Firebase에 데이터 동기화 (Realtime Database) - 문자열 직렬화 버전
+    // Firebase에 데이터 동기화 (Realtime Database) - 변경이 있을 때만 전송
     syncToFirebase() {
         if (!this.isConnected) return;
-        
-        // Firestore는 중첩 배열을 지원하지 않으므로 JSON 문자열로 직렬화
+
         const serializedRaidTabs = JSON.stringify(state.raidTabs);
         const serializedExpedition = JSON.stringify(state.expeditionSlots);
         const serializedExpeditionSlotNames = JSON.stringify(state.expeditionSlotNames);
-        
+
+        // 수정된 내역이 없으면 전송 스킵 (메모리·트래픽 절감)
+        if (this._lastPushedRt === serializedRaidTabs &&
+            this._lastPushedEs === serializedExpedition &&
+            this._lastPushedEsn === serializedExpeditionSlotNames) {
+            return Promise.resolve();
+        }
+
         const compressedData = {
-            rt: serializedRaidTabs, // raidTabs -> rt (JSON string)
-            es: serializedExpedition, // expeditionSlots -> es (JSON string)
-            esn: serializedExpeditionSlotNames, // expeditionSlotNames -> esn (JSON string)
-            // sr과 sd 제외 - 개인별 선택 정보는 동기화하지 않음
-            t: Date.now(), // timestamp -> t
-            u: this.currentUser // user -> u
+            rt: serializedRaidTabs,
+            es: serializedExpedition,
+            esn: serializedExpeditionSlotNames,
+            t: Date.now(),
+            u: this.currentUser
         };
-        
+
+        this._lastPushedRt = serializedRaidTabs;
+        this._lastPushedEs = serializedExpedition;
+        this._lastPushedEsn = serializedExpeditionSlotNames;
+        this._lastPushedAt = Date.now();
+
+        if (window.transactionManager) {
+            return window.transactionManager.syncTransaction(compressedData);
+        }
         const p = this.dbRef.update({
-            d: compressedData, // data -> d
-            a: Date.now() // activity -> a
+            d: compressedData,
+            a: Date.now()
         });
-        
         this.lastSyncTime = Date.now();
         return p;
     }
@@ -637,6 +672,138 @@ class RealtimeSync {
         }
     }
 
+    // 전체 공지 전송 (시크릿 커맨드)
+    async sendBroadcastNotification(message, type = 'info', duration = 5000) {
+        if (!this.isConnected) {
+            console.error('❌ [BROADCAST] 동기화가 연결되지 않았습니다.');
+            return false;
+        }
+
+        try {
+            const notification = {
+                id: generateUniqueId('notification_'),
+                message: message,
+                type: type, // 'info', 'warning', 'error', 'success'
+                timestamp: Date.now(),
+                duration: duration,
+                sender: this.currentUser,
+                isBroadcast: true,
+                expiry: Date.now() + 30000 // 30초 후 자동 만료
+            };
+
+            // 트랜잭션으로 공지 전송 (동시성 문제 해결)
+            if (window.transactionManager) {
+                await window.transactionManager.broadcastTransaction(notification);
+            } else {
+                // Fallback: 기존 방식
+                await this.dbRef.child('broadcast').set(notification);
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('❌ [BROADCAST] 공지 전송 실패:', error);
+            return false;
+        }
+    }
+
+    // 공지 수신 처리
+    handleBroadcastNotification(notification) {
+        if (!notification || !notification.isBroadcast) return;
+
+        // 자신이 보낸 공지는 표시하지 않음 (선택적)
+        // if (notification.sender === this.currentUser) return;
+
+        // 공지 모달 표시
+        this.showBroadcastModal(notification);
+    }
+
+    // 공지 모달 표시
+    showBroadcastModal(notification) {
+        const modalId = `broadcastModal_${notification.id}`;
+        
+        // 기존 모달이 있으면 제거
+        const existingModal = document.getElementById(modalId);
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const typeClasses = {
+            'info': 'alert-info',
+            'warning': 'alert-warning', 
+            'error': 'alert-danger',
+            'success': 'alert-success'
+        };
+
+        const typeIcons = {
+            'info': 'bi-info-circle',
+            'warning': 'bi-exclamation-triangle',
+            'error': 'bi-x-circle', 
+            'success': 'bi-check-circle'
+        };
+
+        const modalHtml = `
+            <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi ${typeIcons[notification.type] || 'bi-info-circle'}"></i>
+                                전체 공지
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert ${typeClasses[notification.type] || 'alert-info'} mb-0">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi ${typeIcons[notification.type] || 'bi-info-circle'} me-2"></i>
+                                    <div class="flex-grow-1">
+                                        <p class="mb-1">${notification.message}</p>
+                                        <small class="text-muted">
+                                            전송자: ${notification.sender}<br>
+                                            시간: ${new Date(notification.timestamp).toLocaleString()}
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        const modalElement = document.getElementById(modalId);
+        const modal = new bootstrap.Modal(modalElement);
+        
+        // 모달 표시
+        modal.show();
+        
+        // 자동 닫기 (duration이 0이 아닌 경우에만)
+        if (notification.duration > 0) {
+            setTimeout(() => {
+                try {
+                    modal.hide();
+                    // 모달이 완전히 닫힌 후 제거
+                    modalElement.addEventListener('hidden.bs.modal', () => {
+                        modalElement.remove();
+                    }, { once: true });
+                } catch (e) {
+                    // 에러 발생 시 강제 제거
+                    modalElement.remove();
+                }
+            }, notification.duration);
+        } else {
+            // 수동 닫기 시 제거
+            modalElement.addEventListener('hidden.bs.modal', () => {
+                modalElement.remove();
+            }, { once: true });
+        }
+    }
+
     // 동기화 종료
     disconnect() {
         try {
@@ -660,17 +827,22 @@ class RealtimeSync {
         
         if (this.dbRef) {
             this.dbRef.off();
+            
+            // 연결 해제 시 남아있는 공지 정리
+            this.dbRef.child('broadcast').remove().catch(() => {
+                // 실패해도 무시 (best-effort)
+            });
         }
         
         this.isConnected = false;
+        this.lastBroadcastId = null; // 공지 ID 초기화
         
         // 동기화 상태 숨김
         const syncStatus = document.getElementById('syncStatus');
         if (syncStatus) {
             syncStatus.style.display = 'none';
         }
-        
-            }
+    }
 
     // 동기화 상태 확인
     isSyncActive() {
@@ -684,6 +856,18 @@ window.realtimeSync = new RealtimeSync();
 // 전역 함수로 노출
 window.testSync = () => window.realtimeSync.testSync();
 window.checkSyncStatus = () => window.realtimeSync.checkConnectionStatus();
+
+// 🔥 **Firebase 히스토리 주기적 정리 (6시간마다)**
+setInterval(async () => {
+  if (window.realtimeSync && typeof window.realtimeSync.isSyncActive === 'function' && window.realtimeSync.isSyncActive()) {
+    try {
+      await cleanupFirebaseHistory();
+      console.log('🧹 [SYNC] Firebase 히스토리 주기적 정리 완료');
+    } catch (error) {
+      console.error('🧹 [SYNC] Firebase 히스토리 주기적 정리 실패:', error);
+    }
+  }
+}, 6 * 60 * 60 * 1000); // 6시간
 
 // 페이지 로드 시 자동 실시간 동기화 시작
 document.addEventListener('DOMContentLoaded', () => {

@@ -16,9 +16,6 @@ function handleRightClick(event, charId, partyId, slotIndex, expeditionIndex, ch
   event.preventDefault();
   // event.stopPropagation(); // 제거하여 이벤트 전파 허용
   
-  // 즉시 반응을 위해 디바운스 없이 바로 실행
-  console.log(`🖱️ [RIGHT CLICK] 우클릭 감지:`, { charId, partyId, slotIndex, expeditionIndex, characterIndex });
-  
   if (partyId !== null && slotIndex !== null) {
     // 공격대 캐릭터 삭제
     confirmRemoveCharacter(charId, partyId, slotIndex);
@@ -40,32 +37,27 @@ document.addEventListener('contextmenu', function(event) {
 
 // ID로 캐릭터 정보 조회
 function findCharacterById(charId) {
-  // 1. 모든 원정대 슬롯에서 캐릭터 검색
   for (const slot of state.expeditionSlots) {
     const character = slot.find(char => char.id === charId);
-    if (character) {
-      return character;
-    }
+    if (character) return character;
   }
-  
-  // 2. 모든 공격대 파티에서 캐릭터 검색
+
   const parties = getCurrentTabParties();
   for (const party of parties) {
     for (const member of party.members) {
-      if (member && member.id === charId) {
-        // 공격대에는 ID와 이름만 저장되어 있으므로, 원정대에서 상세 정보 찾기
+      if (member && (member.id === charId || member.name === charId)) {
         const detailedCharacter = findCharacterByIdFromExpedition(member.name);
-        if (detailedCharacter) {
-          return detailedCharacter;
-        }
-        // 원정대에 없으면 최소한의 정보라도 반환
+        if (detailedCharacter) return detailedCharacter;
         return member;
       }
     }
   }
-  
+
   return null;
 }
+
+// 🔥 **핵심 수정: 전역 함수로 노출**
+window.findCharacterById = findCharacterById;
 
 // 원정대에서 이름으로 캐릭터 정보 조회
 function findCharacterByIdFromExpedition(charName) {
@@ -106,10 +98,8 @@ function handleClickEvent(event, singleClickCallback, doubleClickCallback) {
   }
 }
 
-// 공격대 캐릭터 클릭 처리 (더블클릭 기능 제거, 우클릭으로 변경)
 function handleCharacterClick(event, charId, partyId, slotIndex) {
-  // 이 함수는 더 이상 사용되지 않음 (우클릭으로 삭제 기능으로 변경)
-  console.log('⚠️ [DEPRECATED] handleCharacterClick 함수는 더 이상 사용되지 않습니다. 우클릭을 사용하세요.');
+  // 더 이상 사용되지 않음 (우클릭으로 삭제)
 }
 
 function handleDragStart(event, charId, partyId, slotIndex, fromRaid = true, expeditionIndex, expeditionSlotIndex) {
@@ -126,18 +116,7 @@ function handleDragStart(event, charId, partyId, slotIndex, fromRaid = true, exp
     sourceObjectName, // 시작 지점 오브젝트 명 추가
     processed: false
   };
-  
-  // 디버깅 로그 추가
-  console.log(`🚀 [DRAG START] 드래그 시작:`, {
-    charId,
-    fromRaid,
-    partyId,
-    slotIndex,
-    expeditionIndex,
-    expeditionSlotIndex,
-    sourceObjectName
-  });
-  
+
   // ID만 전송 (최소한의 데이터)
   event.dataTransfer.setData('text/plain', charId);
   event.dataTransfer.effectAllowed = 'move';
@@ -161,13 +140,7 @@ function handleDragEnd(event) {
     event.target.style.transform = '';
     event.target.style.willChange = '';
   }
-  
-  // 성능 로그
-  if (draggedData && draggedData.startTime) {
-    const duration = performance.now() - draggedData.startTime;
-    console.log(`🚀 [DRAG] 드래그 완료: ${duration.toFixed(2)}ms`);
-  }
-  
+
   // 드래그 데이터 및 플래그 초기화
   draggedData = null;
   isDropProcessing = false;
@@ -206,18 +179,10 @@ async function handleDrop(event, partyId, slotIndex) {
   const charId = event.dataTransfer.getData('text/plain');
   if (!charId) return;
   
-  // 전역 중복 방지 플래그 확인
-  if (isDropProcessing) {
-    console.log('🔄 [DROP] Drop already processing, skipping');
-    return;
-  }
-  
-  // 드래그 데이터 중복 실행 방지
-  if (draggedData.processed) {
-    console.log('🔄 [DROP] Already processed, skipping');
-    return;
-  }
-  
+  if (isDropProcessing) return;
+
+  if (draggedData.processed) return;
+
   // 중복 방지 플래그 설정
   isDropProcessing = true;
   draggedData.processed = true;
@@ -228,34 +193,16 @@ async function handleDrop(event, partyId, slotIndex) {
   // 타겟 오브젝트 명 생성
   const targetObjectName = `raid_${partyId}_${slotIndex}`;
   
-  // 충돌 체크: 시작 지점과 타겟 지점이 같은지 확인
-  if (draggedData && draggedData.sourceObjectName === targetObjectName) {
-    console.log(`⚠️ [DROP] 자기 자신에게 드롭 무시: ${targetObjectName}`);
-    return;
-  }
-  
-  // 디버깅 로그 추가
-  console.log(`🎯 [DROP] 드롭 대상:`, {
-    partyId,
-    slotIndex,
-    charId,
-    draggedData,
-    sourceObjectName: draggedData?.sourceObjectName,
-    targetObjectName
-  });
-  
+  if (draggedData && draggedData.sourceObjectName === targetObjectName) return;
+
   try {
     const parties = getCurrentTabParties();
-    
-    // 공격대에서 온 캐릭터인 경우 (공격대 -> 공격대 이동)
-    if (draggedData && draggedData.fromRaid) {
+
+    if (draggedData && draggedData.fromRaid && draggedData.partyId) {
       await handleRaidToRaidDrop(draggedData, partyId, slotIndex, parties);
-    } 
-    // 원정대에서 온 캐릭터인 경우 (원정대 -> 공격대 이동)
-    else {
+    } else {
       await handleExpeditionToRaidDrop(charId, partyId, slotIndex, parties);
     }
-    
   } catch (error) {
     console.error('❌ [DROP ERROR]:', error);
     window.modalManager.showAlert({
@@ -263,7 +210,6 @@ async function handleDrop(event, partyId, slotIndex) {
       message: '캐릭터를 추가하는 중 오류가 발생했습니다.'
     });
   } finally {
-    // 중복 방지 플래그 초기화
     isDropProcessing = false;
     draggedData = null;
   }
@@ -272,24 +218,11 @@ async function handleDrop(event, partyId, slotIndex) {
 // 공격대 -> 공격대 드롭 처리
 async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex, parties) {
   const { partyId: sourcePartyId, slotIndex: sourceSlotIndex } = draggedData;
-  
-  // 디버깅 로그 추가
-  console.log(`🔍 [RAID TO RAID] 파티 정보:`, {
-    sourcePartyId,
-    targetPartyId,
-    sourceSlotIndex,
-    targetSlotIndex,
-    draggedData,
-    availableParties: parties.map(p => ({ id: p.id, name: p.name, displayName: p.displayName }))
-  });
-  
+
   // 소스 파티 찾기
   const sourceParty = parties.find(p => p.id === sourcePartyId);
   if (!sourceParty) {
-    console.error(`❌ [RAID TO RAID] 소스 파티 찾기 실패:`, {
-      sourcePartyId,
-      availableIds: parties.map(p => p.id)
-    });
+    console.error(`❌ [RAID TO RAID] 소스 파티 찾기 실패:`, { sourcePartyId });
     window.modalManager.showAlert({
       title: '오류',
       message: `소스 파티 ${sourcePartyId}를 찾을 수 없습니다.`
@@ -300,6 +233,7 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
   // 타겟 파티 찾기
   const targetParty = parties.find(p => p.id === targetPartyId);
   if (!targetParty) {
+    console.error(`❌ [RAID TO RAID] 타겟 파티 찾기 실패:`, { targetPartyId });
     window.modalManager.showAlert({
       title: '오류',
       message: `타겟 파티 ${targetPartyId}를 찾을 수 없습니다.`
@@ -307,8 +241,8 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
     return;
   }
   
-  // 소스 캐릭터 정보
   const sourceCharacter = sourceParty.members[sourceSlotIndex];
+
   if (!sourceCharacter) {
     window.modalManager.showAlert({
       title: '오류',
@@ -317,11 +251,14 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
     return;
   }
   
-  // 타겟 슬롯 상태 확인
-  const targetCharacter = targetParty.members[targetSlotIndex];
-  
-  // 소스 캐릭터의 상세 정보 조회
-  const sourceCharacterDetails = findCharacterById(sourceCharacter.id);
+  // 🔥 **핵심 수정: sourceCharacter.id가 undefined면 name으로 검색**
+  let sourceCharacterDetails = null;
+  if (sourceCharacter.id) {
+    sourceCharacterDetails = findCharacterById(sourceCharacter.id);
+  } else if (sourceCharacter.name) {
+    sourceCharacterDetails = findCharacterById(sourceCharacter.name);
+  }
+
   if (!sourceCharacterDetails) {
     window.modalManager.showAlert({
       title: '오류',
@@ -330,65 +267,76 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
     return;
   }
   
-  // 캐릭터 교체인 경우: 두 캐릭터를 미리 제거 후 제약 조건 확인
-  if (targetCharacter) {
-    // 타겟 캐릭터의 상세 정보 조회
-    const targetCharacterDetails = findCharacterById(targetCharacter.id);
-    if (!targetCharacterDetails) {
-      window.modalManager.showAlert({
-        title: '오류',
-        message: '타겟 캐릭터 정보를 찾을 수 없습니다.'
-      });
-      return;
+  const targetCharacter = targetParty.members[targetSlotIndex];
+
+  // 모든 관련 데이터 백업
+  const backupData = {
+    sourceParty: {
+      id: sourceParty.id,
+      members: [...sourceParty.members], // 깊은 복사
+      slotIndex: sourceSlotIndex,
+      character: sourceCharacter
+    },
+    targetParty: {
+      id: targetParty.id,
+      members: [...targetParty.members], // 깊은 복사
+      slotIndex: targetSlotIndex,
+      character: targetCharacter
     }
-    
-    // 두 캐릭터를 임시 저장
-    const tempSourceMember = sourceParty.members[sourceSlotIndex];
-    const tempTargetMember = targetParty.members[targetSlotIndex];
-    
-    console.log(`🔍 [CHARACTER SWAP] 교체 전 상태:`, {
-      sourceCharacter: tempSourceMember?.name,
-      targetCharacter: tempTargetMember?.name,
-      sourcePartyId,
-      targetPartyId,
-      sourceSlotIndex,
-      targetSlotIndex
-    });
-    
-    // 두 캐릭터를 모두 제거 (제약 조건을 피하기 위함)
-    sourceParty.members[sourceSlotIndex] = null;
+  };
+  
+  console.log('� [RAID TO RAID] 백업 데이터:', {
+    sourceBackup: {
+      partyId: backupData.sourceParty.id,
+      slotIndex: backupData.sourceParty.slotIndex,
+      characterName: backupData.sourceParty.character?.name
+    },
+    targetBackup: {
+      partyId: backupData.targetParty.id,
+      slotIndex: backupData.targetParty.slotIndex,
+      characterName: backupData.targetParty.character?.name
+    }
+  });
+  
+  sourceParty.members[sourceSlotIndex] = null;
+  if (targetCharacter) {
     targetParty.members[targetSlotIndex] = null;
+  }
+
+  try {
+    const currentParties = getCurrentTabParties();
+    const sourceValidation = Constraints.canAddCharacterToParty(targetParty, sourceCharacterDetails, currentParties);
     
-    // 소스 캐릭터를 타겟 파티에 배치할 수 있는지 확인
-    const sourceValidation = Constraints.canAddCharacterToParty(targetParty, sourceCharacterDetails);
-    
-    // 타겟 캐릭터를 소스 파티에 배치할 수 있는지 확인
-    const targetValidation = Constraints.canAddCharacterToParty(sourceParty, targetCharacterDetails);
-    
-    console.log(`🔍 [CHARACTER SWAP] 제약 조건 확인 결과:`, {
-      sourceValidation: {
-        valid: sourceValidation.valid,
-        message: sourceValidation.message,
-        character: sourceCharacterDetails.name,
-        targetParty: targetPartyId
-      },
-      targetValidation: {
-        valid: targetValidation.valid,
-        message: targetValidation.message,
-        character: targetCharacterDetails.name,
-        targetParty: sourcePartyId
+    let targetValidation = { valid: true, message: '' };
+    if (targetCharacter) {
+      // 🔥 **핵심 수정: targetCharacter.id가 undefined면 name으로 검색**
+      let targetCharacterDetails = null;
+      if (targetCharacter.id) {
+        targetCharacterDetails = findCharacterById(targetCharacter.id);
+      } else if (targetCharacter.name) {
+        targetCharacterDetails = findCharacterById(targetCharacter.name);
       }
-    });
-    
-    // 제약 조건 위반 시 원상 복구
-    if (!sourceValidation.valid || !targetValidation.valid) {
-      // 원상 복구
-      sourceParty.members[sourceSlotIndex] = tempSourceMember;
-      targetParty.members[targetSlotIndex] = tempTargetMember;
       
-      const errorMessage = !sourceValidation.valid 
-        ? `${sourceCharacterDetails.name} 캐릭터를 ${targetPartyId} 파티에 배치할 수 없습니다: ${sourceValidation.message}`
-        : `${targetCharacterDetails.name} 캐릭터를 ${sourcePartyId} 파티에 배치할 수 없습니다: ${targetValidation.message}`;
+      if (targetCharacterDetails) {
+        targetValidation = Constraints.canAddCharacterToParty(sourceParty, targetCharacterDetails, currentParties);
+      }
+    }
+
+    if (!sourceValidation.valid || !targetValidation.valid) {
+      // 백업 데이터로 롤백
+      sourceParty.members[sourceSlotIndex] = backupData.sourceParty.character;
+      if (targetCharacter) {
+        targetParty.members[targetSlotIndex] = backupData.targetParty.character;
+      }
+
+      let errorMessage = '';
+      if (!sourceValidation.valid && !targetValidation.valid) {
+        errorMessage = `교체 실패:\n${sourceCharacterDetails.name}: ${sourceValidation.message}\n${targetCharacter?.name}: ${targetValidation.message}`;
+      } else if (!sourceValidation.valid) {
+        errorMessage = `${sourceCharacterDetails.name} 캐릭터를 ${targetPartyId} 파티에 배치할 수 없습니다: ${sourceValidation.message}`;
+      } else if (!targetValidation.valid) {
+        errorMessage = `${targetCharacter?.name} 캐릭터를 ${sourcePartyId} 파티에 배치할 수 없습니다: ${targetValidation.message}`;
+      }
       
       window.modalManager.showAlert({
         title: '제약 조건 위반',
@@ -397,57 +345,43 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
       return;
     }
     
-    // 제약 조건 통과 시 교체 실행
-    sourceParty.members[sourceSlotIndex] = tempTargetMember;
-    targetParty.members[targetSlotIndex] = tempSourceMember;
-    
-    console.log(`🔍 [CHARACTER SWAP] 교체 완료:`, {
-      sourceSlot: `${sourcePartyId}-${sourceSlotIndex}: ${tempTargetMember?.name}`,
-      targetSlot: `${targetPartyId}-${targetSlotIndex}: ${tempSourceMember?.name}`
-    });
-    
-  } else {
-    // 빈 슬롯으로 이동하는 경우
-    // 중복 제약 조건을 피하기 위해 일시적으로 소스 캐릭터를 제거하고 확인
-    const tempSourceMember = sourceParty.members[sourceSlotIndex];
-    sourceParty.members[sourceSlotIndex] = null; // 일시적 제거
-    
-    console.log(`🔍 [EMPTY SLOT MOVE] 빈 슬롯 이동 - 소스 캐릭터 제거 후 제약 조건 확인:`, {
-      sourceCharacterName: sourceCharacterDetails.name,
-      targetPartyId,
-      removedSourceCharacter: tempSourceMember?.name
-    });
-    
-    const sourceValidation = Constraints.canAddCharacterToParty(targetParty, sourceCharacterDetails);
-    
-    console.log(`🔍 [EMPTY SLOT MOVE] 제약 조건 결과:`, {
-      valid: sourceValidation.valid,
-      message: sourceValidation.message
-    });
-    
-    if (!sourceValidation.valid) {
-      // 원상 복구
-      sourceParty.members[sourceSlotIndex] = tempSourceMember;
+    // 제약 조건 통과 시 캐릭터 배치
+    //  [RAID TO RAID] 타겟 캐릭터가 있으면 교체, 없으면 이동
+    if (targetCharacter) {
+      // 교체
+      sourceParty.members[sourceSlotIndex] = backupData.targetParty.character;
+      targetParty.members[targetSlotIndex] = backupData.sourceParty.character;
       
-      window.modalManager.showAlert({
-        title: '제약 조건 위반',
-        message: `${sourceCharacter.name} 캐릭터를 ${targetPartyId} 파티에 배치할 수 없습니다: ${sourceValidation.message}`
-      });
-      return;
+    } else {
+      sourceParty.members[sourceSlotIndex] = null;
+      targetParty.members[targetSlotIndex] = backupData.sourceParty.character;
+    }
+
+    if (typeof window.renderRaidParties === 'function') window.renderRaidParties();
+    if (typeof window.renderExpedition === 'function') window.renderExpedition();
+    if (typeof window.scheduleAutoSave === 'function') window.scheduleAutoSave();
+
+    window.modalManager.showAlert({
+      title: '성공',
+      message: `${sourceCharacterDetails.name} 캐릭터를 성공적으로 이동했습니다.`
+    });
+    
+  } catch (error) {
+    console.error('❌ [RAID TO RAID] 처리 중 오류 발생:', error);
+    
+    // 오류 발생 시 롤백
+    sourceParty.members[sourceSlotIndex] = backupData.sourceParty.character;
+    if (targetCharacter) {
+      targetParty.members[targetSlotIndex] = backupData.targetParty.character;
     }
     
-    // 이동 실행
-    sourceParty.members[sourceSlotIndex] = null;
-    targetParty.members[targetSlotIndex] = tempSourceMember;
-    
-    console.log(`🔍 [EMPTY SLOT MOVE] 이동 완료:`, {
-      from: `${sourcePartyId}-${sourceSlotIndex}`,
-      to: `${targetPartyId}-${targetSlotIndex}`,
-      character: sourceCharacterDetails.name
+    window.modalManager.showAlert({
+      title: '오류',
+      message: '캐릭터 이동 중 오류가 발생했습니다.'
     });
+    return;
   }
-  
-  // 히스토리 기록 (배치 작업)
+
   if (typeof recordHistory === 'function') {
     const historyType = targetCharacter ? 'character_swap' : 'character_move';
     const historyId = targetCharacter 
@@ -466,24 +400,17 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
         target: { partyId: targetPartyId, slotIndex: targetSlotIndex, character: targetCharacter }
       },
       {
-        source: { partyId: sourcePartyId, slotIndex: sourceSlotIndex, character: targetCharacter },
+        source: { partyId: sourcePartyId, slotIndex: sourceSlotIndex, character: targetCharacter ? targetCharacter : null },
         target: { partyId: targetPartyId, slotIndex: targetSlotIndex, character: sourceCharacter }
       },
-      targetCharacter 
-        ? `${sourcePartyId} 파티 ${sourceSlotIndex}번 슬롯과 ${targetPartyId} 파티 ${targetSlotIndex}번 슬롯 캐릭터 교체`
-        : `${sourcePartyId} 파티 ${sourceSlotIndex}번 슬롯 캐릭터를 ${targetPartyId} 파티 ${targetSlotIndex}번 슬롯으로 이동`
+      `${historyType === 'character_swap' ? '캐릭터 교체' : '캐릭터 이동'}: ${sourceCharacterDetails.name} ${targetCharacter ? `↔ ${targetCharacter.name}` : `→ ${targetPartyId}-${targetSlotIndex}`}`
     );
   }
-  
-  // UI 업데이트
+
   renderRaidParties();
   renderExpedition();
-  
-  // 비동기 저장
-  setTimeout(() => {
-    scheduleAutoSave();
-  }, 0);
-  
+  setTimeout(() => scheduleAutoSave(), 0);
+
   // 성공 메시지
   let message = '';
   if (targetCharacter) {
@@ -493,13 +420,14 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
   }
   
   window.modalManager.showAlert({
-    title: '캐릭터 이동 완료',
+    title: '완료',
     message: message
   });
 }
 
 // 원정대 -> 공격대 드롭 처리
 async function handleExpeditionToRaidDrop(charId, targetPartyId, targetSlotIndex, parties) {
+  
   // ID로 캐릭터 정보 조회
   const character = findCharacterById(charId);
   if (!character) {
@@ -510,35 +438,54 @@ async function handleExpeditionToRaidDrop(charId, targetPartyId, targetSlotIndex
     return;
   }
   
-  // 지정된 파티에 캐릭터 추가
+  // 타겟 파티 찾기
   const targetParty = parties.find(p => p.id === targetPartyId);
   if (!targetParty) {
     window.modalManager.showAlert({
       title: '오류',
-      message: `파티 ${targetPartyId}를 찾을 수 없습니다.`
+      message: `타겟 파티 ${targetPartyId}를 찾을 수 없습니다.`
     });
     return;
   }
   
-  // 슬롯이 비어있는지 확인
-  if (targetParty.members[targetSlotIndex] !== null) {
-    window.modalManager.showAlert({
-      title: '오류',
-      message: `해당 슬롯은 이미 캐릭터가 있습니다. 빈 슬롯에만 드롭해주세요.`
-    });
-    return;
-  }
+  // 🔥 **핵심 개선: 기존 캐릭터가 있으면 교체 처리**
+  const existingCharacter = targetParty.members[targetSlotIndex];
   
+  // 백업 데이터 생성
+  const backupData = {
+    targetParty: {
+      id: targetParty.id,
+      members: [...targetParty.members], // 깊은 복사
+      slotIndex: targetSlotIndex,
+      existingCharacter: existingCharacter
+    },
+    newCharacter: character
+  };
+
+  // 🔥 **제약조건 충돌 방지: 기존 캐릭터 제거**
+  if (existingCharacter) {
+    targetParty.members[targetSlotIndex] = null;
+  }
+
   // 제약 조건 확인
-  const partyValidation = Constraints.canAddCharacterToParty(targetParty, character);
+  const currentParties = getCurrentTabParties();
+  const partyValidation = Constraints.canAddCharacterToParty(targetParty, character, currentParties);
+
   if (!partyValidation.valid) {
+    
+    // 롤백: 기존 캐릭터 복원
+    if (existingCharacter) {
+      targetParty.members[targetSlotIndex] = backupData.targetParty.existingCharacter;
+    }
+    
     window.modalManager.showAlert({
       title: '제약 조건 위반',
       message: partyValidation.message
     });
     return;
   }
-  
+
+  // 🔥 **제약 조건 통과 시 캐릭터 배치**
   // 공격대에는 캐릭터 ID와 이름 저장
   const oldMember = targetParty.members[targetSlotIndex];
   const newMember = { 
@@ -560,13 +507,14 @@ async function handleExpeditionToRaidDrop(charId, targetPartyId, targetSlotIndex
       `${targetPartyId} 파티 ${targetSlotIndex}번 슬롯에 ${character.name} 캐릭터 추가`
     );
   }
-  
+
+  // 캐릭터 배치
   targetParty.members[targetSlotIndex] = newMember;
-  
+
   // UI 업데이트 (즉시 반영)
   renderRaidParties();
   renderExpedition();
-  
+
   // 비동기 저장 (UI 블로킹 방지)
   setTimeout(() => {
     scheduleAutoSave();
@@ -585,40 +533,21 @@ async function handleExpeditionDrop(event, expeditionIndex) {
   event.currentTarget.classList.remove('dragover');
   
   // 전역 중복 방지 플래그 확인
-  if (isDropProcessing) {
-    console.log('🔄 [EXPEDITION DROP] Drop already processing, skipping');
-    return;
-  }
-  
+  if (isDropProcessing) return;
+
   // 드래그 데이터 중복 실행 방지
-  if (draggedData && draggedData.processed) {
-    console.log('🔄 [EXPEDITION DROP] Already processed, skipping');
-    return;
-  }
-  
+  if (draggedData && draggedData.processed) return;
+
   // 타겟 오브젝트 명 생성
   const targetObjectName = `expedition_${expeditionIndex}`;
-  
+
   // 충돌 체크: 시작 지점과 타겟 지점이 같은지 확인
-  if (draggedData && draggedData.sourceObjectName === targetObjectName) {
-    console.log(`⚠️ [EXPEDITION DROP] 자기 자신에게 드롭 무시: ${targetObjectName}`);
-    return;
-  }
-  
+  if (draggedData && draggedData.sourceObjectName === targetObjectName) return;
+
   // 중복 방지 플래그 설정
   isDropProcessing = true;
-  if (draggedData) {
-    draggedData.processed = true;
-  }
-  
-  // 디버깅 로그 추가
-  console.log(`🎯 [EXPEDITION DROP] 드롭 대상:`, {
-    expeditionIndex,
-    draggedData,
-    sourceObjectName: draggedData?.sourceObjectName,
-    targetObjectName
-  });
-  
+  if (draggedData) draggedData.processed = true;
+
   try {
     // 슬롯 단위 락: 원정대 슬롯(검색/등록 대상)에 타인 락이면 차단
     if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
@@ -634,8 +563,7 @@ async function handleExpeditionDrop(event, expeditionIndex) {
     }
 
     const data = JSON.parse(event.dataTransfer.getData('text/plain'));
-    console.log(`📊 [EXPEDITION DROP] Received:`, { name: data.name, id: data.id });
-    
+
     // 공격대에서 온 캐릭터인 경우 원정대에 추가
     if (draggedData && draggedData.fromRaid) {
       const parties = getCurrentTabParties();
@@ -692,41 +620,21 @@ async function handleExpeditionCharacterDrop(event, expeditionIndex, characterIn
   event.currentTarget.classList.remove('dragover');
   
   // 전역 중복 방지 플래그 확인
-  if (isDropProcessing) {
-    console.log('🔄 [EXPEDITION CHARACTER DROP] Drop already processing, skipping');
-    return;
-  }
-  
+  if (isDropProcessing) return;
+
   // 드래그 데이터 중복 실행 방지
-  if (draggedData && draggedData.processed) {
-    console.log('🔄 [EXPEDITION CHARACTER DROP] Already processed, skipping');
-    return;
-  }
-  
+  if (draggedData && draggedData.processed) return;
+
   // 타겟 오브젝트 명 생성
   const targetObjectName = `expedition_${expeditionIndex}_${characterIndex}`;
-  
+
   // 충돌 체크: 시작 지점과 타겟 지점이 같은지 확인
-  if (draggedData && draggedData.sourceObjectName === targetObjectName) {
-    console.log(`⚠️ [EXPEDITION CHARACTER DROP] 자기 자신에게 드롭 무시: ${targetObjectName}`);
-    return;
-  }
-  
+  if (draggedData && draggedData.sourceObjectName === targetObjectName) return;
+
   // 중복 방지 플래그 설정
   isDropProcessing = true;
-  if (draggedData) {
-    draggedData.processed = true;
-  }
-  
-  // 디버깅 로그 추가
-  console.log(`🎯 [EXPEDITION CHARACTER DROP] 드롭 대상:`, {
-    expeditionIndex,
-    characterIndex,
-    draggedData,
-    sourceObjectName: draggedData?.sourceObjectName,
-    targetObjectName
-  });
-  
+  if (draggedData) draggedData.processed = true;
+
   try {
     // 원정대에서 온 캐릭터인 경우 (원정대 -> 원정대 이동)
     if (draggedData && !draggedData.fromRaid) {

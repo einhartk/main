@@ -17,10 +17,9 @@ const Constraints = {
   // 캐릭터 사용 횟수 확인
   getCharacterUsageCount: function(characterName, parties = null) {
     let count = 0;
-    
+
     if (parties) {
-      // 특정 파티 목록이 주어진 경우
-      parties.forEach(party => {
+      parties.forEach((party) => {
         party.members.forEach(member => {
           if (member && (member.name === characterName || member.id === characterName)) {
             count++;
@@ -28,7 +27,6 @@ const Constraints = {
         });
       });
     } else {
-      // 모든 레이드의 모든 파티를 확인
       if (state.raidTabs) {
         Object.keys(state.raidTabs).forEach(raidId => {
           Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
@@ -44,7 +42,7 @@ const Constraints = {
         });
       }
     }
-    
+
     return count;
   },
 
@@ -108,67 +106,62 @@ const Constraints = {
   },
 
   // 같은 레이드 탭, 같은 캐릭터명 제약 확인
-  exceedsSameRaidSameCharacter: function(characterName, currentRaidName = null) {
+  exceedsSameRaidSameCharacter: function(characterName, currentRaidName = null, currentParties = null) {
     if (!currentRaidName) currentRaidName = state.selectedRaid?.name;
     if (!currentRaidName) return false;
 
     let count = 0;
 
-    // "난이도 불문, 같은 레이드 이름" 전체에서 확인
-    Object.keys(state.raidTabs).forEach(raidId => {
-      const raid = state.raidsData.find(r => r.id === raidId);
-      if (!raid) return;
-      if (raid.name !== currentRaidName) return;
+    if (currentParties && currentParties.length > 0) {
+      currentParties.forEach((party) => {
+        party.members.forEach(member => {
+          if (member && (member.name === characterName || member.id === characterName)) {
+            count++;
+          }
+        });
+      });
+    } else {
+      Object.keys(state.raidTabs).forEach(raidId => {
+        const raid = state.raidsData.find(r => r.id === raidId);
+        if (!raid) return;
+        if (raid.name !== currentRaidName) return;
 
-      Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
-        const parties = state.raidTabs[raidId][difficultyId] || [];
-        parties.forEach(party => {
-          party.members.forEach(member => {
-            if (member && (member.name === characterName || member.id === characterName)) {
-              count++;
-            }
+        Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+          const parties = state.raidTabs[raidId][difficultyId] || [];
+          
+          parties.forEach(party => {
+            party.members.forEach(member => {
+              if (member && (member.name === characterName || member.id === characterName)) {
+                count++;
+              }
+            });
           });
         });
       });
-    });
+    }
 
     return count >= 1; // 같은 레이드 탭에서는 1곳만 허용
   },
 
   // 캐릭터 배치 가능 여부 확인
-  canAddCharacterToParty: function(party, character) {
-    // 중복 확인 (최대 3개)
-    const currentCount = this.getCharacterUsageCount(character.name);
+  canAddCharacterToParty: function(party, character, currentParties = null) {
+    const currentCount = this.getCharacterUsageCount(character.name, currentParties);
+
     if (currentCount >= 3) {
-      return { valid: false, reason: 'duplicate_limit', message: `${character.name} 캐릭터는 최대 3개의 공격대에만 배치할 수 있습니다. (현재: ${currentCount}/3)` };
+      const message = `${character.name} 캐릭터는 최대 3개의 공격대에만 배치할 수 있습니다. (현재: ${currentCount}/3)`;
+      return { valid: false, reason: 'duplicate_limit', message };
     }
 
-    // 같은 레이드, 같은 캐릭터명 확인
-    if (this.exceedsSameRaidSameCharacter(character.name)) {
-      return { valid: false, reason: 'same_raid_same_character', message: `${character.name} 캐릭터는 ${state.selectedRaid?.name || '이 레이드'}에서 1곳에만 배치할 수 있습니다.` };
+    const sameRaidExceeded = this.exceedsSameRaidSameCharacter(character.name, state.selectedRaid?.name, currentParties);
+
+    if (sameRaidExceeded) {
+      const message = `${character.name} 캐릭터는 ${state.selectedRaid?.name || '이 레이드'}에서 1곳에만 배치할 수 있습니다.`;
+      return { valid: false, reason: 'same_raid_same_character', message };
     }
 
-    // 원정대 슬롯당 1캐릭터 (공격대=party 단위)
-    if (this.exceedsOneRaidOneExpeditionForCharacter(character.name, party)) {
-      try {
-        const slotIndex = this.getExpeditionSlotIndexByCharacterName(character.name);
-        const membersInfo = (party?.members || []).map(m => {
-          if (!m) return null;
-          return {
-            name: m.name,
-            expeditionSlotIndex: this.getExpeditionSlotIndexByCharacterName(m.name)
-          };
-        });
-        console.log('⚠️ [CONSTRAINT one_raid_one_expedition]', {
-          partyId: party?.id,
-          partyName: party?.name,
-          blockedCharacter: character.name,
-          blockedCharacterExpeditionSlotIndex: slotIndex,
-          partyMembers: membersInfo
-        });
-      } catch (e) {
-        console.log('⚠️ [CONSTRAINT one_raid_one_expedition] log failed', e);
-      }
+    const expeditionExceeded = this.exceedsOneRaidOneExpeditionForCharacter(character.name, party);
+
+    if (expeditionExceeded) {
       return { valid: false, reason: 'one_raid_one_expedition', message: '1원정대 슬롯당 1캐릭터만 사용할 수 있습니다.' };
     }
 
@@ -176,29 +169,40 @@ const Constraints = {
     const characterIlvl = parseCompareNumber(character.ilvl || '0');
     const requiredIlvl = party.minIlvl || 0;
     if (characterIlvl < requiredIlvl) {
-      return { valid: false, reason: 'ilvl_requirement', message: `${character.name} 캐릭터의 아이템 레벨(${characterIlvl})이 부족합니다. 필요 레벨: ${requiredIlvl} 이상` };
+      const message = `${character.name} 캐릭터의 아이템 레벨(${characterIlvl})이 부족합니다. 필요 레벨: ${requiredIlvl} 이상`;
+      return { valid: false, reason: 'ilvl_requirement', message };
     }
 
     // 전투력 제한 확인
     const characterCp = parseCompareNumber(character.combatPower || '0');
     const requiredCp = party.minCombatPower || 0;
     if (characterCp < requiredCp) {
-      return { valid: false, reason: 'cp_requirement', message: `${character.name} 캐릭터의 전투력(${characterCp.toLocaleString()})이 부족합니다. 필요 전투력: ${requiredCp.toLocaleString()} 이상` };
+      const message = `${character.name} 캐릭터의 전투력(${characterCp.toLocaleString()})이 부족합니다. 필요 전투력: ${requiredCp.toLocaleString()} 이상`;
+      return { valid: false, reason: 'cp_requirement', message };
     }
 
-    // 서폿 제한 확인
-    if (this.exceedsSupportLimit(party, character)) {
-      return { valid: false, reason: 'support_limit', message: `이 파티에는 서포터를 ${party.maxSupports}명만 배치할 수 있습니다.` };
+    // 서폿 제한 확인 (4인 1명, 8인 2명)
+    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1);
+    const supportExceeded = this.exceedsSupportLimit(party, character, maxSupports);
+
+    if (supportExceeded) {
+      const message = `이 파티에는 서포터를 ${maxSupports}명만 배치할 수 있습니다.`;
+      return { valid: false, reason: 'support_limit', message };
     }
 
-    return { valid: true };
+    const successMessage = '제약 조건을 모두 만족합니다.';
+    return { valid: true, message: successMessage };
   },
 
-  // 서폿 제한 확인
-  exceedsSupportLimit: function(party, newCharacter = null) {
-    const currentSupports = party.members.filter(m => m?.role === 'support').length;
+  // 서폿 제한 확인 (maxSupports: 4인 1, 8인 2). 파티 멤버는 { id, name }만 있으므로 원정대 상세에서 role 조회
+  exceedsSupportLimit: function(party, newCharacter = null, maxSupports = null) {
+    const limit = maxSupports != null ? maxSupports : (party.size === 8 ? 2 : (party.maxSupports ?? 1));
+    const getDetails = typeof window.getCharacterDetailsFromExpedition === 'function' ? window.getCharacterDetailsFromExpedition : null;
+    const currentSupports = getDetails
+      ? party.members.filter(m => m && getDetails(m.name || m.id)?.role === 'support').length
+      : 0;
     const additionalSupport = newCharacter?.role === 'support' ? 1 : 0;
-    return (currentSupports + additionalSupport) > party.maxSupports;
+    return (currentSupports + additionalSupport) > limit;
   },
 
   // 원정대당 1캐릭터 제한 확인
@@ -238,9 +242,9 @@ const Constraints = {
     return duplicates;
   },
 
-  // 파티 크기에 따른 서폿 제한 확인 (항상 1서폿)
+  // 파티 크기에 따른 서폿 제한: 4인 1명, 8인 2명
   getSupportLimit: function(partySize) {
-    return 1; // 파티당 항상 1서폿만 가능
+    return partySize === 8 ? 2 : 1;
   },
 
   // 모든 파티의 캐릭터 중복 확인

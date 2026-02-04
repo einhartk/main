@@ -24,7 +24,6 @@ class IDManager {
   // ID 사용 등록
   registerId(id) {
     if (this.usedIds.has(id)) {
-      console.warn(`⚠️ [ID MANAGER] ID already registered: ${id}`);
       return false;
     }
     this.usedIds.add(id);

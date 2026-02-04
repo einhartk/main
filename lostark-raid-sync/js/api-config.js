@@ -60,4 +60,3 @@ const realtimeDB = firebase.database();
 const firestoreDB = firebase.firestore();
 window.db = firestoreDB; // 전역 변수로 설정
 
-console.log('Firebase initialized:', firebase.app().name);

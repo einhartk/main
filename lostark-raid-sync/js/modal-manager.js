@@ -2,6 +2,12 @@
 class ModalManager {
     constructor() {
         this.activeModals = new Map();
+        // 모달 밖(백드롭) 클릭 시 포커스를 먼저 빼서 aria-hidden 경고 방지 (hide.bs.modal보다 먼저 실행되도록 mousedown 사용)
+        document.addEventListener('mousedown', this._onBackdropMouseDown = (e) => {
+            if (!e.target.classList.contains('modal-backdrop')) return;
+            const modal = document.querySelector('.modal.show');
+            if (modal) this._moveFocusOutOfModal(modal);
+        }, true);
     }
 
     // Confirm 모달 표시
@@ -43,6 +49,8 @@ class ModalManager {
         
         const modalElement = document.getElementById(modalId);
         const modal = new bootstrap.Modal(modalElement);
+        
+        modalElement.addEventListener('hide.bs.modal', () => this._moveFocusOutOfModal(modalElement), { once: true });
         
         // 확인 버튼 이벤트
         document.getElementById(`${modalId}Confirm`).addEventListener('click', () => {
@@ -99,6 +107,8 @@ class ModalManager {
             
             const modalElement = document.getElementById(modalId);
             const modal = new bootstrap.Modal(modalElement);
+            
+            modalElement.addEventListener('hide.bs.modal', () => this._moveFocusOutOfModal(modalElement), { once: true });
             
             // 확인 버튼 이벤트
             document.getElementById(`${modalId}Confirm`).addEventListener('click', () => {
@@ -159,6 +169,8 @@ class ModalManager {
         const modalElement = document.getElementById(modalId);
         const modal = new bootstrap.Modal(modalElement);
         
+        modalElement.addEventListener('hide.bs.modal', () => this._moveFocusOutOfModal(modalElement), { once: true });
+        
         // 모달이 닫힐 때 정리
         modalElement.addEventListener('hidden.bs.modal', () => {
             if (onClose) onClose();
@@ -183,7 +195,8 @@ class ModalManager {
             confirmClass = 'btn-primary',
             onConfirm = null,
             onCancel = null,
-            zIndex = 9999
+            zIndex = 9999,
+            allowEnterKey = false
         } = options;
 
         const modalId = generateUniqueId('inputModal_');
@@ -215,12 +228,26 @@ class ModalManager {
         const modal = new bootstrap.Modal(modalElement);
         const inputElement = document.getElementById(`${modalId}Input`);
         
+        modalElement.addEventListener('hide.bs.modal', () => this._moveFocusOutOfModal(modalElement), { once: true });
+        
         // 확인 버튼 이벤트
         document.getElementById(`${modalId}Confirm`).addEventListener('click', () => {
             const value = inputElement.value.trim();
             if (onConfirm) onConfirm(value);
             modal.hide();
         });
+        
+        // 엔터키 처리 (allowEnterKey가 true인 경우에만)
+        if (allowEnterKey) {
+            inputElement.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    const value = inputElement.value.trim();
+                    if (onConfirm) onConfirm(value);
+                    modal.hide();
+                }
+            });
+        }
         
         // 모달이 닫힐 때 정리
         modalElement.addEventListener('hidden.bs.modal', () => {
@@ -273,6 +300,8 @@ class ModalManager {
             backdrop: 'static',
             keyboard: false
         });
+        
+        modalElement.addEventListener('hide.bs.modal', () => this._moveFocusOutOfModal(modalElement), { once: true });
         
         this.activeModals.set(modalId, modal);
         modal.show();
@@ -343,16 +372,23 @@ class ModalManager {
         
             }
 
+    // ARIA 경고 방지: 모달 닫기 직전에 포커스를 모달 밖으로 이동 (hide.bs.modal에서 호출)
+    _moveFocusOutOfModal(modalElement) {
+        const active = document.activeElement;
+        if (!active || !modalElement.contains(active)) return;
+        active.blur();
+        try {
+            document.body.setAttribute('tabindex', '-1');
+            document.body.focus();
+        } catch (_) {}
+        requestAnimationFrame(() => document.body.removeAttribute('tabindex'));
+    }
+
     // 모달 정리 헬퍼 함수
     cleanupModal(modalId) {
         const modalElement = document.getElementById(modalId);
         if (modalElement) {
-            // ARIA 경고 방지: 모달이 닫히기 전에 포커스된 요소에서 포커스 제거
-            const focusedElement = document.activeElement;
-            if (focusedElement && modalElement.contains(focusedElement)) {
-                focusedElement.blur();
-            }
-            
+            this._moveFocusOutOfModal(modalElement);
             modalElement.remove();
         }
         this.activeModals.delete(modalId);
