@@ -14,6 +14,11 @@ class RealtimeSync {
         this.lastBroadcastId = null; // 마지막 수신 공지 ID
         this.isEditing = false; // 편집 상태
         this.editingUser = null; // 현재 편집 중인 사용자
+        // 변경 시에만 동기화: 마지막으로 보낸 payload (에코 스킵 + 더티 체크용)
+        this._lastPushedRt = null;
+        this._lastPushedEs = null;
+        this._lastPushedEsn = null;
+        this._lastPushedAt = 0;
     }
 
     // userId에서 브라우저/기기 suffix를 제거한 "base user" 키
@@ -263,46 +268,44 @@ class RealtimeSync {
     // 원격 데이터 처리 - 역직렬화 버전
     handleRemoteUpdate(data) {
         if (!data) return;
-        
-                
+        if (!data.d) return;
+
+        const compressedData = data.d;
+        // 우리가 방금 보낸 업데이트 에코면 스킵 (불필요한 파싱/리렌더·메모리 절감)
+        const now = Date.now();
+        if (this._lastPushedAt && (now - this._lastPushedAt) < 4000 &&
+            compressedData.rt === this._lastPushedRt &&
+            compressedData.es === this._lastPushedEs &&
+            compressedData.esn === this._lastPushedEsn) {
+            return;
+        }
+
         // 역직렬화
-        if (data.d) { // compressed data
-            const compressedData = data.d;
-            
-            // raidTabs 역직렬화
-            if (compressedData.rt) {
-                try {
-                    state.raidTabs = JSON.parse(compressedData.rt);
-                } catch (error) {
-                    console.error('❌ [SYNC] Failed to parse raidTabs:', error);
-                }
+        if (compressedData.rt) {
+            try {
+                state.raidTabs = JSON.parse(compressedData.rt);
+            } catch (error) {
+                console.error('❌ [SYNC] Failed to parse raidTabs:', error);
             }
-            
-            // expeditionSlots 역직렬화
-            if (compressedData.es) {
-                try {
-                    state.expeditionSlots = JSON.parse(compressedData.es);
-                } catch (error) {
-                    console.error('❌ [SYNC] Failed to parse expeditionSlots:', error);
-                }
+        }
+        if (compressedData.es) {
+            try {
+                state.expeditionSlots = JSON.parse(compressedData.es);
+            } catch (error) {
+                console.error('❌ [SYNC] Failed to parse expeditionSlots:', error);
             }
-            
-            // expeditionSlotNames 역직렬화
-            if (compressedData.esn) {
-                try {
-                    state.expeditionSlotNames = JSON.parse(compressedData.esn);
-                } catch (error) {
-                    console.error('❌ [SYNC] Failed to parse expeditionSlotNames:', error);
-                    state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
-                }
-            } else {
+        }
+        if (compressedData.esn) {
+            try {
+                state.expeditionSlotNames = JSON.parse(compressedData.esn);
+            } catch (error) {
+                console.error('❌ [SYNC] Failed to parse expeditionSlotNames:', error);
                 state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
             }
-            
-            // selectedRaid와 selectedDifficulty는 개인별 설정이므로 동기화하지 않음
-            // 사용자가 직접 선택한 상태 유지
+        } else {
+            state.expeditionSlotNames = Array.from({length:8}, (_, i) => `원정대 ${i + 1}`);
         }
-        
+
         // UI 업데이트 (무한 루프 방지)
         this.updateUISafely();
         
@@ -496,37 +499,43 @@ class RealtimeSync {
         
             }
 
-    // Firebase에 데이터 동기화 (Realtime Database) - 문자열 직렬화 버전
+    // Firebase에 데이터 동기화 (Realtime Database) - 변경이 있을 때만 전송
     syncToFirebase() {
         if (!this.isConnected) return;
-        
-        // Firestore는 중첩 배열을 지원하지 않으므로 JSON 문자열로 직렬화
+
         const serializedRaidTabs = JSON.stringify(state.raidTabs);
         const serializedExpedition = JSON.stringify(state.expeditionSlots);
         const serializedExpeditionSlotNames = JSON.stringify(state.expeditionSlotNames);
-        
+
+        // 수정된 내역이 없으면 전송 스킵 (메모리·트래픽 절감)
+        if (this._lastPushedRt === serializedRaidTabs &&
+            this._lastPushedEs === serializedExpedition &&
+            this._lastPushedEsn === serializedExpeditionSlotNames) {
+            return Promise.resolve();
+        }
+
         const compressedData = {
-            rt: serializedRaidTabs, // raidTabs -> rt (JSON string)
-            es: serializedExpedition, // expeditionSlots -> es (JSON string)
-            esn: serializedExpeditionSlotNames, // expeditionSlotNames -> esn (JSON string)
-            // sr과 sd 제외 - 개인별 선택 정보는 동기화하지 않음
-            t: Date.now(), // timestamp -> t
-            u: this.currentUser // user -> u
+            rt: serializedRaidTabs,
+            es: serializedExpedition,
+            esn: serializedExpeditionSlotNames,
+            t: Date.now(),
+            u: this.currentUser
         };
-        
-        // 트랜잭션으로 동기화 (동시성 문제 해결)
+
+        this._lastPushedRt = serializedRaidTabs;
+        this._lastPushedEs = serializedExpedition;
+        this._lastPushedEsn = serializedExpeditionSlotNames;
+        this._lastPushedAt = Date.now();
+
         if (window.transactionManager) {
             return window.transactionManager.syncTransaction(compressedData);
-        } else {
-            // Fallback: 기존 방식
-            const p = this.dbRef.update({
-                d: compressedData, // data -> d
-                a: Date.now() // activity -> a
-            });
-            
-            this.lastSyncTime = Date.now();
-            return p;
         }
+        const p = this.dbRef.update({
+            d: compressedData,
+            a: Date.now()
+        });
+        this.lastSyncTime = Date.now();
+        return p;
     }
 
     // 편집 잠금을 활용한 동기화 (CRUD 발생 시 즉시 저장용)

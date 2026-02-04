@@ -181,11 +181,12 @@ const Constraints = {
       return { valid: false, reason: 'cp_requirement', message };
     }
 
-    // 서폿 제한 확인
-    const supportExceeded = this.exceedsSupportLimit(party, character);
+    // 서폿 제한 확인 (4인 1명, 8인 2명)
+    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1);
+    const supportExceeded = this.exceedsSupportLimit(party, character, maxSupports);
 
     if (supportExceeded) {
-      const message = `이 파티에는 서포터를 ${party.maxSupports}명만 배치할 수 있습니다.`;
+      const message = `이 파티에는 서포터를 ${maxSupports}명만 배치할 수 있습니다.`;
       return { valid: false, reason: 'support_limit', message };
     }
 
@@ -193,11 +194,15 @@ const Constraints = {
     return { valid: true, message: successMessage };
   },
 
-  // 서폿 제한 확인
-  exceedsSupportLimit: function(party, newCharacter = null) {
-    const currentSupports = party.members.filter(m => m?.role === 'support').length;
+  // 서폿 제한 확인 (maxSupports: 4인 1, 8인 2). 파티 멤버는 { id, name }만 있으므로 원정대 상세에서 role 조회
+  exceedsSupportLimit: function(party, newCharacter = null, maxSupports = null) {
+    const limit = maxSupports != null ? maxSupports : (party.size === 8 ? 2 : (party.maxSupports ?? 1));
+    const getDetails = typeof window.getCharacterDetailsFromExpedition === 'function' ? window.getCharacterDetailsFromExpedition : null;
+    const currentSupports = getDetails
+      ? party.members.filter(m => m && getDetails(m.name || m.id)?.role === 'support').length
+      : 0;
     const additionalSupport = newCharacter?.role === 'support' ? 1 : 0;
-    return (currentSupports + additionalSupport) > party.maxSupports;
+    return (currentSupports + additionalSupport) > limit;
   },
 
   // 원정대당 1캐릭터 제한 확인
@@ -237,9 +242,9 @@ const Constraints = {
     return duplicates;
   },
 
-  // 파티 크기에 따른 서폿 제한 확인 (항상 1서폿)
+  // 파티 크기에 따른 서폿 제한: 4인 1명, 8인 2명
   getSupportLimit: function(partySize) {
-    return 1; // 파티당 항상 1서폿만 가능
+    return partySize === 8 ? 2 : 1;
   },
 
   // 모든 파티의 캐릭터 중복 확인

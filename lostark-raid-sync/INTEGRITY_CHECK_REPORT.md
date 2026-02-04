@@ -1,6 +1,6 @@
 # lostark-raid-sync 무결성 검사 보고서
 
-검사 일자: 2025-02-04
+검사 일자: 2025-02-04 (최종 갱신: 프로젝트 전반 기능 체크)
 
 ---
 
@@ -25,6 +25,11 @@
 
 - **문제**: `index.html`의 “내보내기” 버튼이 `onclick="exportRaidList()"`를 호출하지만, 해당 함수가 어떤 JS 파일에도 정의되어 있지 않아 클릭 시 `ReferenceError` 발생.
 - **수정**: `main.js`에 `exportRaidList()` 추가 – 현재 공대 리스트(선택 레이드/난이도, 원정대 슬롯명, 원정대 슬롯, raidTabs)를 JSON 파일로 다운로드.
+
+### 1.4 `updateRaidSize()` – 8→4명 변경 시 확인 모달 미동작 (main.js)
+
+- **문제**: 8명 파티를 4명으로 줄일 때 `modalManager.showAlert()`에 `showConfirm`, `onConfirm`을 넘겼으나, `showAlert`는 해당 옵션을 지원하지 않아 확인 시 `performRaidSizeChange`가 호출되지 않음.
+- **수정**: `showAlert` → `showConfirm`으로 변경. `confirmText: '계속'`, `cancelText: '취소'`, `onConfirm`에서 `performRaidSizeChange` 호출.
 
 ---
 
@@ -105,8 +110,24 @@
 
 ---
 
-## 6. 요약
+## 6. 프로젝트 전반 기능 체크 요약
 
-- **즉시 수정한 항목**: `updateRaidSize`의 `raidId`/`difficultyId` 정의, `removeRaid`의 `raidId`/`difficultyId` 정의 및 `window.operationLock.release` 사용, `exportRaidList` 함수 추가.
-- **무결성**: HTML에서 참조하는 전역 함수는 모두 정의되어 있으며, 수정된 부분으로 인해 파티 크기 변경·파티 삭제·공대 리스트 내보내기가 정상 동작할 수 있는 상태입니다.
-- **선택 정리**: 미사용 함수 1개, 중복 함수 1쌍, autosave의 await 여부는 필요에 따라 정리하면 됩니다.
+### 6.1 HTML → 전역 함수
+
+- `showRaidListModal`, `showExpeditionModal`, `showStatisticsModal`, `showHistoryModal`, `toggleExpeditionPanel`, `addNewRaid`, `autoAssign`, `balancedAssign`, `exportRaidList`, `generatePromotionText`, `captureRaidList`, `saveCharacterEdit`, `searchCharacters`, `refreshExpeditionGold`, `exportStatistics` → 모두 해당 JS 파일에 정의되어 있으며, 스크립트 로드 순서상 전역으로 노출됨. **이상 없음.**
+
+### 6.2 선택적 모듈 (index.html 미로드)
+
+- `state-manager.js`, `transaction-manager.js`, `conflict-resolver.js`는 index.html에 포함되지 않음. 코드는 `window.stateManager`, `window.transactionManager` 존재 여부를 확인 후 fallback 처리하므로 **기능상 문제 없음.**
+
+### 6.3 로그 정리
+
+- `dragdrop.js`: `handleExpeditionToRaidDrop` 내부의 불필요한 `console.log`/`console.warn` 제거 완료. `handleRaidToRaidDrop` 내 "백업 데이터" `console.log` 블록은 인코딩 이슈로 수동 제거 권장(동작에는 영향 없음).
+
+---
+
+## 7. 요약
+
+- **즉시 수정한 항목**: `updateRaidSize`의 `raidId`/`difficultyId` 정의, `removeRaid`의 `raidId`/`difficultyId` 정의 및 `window.operationLock.release` 사용, `exportRaidList` 함수 추가, **파티 8→4 변경 시 확인 모달(`showConfirm`) 수정**, **dragdrop 불필요 로그 제거**.
+- **무결성**: HTML에서 참조하는 전역 함수는 모두 정의되어 있으며, 파티 크기 변경(확인 포함)·파티 삭제·공대 리스트 내보내기·원정대 패널 상태 저장 등이 정상 동작할 수 있는 상태입니다.
+- **선택 정리**: 미사용 함수 1개, 중복 함수 1쌍, autosave의 await 여부, dragdrop 잔여 로그 1곳은 필요 시 수동 정리하면 됩니다.

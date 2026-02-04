@@ -244,7 +244,7 @@ async function addNewRaid(skipHistory = false) {
     raidName: state.selectedRaid.name,
     difficultyName: state.selectedDifficulty.name,
     members: Array(4).fill(null), // 기본 4인
-    maxSupports: 1, // 4인당 1서폿
+    maxSupports: 1, // 4인 1서폿 / 8인 2서폿
     size: 4, // 현재 파티 크기
     minIlvl: state.selectedDifficulty.minIlvl,
     minCombatPower: state.selectedDifficulty.minCombatPower || 0
@@ -385,10 +385,11 @@ function updateRaidSize(partyId, size) {
   if (party.size === 8 && size === 4) {
     const occupiedSlots = party.members.filter(m => m !== null).length;
     if (occupiedSlots > 4) {
-      window.modalManager.showAlert({
+      window.modalManager.showConfirm({
         title: '경고',
         message: `현재 ${occupiedSlots}명의 캐릭터가 배치되어 있습니다. 4명으로 변경하면 ${occupiedSlots - 4}명의 캐릭터가 제거됩니다. 계속하시겠습니까?`,
-        showConfirm: true,
+        confirmText: '계속',
+        cancelText: '취소',
         onConfirm: () => {
           performRaidSizeChange(party, size, raidId, difficultyId, partyId);
         }
@@ -396,7 +397,7 @@ function updateRaidSize(partyId, size) {
       return;
     }
   }
-  
+
   performRaidSizeChange(party, size, raidId, difficultyId, partyId);
 }
 
@@ -427,8 +428,8 @@ async function performRaidSizeChange(party, size, raidId, difficultyId, partyId)
       );
     }
   }
-  
-  party.maxSupports = 1;
+
+  party.maxSupports = party.size === 8 ? 2 : 1; // 4인 1서폿, 8인 2서폿
   renderRaidParties();
   scheduleAutoSave();
   
@@ -460,7 +461,7 @@ async function performRaidSizeChange(party, size, raidId, difficultyId, partyId)
       party._removedMembers = removedMembers;
     }
     
-    party.maxSupports = 1; // 레이드당 항상 1서폿
+    party.maxSupports = party.size === 8 ? 2 : 1; // 4인 1서폿, 8인 2서폿
     newParties[partyIndex] = party;
     
     return newParties;
@@ -1701,6 +1702,7 @@ window.addEventListener('load', function() {
     renderRaidTabs();
     renderRaidParties();
     renderExpedition();
+    applyExpeditionPanelState();
     loadFromDatabase();
   });
 
@@ -1762,18 +1764,44 @@ function renameExpeditionSlot(slotIndex) {
   });
 }
 
+// 원정대 패널 열림 상태 로컬 저장 키
+const EXPEDITION_PANEL_STORAGE_KEY = 'lostarkRaidExpeditionPanelOpen';
+
 // 원정대 패널 토글
 function toggleExpeditionPanel() {
   const panelBody = document.getElementById('expeditionPanelBody');
   const toggleIcon = document.getElementById('expeditionToggleIcon');
-  
-  if (panelBody.style.display === 'none') {
+  if (!panelBody || !toggleIcon) return;
+
+  const isOpen = panelBody.style.display === 'none';
+  if (isOpen) {
     panelBody.style.display = 'block';
     toggleIcon.className = 'bi bi-chevron-up';
   } else {
     panelBody.style.display = 'none';
     toggleIcon.className = 'bi bi-chevron-down';
   }
+  try {
+    localStorage.setItem(EXPEDITION_PANEL_STORAGE_KEY, String(isOpen));
+  } catch (_) {}
+}
+
+// 저장된 원정대 패널 상태 적용 (페이지 로드 시 호출)
+function applyExpeditionPanelState() {
+  const panelBody = document.getElementById('expeditionPanelBody');
+  const toggleIcon = document.getElementById('expeditionToggleIcon');
+  if (!panelBody || !toggleIcon) return;
+  try {
+    const saved = localStorage.getItem(EXPEDITION_PANEL_STORAGE_KEY);
+    const open = saved !== 'false'; // 없거나 'true'면 열림, 'false'면 닫힘
+    if (!open) {
+      panelBody.style.display = 'none';
+      toggleIcon.className = 'bi bi-chevron-down';
+    } else {
+      panelBody.style.display = 'block';
+      toggleIcon.className = 'bi bi-chevron-up';
+    }
+  } catch (_) {}
 }
 
 
@@ -1837,9 +1865,9 @@ async function autoAssign() {
       });
       return used;
     };
-      
+    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1); // 4인 1명, 8인 2명
     // 서폿 배치 (제약 조건 확인) - 빈 슬롯만 채움
-    for (let i = 0; i < party.size && supportCount < party.maxSupports && supports.length > 0; i++) {
+    for (let i = 0; i < party.size && supportCount < maxSupports && supports.length > 0; i++) {
       if (party.members[i]) continue;
       // 유효한 캐릭터가 나올 때까지 스킵
       while (supports.length > 0) {
@@ -1984,7 +2012,8 @@ async function balancedAssign() {
     }
 
     const existingSupports = party.members.filter(m => m?.role === 'support').length;
-    const supportsNeeded = Math.max(0, (party.maxSupports || 0) - existingSupports);
+    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1); // 4인 1명, 8인 2명
+    const supportsNeeded = Math.max(0, maxSupports - existingSupports);
     if (supportsNeeded <= 0) return;
 
     let placedSupports = 0;

@@ -67,16 +67,16 @@ function renderRaidParties() {
     partyDiv.className = 'col-md-6';
     container.appendChild(partyDiv);
 
-    // 원정대에서 상세 정보를 가져와서 계산
+    // 원정대에서 상세 정보를 가져와서 계산 (이름 또는 id로 조회)
     const validMembers = party.members.filter(m => m !== null);
-    const validMembersWithDetails = validMembers.map(m => getCharacterDetailsFromExpedition(m.name)).filter(m => m !== null);
-    
+    const validMembersWithDetails = validMembers.map(m => getCharacterDetailsFromExpedition(m.name || m.id)).filter(m => m !== null);
     const avgCombatPower = validMembersWithDetails.length > 0
       ? Math.round(validMembersWithDetails.reduce((sum, m) => sum + parseCompareNumber(m.combatPower || '0'), 0) / validMembersWithDetails.length)
       : 0;
-
-    const supportCount = validMembersWithDetails.filter(m => m?.role === 'support').length;
-    const supportBadge = supportCount > party.maxSupports ? 'bg-danger' : 'bg-secondary';
+    // 서폿 수: 원정대 상세에서 role 확인 (이름으로 조회한 원정대 데이터 기준)
+    const supportCount = validMembersWithDetails.filter(m => m && String(m.role || '').toLowerCase() === 'support').length;
+    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1); // 4인 1명, 8인 2명
+    const supportBadge = supportCount > maxSupports ? 'bg-danger' : 'bg-secondary';
 
     partyDiv.innerHTML = `
       <div class="card shadow-sm party-card">
@@ -119,7 +119,7 @@ function renderRaidParties() {
             <div class="col-md-4">
               <div class="d-flex align-items-center justify-content-center">
                 <span id="support-${party.id}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.8rem; padding: 5px 10px;">
-                  <i class="bi bi-shield-fill me-1"></i>서폿 ${supportCount}/${party.maxSupports}
+                  <i class="bi bi-shield-fill me-1"></i>서폿 ${supportCount}/${maxSupports}
                 </span>
               </div>
             </div>
@@ -210,19 +210,25 @@ function renderRaidParties() {
 
 // 🔥 **핵심 수정: 전역 함수로 노출**
 window.renderRaidParties = renderRaidParties;
+window.getCharacterDetailsFromExpedition = getCharacterDetailsFromExpedition;
 
-// 원정대에서 캐릭터 상세 정보 조회
-function getCharacterDetailsFromExpedition(characterName) {
-  if (!characterName) return null;
-  
-  // 모든 원정대 슬롯에서 캐릭터 검색
-  for (const slot of state.expeditionSlots) {
-    const character = slot.find(char => char.name === characterName);
-    if (character) {
-      return character;
-    }
+// 원정대에서 캐릭터 상세 정보 조회 (캐릭터 이름으로 조회, 원정대에 저장된 데이터 반환)
+function getCharacterDetailsFromExpedition(characterNameOrId) {
+  if (characterNameOrId == null || characterNameOrId === '') return null;
+  const slots = state && state.expeditionSlots;
+  if (!Array.isArray(slots)) return null;
+  const key = String(characterNameOrId).trim();
+  if (!key) return null;
+  for (const slot of slots) {
+    if (!Array.isArray(slot)) continue;
+    const character = slot.find(char => {
+      if (!char) return false;
+      const n = (char.name || char.CharacterName || '').toString().trim();
+      const id = (char.id || '').toString().trim();
+      return n === key || id === key || n === characterNameOrId || id === characterNameOrId;
+    });
+    if (character) return character;
   }
-  
   return null;
 }
 
@@ -356,10 +362,21 @@ window.renderExpeditionModal = renderExpeditionModal;
 function updateSupportCount() {
   const parties = getCurrentTabParties();
   parties.forEach(party => {
-    const count = party.members.filter(m => m?.role === "support").length;
-    const badge = document.getElementById(`support-${party.uniqueId}`);
+    // 🔥 **핵심 수정: 원정대 데이터에서 최신 role 정보 조회**
+    const count = party.members.filter(m => {
+      if (!m) return false;
+      // 파티 멤버의 role이 없거나 undefined면 원정대에서 조회
+      if (m.role === 'support') return true;
+      if (m.role === 'dps') return false;
+      // role 정보가 없으면 원정대에서 조회
+      const charFromExpedition = findCharacterByIdFromExpedition(m.name);
+      return charFromExpedition?.role === 'support';
+    }).length;
+    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1);
+    const badge = document.getElementById(`support-${party.id}`);
     if (badge) {
-      badge.className = count > party.maxSupports ? "badge bg-danger text-white" : "badge bg-success text-white";
+      badge.className = count > maxSupports ? "badge bg-danger text-white" : "badge bg-success text-white";
+      badge.innerHTML = `<i class="bi bi-shield-fill me-1"></i>서폿 ${count}/${maxSupports}`;
     }
   });
 }

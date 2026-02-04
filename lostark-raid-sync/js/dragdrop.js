@@ -494,7 +494,6 @@ async function handleExpeditionToRaidDrop(charId, targetPartyId, targetSlotIndex
   };
   
   // 히스토리 기록
-  console.log('🔍 [HISTORY] 히스토리 기록 시작');
   if (typeof recordHistory === 'function') {
     await recordHistory(
       'add',
@@ -507,28 +506,16 @@ async function handleExpeditionToRaidDrop(charId, targetPartyId, targetSlotIndex
       newMember,
       `${targetPartyId} 파티 ${targetSlotIndex}번 슬롯에 ${character.name} 캐릭터 추가`
     );
-    console.log('✅ [HISTORY] 히스토리 기록 완료');
-  } else {
-    console.warn('⚠️ [HISTORY] recordHistory 함수가 없음');
   }
-  
+
   // 캐릭터 배치
   targetParty.members[targetSlotIndex] = newMember;
-  
-  console.log('✅ [EXPEDITION TO RAID] 캐릭터 배치 완료:', {
-    partyId: targetPartyId,
-    slotIndex: targetSlotIndex,
-    characterName: character.name
-  });
-  
+
   // UI 업데이트 (즉시 반영)
-  console.log('🎨 [UI] 렌더링 시작');
   renderRaidParties();
   renderExpedition();
-  console.log('✅ [UI] 렌더링 완료');
-  
+
   // 비동기 저장 (UI 블로킹 방지)
-  console.log('💾 [AUTOSAVE] 자동 저장 시작');
   setTimeout(() => {
     scheduleAutoSave();
   }, 0);
@@ -576,8 +563,7 @@ async function handleExpeditionDrop(event, expeditionIndex) {
     }
 
     const data = JSON.parse(event.dataTransfer.getData('text/plain'));
-    console.log(`📊 [EXPEDITION DROP] Received:`, { name: data.name, id: data.id });
-    
+
     // 공격대에서 온 캐릭터인 경우 원정대에 추가
     if (draggedData && draggedData.fromRaid) {
       const parties = getCurrentTabParties();
