@@ -857,6 +857,18 @@ window.realtimeSync = new RealtimeSync();
 window.testSync = () => window.realtimeSync.testSync();
 window.checkSyncStatus = () => window.realtimeSync.checkConnectionStatus();
 
+// 🔥 **Firebase 히스토리 주기적 정리 (6시간마다)**
+setInterval(async () => {
+  if (window.realtimeSync && typeof window.realtimeSync.isSyncActive === 'function' && window.realtimeSync.isSyncActive()) {
+    try {
+      await cleanupFirebaseHistory();
+      console.log('🧹 [SYNC] Firebase 히스토리 주기적 정리 완료');
+    } catch (error) {
+      console.error('🧹 [SYNC] Firebase 히스토리 주기적 정리 실패:', error);
+    }
+  }
+}, 6 * 60 * 60 * 1000); // 6시간
+
 // 페이지 로드 시 자동 실시간 동기화 시작
 document.addEventListener('DOMContentLoaded', () => {
     // URL 파라미터 확인

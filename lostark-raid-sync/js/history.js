@@ -163,21 +163,84 @@ async function cleanupFirebaseHistory() {
       .filter(entry => entry && entry.timestamp)
       .sort((a, b) => b.timestamp - a.timestamp);
     
-    // 최대 개수 유지
-    if (historyArray.length > state.history.maxEntries) {
-      const toKeep = historyArray.slice(0, state.history.maxEntries);
-      const toRemove = historyArray.slice(state.history.maxEntries);
+    // 🔥 **강화된 정리: 최대 개수 + 7일 이상 된 데이터 삭제**
+    const now = Date.now();
+    const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000); // 7일 전
+    const maxEntries = state.history.maxEntries;
+    
+    let toRemove = [];
+    
+    // 1. 7일 이상 된 데이터 모두 제거
+    const oldEntries = historyArray.filter(entry => entry.timestamp < sevenDaysAgo);
+    toRemove.push(...oldEntries);
+    
+    // 2. 최대 개수 초과 데이터 제거 (7일 이내 데이터만 대상)
+    const recentEntries = historyArray.filter(entry => entry.timestamp >= sevenDaysAgo);
+    if (recentEntries.length > maxEntries) {
+      const excessEntries = recentEntries.slice(maxEntries);
+      toRemove.push(...excessEntries);
+    }
+    
+    // 중복 제거
+    const uniqueToRemove = Array.from(new Set(toRemove));
+    
+    if (uniqueToRemove.length > 0) {
+      console.log(`🧹 [HISTORY] Firebase 히스토리 정리: ${uniqueToRemove.length}개 항목 삭제`);
       
       // 오래된 항목 삭제
-      for (const oldEntry of toRemove) {
+      for (const oldEntry of uniqueToRemove) {
         if (oldEntry.id) {
           await historyRef.child(oldEntry.id).remove();
         }
       }
-      
     }
+    
   } catch (error) {
+    console.error('🧹 [HISTORY] Firebase 히스토리 정리 실패:', error);
   }
+}
+
+// 🔥 **수동 DB 정리 함수 (사용자 피드백 포함)**
+async function manualCleanupFirebaseHistory() {
+  if (!window.realtimeSync || typeof window.realtimeSync.isSyncActive !== 'function' || !window.realtimeSync.isSyncActive()) {
+    window.modalManager.showAlert({
+      title: 'DB 정리 불가',
+      message: '실시간 동기화가 활성화되지 않았습니다.'
+    });
+    return;
+  }
+
+  window.modalManager.showConfirm({
+    title: 'DB 히스토리 정리',
+    message: 'Firebase에 저장된 오래된 히스토리 데이터를 정리하시겠습니까?\n\n• 7일 이상 된 데이터 모두 삭제\n• 최대 개수 초과 데이터 삭제\n• 이 작업은 되돌릴 수 없습니다',
+    confirmText: '정리',
+    cancelText: '취소',
+    confirmClass: 'btn-danger',
+    onConfirm: async () => {
+      try {
+        const beforeCount = Object.keys((await window.realtimeSync.dbRef.child('history').once('value')).val() || {}).length;
+        
+        await cleanupFirebaseHistory();
+        
+        const afterCount = Object.keys((await window.realtimeSync.dbRef.child('history').once('value')).val() || {}).length;
+        const removedCount = beforeCount - afterCount;
+        
+        window.modalManager.showAlert({
+          title: 'DB 정리 완료',
+          message: `Firebase 히스토리 정리가 완료되었습니다.\n\n정리 전: ${beforeCount}개 항목\n정리 후: ${afterCount}개 항목\n삭제된 항목: ${removedCount}개`
+        });
+        
+        // 히스토리 리스트 새로고침
+        refreshHistory();
+      } catch (error) {
+        console.error('🧹 [HISTORY] 수동 DB 정리 실패:', error);
+        window.modalManager.showAlert({
+          title: 'DB 정리 실패',
+          message: 'DB 정리 중 오류가 발생했습니다: ' + error.message
+        });
+      }
+    }
+  });
 }
 
 // 로컬 히스토리 정리
@@ -297,6 +360,9 @@ function showHistoryModal() {
                   </button>
                   <button class="btn btn-sm btn-outline-warning" onclick="clearHistory()">
                     <i class="bi bi-trash"></i> 정리
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" onclick="manualCleanupFirebaseHistory()">
+                    <i class="bi bi-database"></i> DB 정리
                   </button>
                 </div>
               </div>
