@@ -32,9 +32,12 @@ class RealtimeSync {
     getBaseUserKey(userId) {
         const raw = String(userId || '');
         if (!raw) return '';
+        
+        // 기본 사용자 ID 형식: User_<timestamp>_<random>
+        // 브라우저 ID는 마지막에 추가되므로 제거
         const parts = raw.split('_');
-        // 기본 생성 규칙: User_<timestamp>_<rand>_<browserId>
         if (parts.length >= 3) {
+            // 처음 3개 부분만 사용 (User + timestamp + random)
             return parts.slice(0, 3).join('_');
         }
         return raw;
@@ -559,25 +562,39 @@ class RealtimeSync {
     
     // 표시 이름 가져오기
     getDisplayName() {
-        // 고유 ID를 포함한 전체 사용자 이름 사용
-        const uniqueUser = localStorage.getItem('uniqueUserId') || this.currentUser;
+        // currentUser가 없으면 localStorage에서 가져오기
+        if (!this.currentUser) {
+            this.currentUser = this.getCurrentUser();
+        }
         
-        // 고유 ID가 너무 길면 줄이기
-        if (uniqueUser.length > 20) {
-            // User_1234567890_abc123def456 형식이면 중간 부분만 표시
-            const parts = uniqueUser.split('_');
+        // 기본 사용자 ID만 사용 (고유 ID 제외)
+        const baseUser = this.getBaseUserKey(this.currentUser);
+        
+        // 기본 사용자 ID가 없으면 localStorage에서 기본 ID 가져오기
+        const displayName = baseUser || localStorage.getItem('currentUser') || 'User';
+        
+        // 이름이 너무 길면 줄이기
+        if (displayName.length > 20) {
+            const parts = displayName.split('_');
             if (parts.length >= 3) {
                 return `${parts[0]}_${parts[1].slice(-4)}_${parts[2].slice(0, 6)}`;
             }
         }
         
-        return uniqueUser || 'User';
+        return displayName;
     }
     
     // 사용자 색상 생성
     getUserColor() {
         const colors = ['#007bff', '#28a745', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#20c997', '#6c757d'];
-        const hash = this.getDisplayName().split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+        
+        // currentUser가 없으면 localStorage에서 가져오기
+        if (!this.currentUser) {
+            this.currentUser = this.getCurrentUser();
+        }
+        
+        const baseUser = this.getBaseUserKey(this.currentUser) || this.currentUser || 'User';
+        const hash = baseUser.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
         return colors[hash % colors.length];
     }
 
@@ -873,8 +890,9 @@ class RealtimeSync {
         }
 
         try {
+            const notificationId = `notification_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             const notification = {
-                id: generateUniqueId('notification_'),
+                id: notificationId,
                 message: message,
                 type: type, // 'info', 'warning', 'error', 'success'
                 timestamp: Date.now(),

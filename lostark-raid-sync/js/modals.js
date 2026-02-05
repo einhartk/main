@@ -4,7 +4,7 @@ async function confirmRemoveExpeditionCharacter(expeditionIndex, characterIndex)
   
   const character = state.expeditionSlots[expeditionIndex][characterIndex];
   const characterName = character.name;
-  const slotName = state.expeditionSlotNames[expeditionIndex] || `원정대 ${expeditionIndex + 1}`;
+  const slotName = getExpeditionNameText(state.expeditionSlotNames[expeditionIndex]) || `원정대 ${expeditionIndex + 1}`;
   
   // 삭제 확인 모달 표시
   window.modalManager.showConfirm({
@@ -190,7 +190,7 @@ async function openCharacterSearchModal(slotIndex) {
   }
   
   // 모달에 현재 슬롯 정보 표시
-  const slotName = state.expeditionSlotNames[slotIndex] || `원정대 ${slotIndex + 1}`;
+  const slotName = getExpeditionNameText(state.expeditionSlotNames[slotIndex]) || `원정대 ${slotIndex + 1}`;
   document.getElementById('targetSlotInfo').value = slotName;
   document.getElementById('searchCharacterName').value = '';
   document.getElementById('searchProgress').style.display = 'none';

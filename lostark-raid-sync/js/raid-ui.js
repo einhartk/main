@@ -505,6 +505,24 @@ function getWeekdayName(weekday) {
   return weekdays[weekday] || weekday;
 }
 
+// 원정대 이름 체크 함수 (이모지 포함)
+function checkExpeditionName(expeditionName) {
+  if (!expeditionName) return '';
+  
+  // 땡준 값이 있는지 체크 (대소문자 무관)
+  if (expeditionName.toLowerCase().includes('땡준')) {
+    return `<span class="devil-indicator" title="기만자">😈</span>`;
+  }
+  
+  return '';
+}
+
+// 원정대 이름 순수 텍스트 반환 함수
+function getExpeditionNameText(expeditionName) {
+  if (!expeditionName) return '';
+  return expeditionName;
+}
+
 // 원정대에서 캐릭터 상세 정보 조회 (캐릭터 이름으로 조회, 원정대에 저장된 데이터 반환)
 function getCharacterDetailsFromExpedition(characterNameOrId) {
   if (characterNameOrId == null || characterNameOrId === '') return null;
@@ -568,7 +586,7 @@ function renderExpedition() {
       <div class="expedition-slot ${slotClass}" ondrop="handleExpeditionDrop(event, ${index})" ondragover="handleDragOver" ondragleave="handleDragLeave" style="cursor: default; min-height: 100px;">
         <h6 class="text-center mb-1" style="font-size: 0.75rem;">
           <span onclick="event.stopPropagation(); renameExpeditionSlot(${index})" style="cursor: pointer; text-decoration: underline;" title="클릭하여 이름 변경">
-            ${state.expeditionSlotNames[index]} 
+            ${state.expeditionSlotNames[index]}${checkExpeditionName(state.expeditionSlotNames[index])}
           </span>
           ${slot.length > 0 ? `<small class="text-success">(${slot.length})</small>` : '<small class="text-muted">(비어있음)</small>'}
         </h6>
@@ -622,7 +640,7 @@ function renderExpeditionModal() {
       <div class="expedition-slot ${slotClass}" onclick="openCharacterSearchModal(${index})" ondrop="handleExpeditionDrop(event, ${index})" ondragover="handleDragOver" ondragleave="handleDragLeave" style="cursor: pointer;">
         <h6 class="text-center mb-2">
           <span onclick="event.stopPropagation(); renameExpeditionSlot(${index})" style="cursor: pointer; text-decoration: underline;" title="클릭하여 이름 변경">
-            ${state.expeditionSlotNames[index]} 
+            ${state.expeditionSlotNames[index]}${checkExpeditionName(state.expeditionSlotNames[index])}
           </span>
           ${slot.length > 0 ? `<small class="text-success">(${slot.length}명)</small>` : '<small class="text-muted">(클릭하여 원정대 추가, 드래하여 공격대로 이동)</small>'}
         </h6>

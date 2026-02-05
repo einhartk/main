@@ -1,5 +1,19 @@
 /* Custom Styles for Lost Ark Raid Manager */
 
+/* 악마 이모지 툴팁 스타일 */
+.devil-indicator {
+  cursor: help;
+  opacity: 0.8;
+  transition: all 0.2s ease;
+  margin-left: 4px;
+  font-size: 0.9em;
+}
+
+.devil-indicator:hover {
+  opacity: 1;
+  transform: scale(1.2);
+}
+
 /* Sidebar */
 .sidebar {
     position: fixed;
