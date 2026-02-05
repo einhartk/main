@@ -1078,22 +1078,7 @@ body.modal-open {
     border-color: #4a69bd;
 }
 
-.dark-mode .char-box {
-    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
-    border: 1px solid #5a5a7c;
-    color: #e1e8ed;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-}
-
-.dark-mode .char-box:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-    border-color: #6a6a8c;
-}
-
-.dark-mode .char-slot {
-    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
+.dark-mode .party-card {
     border: 2px dashed #5a5a7c;
 }
 
@@ -1212,6 +1197,128 @@ body {
 .dark-mode .party-card .badge.bg-gradient {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
     color: #ffffff !important;
+}
+
+/* 파티 드래그 앤 드롭 스타일 */
+.party-card.dragging {
+    opacity: 0.5;
+    transform: rotate(5deg);
+    cursor: grabbing !important;
+}
+
+.party-card.drag-over {
+    border: 2px dashed #4a69bd;
+    background: linear-gradient(145deg, #3a3a5c 0%, #4a69bd 100%);
+    transform: scale(1.02);
+}
+
+.col-md-6.dragging {
+    opacity: 0.5;
+    cursor: grabbing !important;
+}
+
+.col-md-6.drag-over {
+    transform: scale(1.05);
+    z-index: 1000;
+}
+
+.col-md-6 {
+    cursor: grab;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.col-md-6:hover {
+    transform: translateY(-2px);
+}
+
+.col-md-6:active {
+    cursor: grabbing;
+}
+
+/* 클리어된 파티 카드 스타일 */
+.cleared-party {
+    cursor: not-allowed !important;
+}
+
+.cleared-party .party-card {
+    opacity: 0.6;
+    filter: grayscale(30%);
+    pointer-events: none;
+    position: relative;
+}
+
+.cleared-party .party-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: 12px;
+    pointer-events: none;
+}
+
+.cleared-party .party-card .card-header {
+    background: linear-gradient(90deg, #28a745 0%, #20c997 100%) !important;
+    border-bottom: 2px solid #1e7e34;
+}
+
+.cleared-party .party-card .form-switch,
+.cleared-party .party-card .btn-group,
+.cleared-party .party-card .btn {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.cleared-party .party-card .char-box,
+.cleared-party .party-card .char-slot {
+    pointer-events: none;
+    cursor: not-allowed !important;
+}
+
+.cleared-party .party-card .char-box:hover,
+.cleared-party .party-card .char-slot:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* 드래그 앤 드롭 시 클리어된 파티 처리 */
+.cleared-party.dragging {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}
+
+/* 다크모드에서 클리어된 파티 스타일 */
+.dark-mode .cleared-party .party-card::after {
+    background: rgba(56, 161, 105, 0.15);
+}
+
+.dark-mode .cleared-party .party-card .card-header {
+    background: linear-gradient(90deg, #38a169 0%, #20c997 100%) !important;
+    border-bottom: 2px solid #2d7a4e;
+}
+
+/* 다크모드에서 공격대 현황 요약 */
+.dark-mode .raid-summary {
+    background: linear-gradient(135deg, #2d2d44 0%, #3a3a5c 100%) !important;
+    border: 1px solid #4a5568 !important;
+}
+
+.dark-mode .raid-summary i {
+    color: #38a169 !important;
+}
+
+.dark-mode .raid-summary .fw-bold {
+    color: #e9ecef !important;
+}
+
+.dark-mode .raid-summary .badge.bg-success {
+    background: linear-gradient(135deg, #38a169 0%, #2d7a4e 100%) !important;
+}
+
+.dark-mode .raid-summary .badge.bg-warning {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%) !important;
 }
 
 /* 다크모드 전환 애니메이션 */

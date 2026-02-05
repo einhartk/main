@@ -49,6 +49,153 @@ function renderRaidTabs() {
   container.innerHTML = tabsHtml;
 }
 
+// 파티 드래그 앤 드롭 관련 전역 변수
+let draggedPartyElement = null;
+let draggedPartyData = null;
+
+// 파티 드래그 시작
+function handlePartyDragStart(e) {
+  const partyElement = e.target.closest('.col-md-6');
+  
+  // 클리어된 파티는 드래그 금지
+  if (partyElement.classList.contains('cleared-party')) {
+    e.preventDefault();
+    return false;
+  }
+  
+  draggedPartyElement = partyElement;
+  draggedPartyData = {
+    id: draggedPartyElement.getAttribute('data-party-id'),
+    order: parseInt(draggedPartyElement.getAttribute('data-party-order'))
+  };
+  
+  draggedPartyElement.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/html', draggedPartyElement.innerHTML);
+}
+
+// 파티 드래그 오버
+function handlePartyDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault();
+  }
+  
+  e.dataTransfer.dropEffect = 'move';
+  
+  // 드래그 중인 파티 위에 시각적 표시
+  const targetElement = e.target.closest('.col-md-6');
+  if (targetElement && targetElement !== draggedPartyElement) {
+    targetElement.classList.add('drag-over');
+  }
+  
+  return false;
+}
+
+// 파티 드롭
+function handlePartyDrop(e) {
+  if (e.stopPropagation) {
+    e.stopPropagation();
+  }
+  
+  if (e.preventDefault) {
+    e.preventDefault();
+  }
+  
+  const targetElement = e.target.closest('.col-md-6');
+  if (targetElement && draggedPartyElement && targetElement !== draggedPartyElement) {
+    // 실제 순서 변경 로직 호출
+    const raidId = state.selectedRaid?.id;
+    const difficultyId = state.selectedDifficulty?.id;
+    
+    if (raidId && difficultyId) {
+      const container = document.getElementById('raidParties');
+      const allParties = Array.from(container.children);
+      const fromIndex = allParties.indexOf(draggedPartyElement);
+      const toIndex = allParties.indexOf(targetElement);
+      
+      if (fromIndex !== -1 && toIndex !== -1) {
+        reorderParties(raidId, difficultyId, fromIndex, toIndex);
+      }
+    }
+  }
+  
+  return false;
+}
+
+// 파티 드래그 종료
+function handlePartyDragEnd(e) {
+  // 모든 드래그 관련 클래스 제거
+  document.querySelectorAll('.drag-over').forEach(el => {
+    el.classList.remove('drag-over');
+  });
+  
+  if (draggedPartyElement) {
+    draggedPartyElement.style.opacity = '1';
+    draggedPartyElement.classList.remove('dragging');
+  }
+  
+  draggedPartyElement = null;
+  draggedPartyData = null;
+}
+
+// 드래그 후 삽입 위치 계산
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.col-md-6:not(.dragging)')];
+  
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// 전체 클리어/해제 토글 함수
+function toggleAllRaidClear(setCleared) {
+  const parties = getCurrentTabParties();
+  const changedParties = [];
+  
+  parties.forEach(party => {
+    if (party.cleared !== setCleared) {
+      party.cleared = setCleared;
+      changedParties.push(party);
+    }
+  });
+  
+  if (changedParties.length > 0) {
+    // 히스토리 기록
+    if (typeof recordHistory === 'function') {
+      recordHistory(
+        'bulk_update',
+        {
+          type: 'bulk_raid_clear',
+          path: 'raidTabs'
+        },
+        changedParties.map(p => ({ id: p.id, cleared: !setCleared })),
+        changedParties.map(p => ({ id: p.id, cleared: setCleared })),
+        `전체 공격대 클리어 상태 변경: ${setCleared ? '클리어' : '해제'} (${changedParties.length}개 파티)`
+      );
+    }
+    
+    // UI 업데이트
+    renderRaidParties();
+    renderExpedition();
+    
+    // 저장
+    scheduleAutoSave();
+    
+    // 완료 알림
+    window.modalManager.showAlert({
+      title: '일괄 변경 완료',
+      message: `${changedParties.length}개 공격대를 ${setCleared ? '클리어' : '해제'}했습니다.`
+    });
+  }
+}
+
 // 공격대 파티 렌더링
 function renderRaidParties() {
   const container = document.getElementById('raidParties');
@@ -61,11 +208,90 @@ function renderRaidParties() {
   container.innerHTML = '';
 
   const parties = getCurrentTabParties();
+  
+  // 순서(order) 기준으로 정렬, 클리어 안된 파티 우선
+  const sortedParties = parties.sort((a, b) => {
+    // 클리어 상태 우선 정렬 (클리어 안된 파티가 먼저)
+    if (a.cleared !== b.cleared) {
+      return a.cleared ? 1 : -1;
+    }
+    
+    // 클리어 상태가 같으면 순번으로 정렬
+    const orderA = a.order !== undefined ? a.order : 999;
+    const orderB = b.order !== undefined ? b.order : 999;
+    return orderA - orderB;
+  });
 
-  parties.forEach((party) => {
+  // 클리어 상태 통계 계산
+  const clearedCount = sortedParties.filter(p => p.cleared).length;
+  const unclearedCount = sortedParties.length - clearedCount;
+
+  // 상단에 클리어 상태 요약 정보 추가
+  const summaryDiv = document.createElement('div');
+  summaryDiv.className = 'row mb-3';
+  summaryDiv.innerHTML = `
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center p-3 rounded raid-summary" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border: 1px solid #dee2e6;">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-clipboard-check me-2" style="font-size: 1.2rem; color: #28a745;"></i>
+          <span class="fw-bold" style="color: #495057;">공격대 현황</span>
+        </div>
+        <div class="d-flex gap-4">
+          <div class="text-center">
+            <div class="badge bg-success text-white px-3 py-2" style="font-size: 0.9rem;">
+              <i class="bi bi-check-circle-fill me-1"></i>
+              <span class="fw-bold">${clearedCount}</span>
+            </div>
+            <div class="small text-muted mt-1">클리어</div>
+          </div>
+          <div class="text-center">
+            <div class="badge bg-warning text-white px-3 py-2" style="font-size: 0.9rem;">
+              <i class="bi bi-clock-fill me-1"></i>
+              <span class="fw-bold">${unclearedCount}</span>
+            </div>
+            <div class="small text-muted mt-1">미클리어</div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-success" onclick="toggleAllRaidClear(true)" style="font-size: 0.8rem;">
+              <i class="bi bi-check-all me-1"></i>전체 클리어
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="toggleAllRaidClear(false)" style="font-size: 0.8rem;">
+              <i class="bi bi-x-circle me-1"></i>전체 해제
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  container.appendChild(summaryDiv);
+
+  // 파티 카드들을 담을 컨테이너
+  const partiesContainer = document.createElement('div');
+  partiesContainer.className = 'row';
+  
+  sortedParties.forEach((party, index) => {
     const partyDiv = document.createElement('div');
     partyDiv.className = 'col-md-6';
-    container.appendChild(partyDiv);
+    partyDiv.setAttribute('data-party-id', party.id);
+    partyDiv.setAttribute('data-party-order', party.order || index + 1);
+    
+    // 클리어된 파티는 반투명 처리 및 드래그 비활성화
+    if (party.cleared) {
+      partyDiv.classList.add('cleared-party');
+      partyDiv.draggable = false; // 클리어된 파티는 드래그 불가
+    } else {
+      partyDiv.draggable = true; // 클리어 안된 파티만 드래그 가능
+    }
+    
+    // 드래그 앤 드롭 이벤트 리스너 추가 (클리어 안된 파티만)
+    if (!party.cleared) {
+      partyDiv.addEventListener('dragstart', handlePartyDragStart);
+      partyDiv.addEventListener('dragover', handlePartyDragOver);
+      partyDiv.addEventListener('drop', handlePartyDrop);
+      partyDiv.addEventListener('dragend', handlePartyDragEnd);
+    }
+    
+    container.appendChild(partiesContainer);
 
     // 원정대에서 상세 정보를 가져와서 계산 (이름 또는 id로 조회)
     const validMembers = party.members.filter(m => m !== null);

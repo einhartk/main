@@ -184,6 +184,61 @@ function getCurrentTabPartiesForStats() {
   return [];
 }
 
+// 파티 순번 마이그레이션 함수
+function migratePartyOrder() {
+  if (!state.raidTabs) return;
+  
+  Object.keys(state.raidTabs).forEach(raidId => {
+    Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+      const parties = state.raidTabs[raidId][difficultyId];
+      if (Array.isArray(parties)) {
+        parties.forEach((party, index) => {
+          if (party && typeof party === 'object' && party.order === undefined) {
+            party.order = index + 1; // 1부터 시작하는 순번
+          }
+        });
+      }
+    });
+  });
+}
+
+// 파티 순서 변경 함수
+function reorderParties(raidId, difficultyId, fromIndex, toIndex) {
+  const parties = state.raidTabs[raidId][difficultyId];
+  if (!parties || fromIndex === toIndex) return;
+  
+  // 파티 배열에서 순서 변경
+  const [movedParty] = parties.splice(fromIndex, 1);
+  parties.splice(toIndex, 0, movedParty);
+  
+  // 순번 재설정
+  parties.forEach((party, index) => {
+    if (party) {
+      party.order = index + 1;
+    }
+  });
+  
+  // 히스토리 기록
+  if (typeof recordHistory === 'function') {
+    recordHistory(
+      'reorder',
+      {
+        type: 'party_reorder',
+        raidId,
+        difficultyId,
+        path: `raidTabs.${raidId}.${difficultyId}`
+      },
+      { fromIndex, toIndex },
+      { fromIndex, toIndex },
+      `파티 순서 변경: ${fromIndex + 1}번 → ${toIndex + 1}번`
+    );
+  }
+  
+  // UI 업데이트
+  renderRaidParties();
+  scheduleAutoSave();
+}
+
 // 새로운 레이드 추가
 async function addNewRaid(skipHistory = false) {
   // 작업 잠금 확인 (안전한 확인)
@@ -234,6 +289,10 @@ async function addNewRaid(skipHistory = false) {
   // 전역 고유 ID 생성
   const globalPartyId = `P${state.globalPartyCounter}`;
   const uniquePartyId = `${state.selectedRaid.id}-${state.selectedDifficulty.id}-${globalPartyId}`;
+  
+  // 순번 결정 (기존 파티들 중 가장 큰 순번 + 1)
+  const maxOrder = parties.length > 0 ? Math.max(...parties.map(p => p.order || 0)) : 0;
+  
   const newParty = {
     id: globalPartyId, // 전역 고유 ID 사용
     uniqueId: uniquePartyId,
@@ -243,6 +302,7 @@ async function addNewRaid(skipHistory = false) {
     difficultyId: state.selectedDifficulty.id,
     raidName: state.selectedRaid.name,
     difficultyName: state.selectedDifficulty.name,
+    order: maxOrder + 1, // 순번 추가
     cleared: false, // 클리어 상태 기본값
     scheduledWeekday: null, // 약속 요일
     scheduledHour: null, // 약속 시간
@@ -492,14 +552,71 @@ async function performRaidSizeChange(party, size, raidId, difficultyId, partyId)
 async function setRaidSize(partyId, size) {
   // 충돌 감지
   if (!window.realtimeSync || !window.realtimeSync.isSyncActive()) {
-    // 일반 모드에서는 바로 실행
+    // 일반 모드에서는 updateRaidSize 호출 (확인 모달 포함)
     updateRaidSize(partyId, size);
-    // 저장
-    scheduleAutoSave();
     return;
   }
   
-  // 실시간 동기화 모드에서는 충돌 감지
+  // 실시간 동기화 모드에서도 확인 로직이 필요
+  const parties = getCurrentTabParties();
+  const party = parties.find(p => p.id === partyId);
+  
+  if (!party || party.size === size) return;
+  
+  const raidId = state.selectedRaid?.id;
+  const difficultyId = state.selectedDifficulty?.id;
+  
+  // 8명에서 4명으로 변경할 때 확인 필요
+  if (party.size === 8 && size === 4) {
+    const occupiedSlots = party.members.filter(m => m !== null).length;
+    if (occupiedSlots > 4) {
+      window.modalManager.showConfirm({
+        title: '경고',
+        message: `현재 ${occupiedSlots}명의 캐릭터가 배치되어 있습니다. 4명으로 변경하면 ${occupiedSlots - 4}명의 캐릭터가 제거됩니다. 계속하시겠습니까?`,
+        confirmText: '계속',
+        cancelText: '취소',
+        onConfirm: async () => {
+          // 실시간 동기화 모드에서의 충돌 감지 및 실행
+          const canEdit = await window.realtimeSync.checkEditLock();
+          if (!canEdit) {
+            window.modalManager.showAlert({
+              title: '편집 충돌',
+              message: '다른 사용자가 현재 편집 중입니다. 잠시 후 다시 시도해주세요.'
+            });
+            return;
+          }
+          
+          try {
+            // 편집 잠금 설정
+            await window.realtimeSync.setEditLock();
+            
+            // 편집 실행
+            performRaidSizeChange(party, size, raidId, difficultyId, partyId);
+            
+            // 잠금 해제
+            await window.realtimeSync.clearEditLock();
+            
+            // 저장 및 동기화
+            scheduleAutoSave();
+            
+          } catch (error) {
+            console.error('❌ [PARTY SIZE ERROR]:', error);
+            
+            // 에러 발생 시 잠금 해제
+            await window.realtimeSync.clearEditLock();
+            
+            window.modalManager.showAlert({
+              title: '오류',
+              message: '파티 크기 변경 중 오류가 발생했습니다: ' + error.message
+            });
+          }
+        }
+      });
+      return;
+    }
+  }
+  
+  // 일반적인 크기 변경 (확인 없이 바로 실행)
   const canEdit = await window.realtimeSync.checkEditLock();
   if (!canEdit) {
     window.modalManager.showAlert({
@@ -513,13 +630,7 @@ async function setRaidSize(partyId, size) {
     // 편집 잠금 설정
     await window.realtimeSync.setEditLock();
     
-    // 편집 실행 (동기화 모드에서는 확인 없이 바로 실행)
-    const parties = getCurrentTabParties();
-    const party = parties.find(p => p.id === partyId);
-    
-    const raidId = state.selectedRaid?.id;
-    const difficultyId = state.selectedDifficulty?.id;
-
+    // 편집 실행
     performRaidSizeChange(party, size, raidId, difficultyId, partyId);
     
     // 잠금 해제
@@ -894,6 +1005,140 @@ function showRaidListModal() {
   modal.show();
 }
 
+// 헤더에서 개별 파티 클리어 토글 함수
+function toggleRaidSlotClearInHeader(raidId, difficultyId, partyId, element) {
+  const parties = state.raidTabs[raidId][difficultyId] || [];
+  const party = parties.find(p => p.id === partyId);
+  
+  if (party) {
+    const newClearedState = !party.cleared;
+    
+    // 히스토리 기록
+    if (typeof recordHistory === 'function') {
+      recordHistory(
+        'update',
+        {
+          type: 'party_clear_header',
+          id: `raid_${raidId}_${difficultyId}_${partyId}`,
+          path: `raidTabs.${raidId}.${difficultyId}.cleared`
+        },
+        { cleared: party.cleared },
+        { cleared: newClearedState },
+        `헤더에서 ${party.name} 클리어 상태 변경: ${newClearedState ? '클리어' : '해제'}`
+      );
+    }
+    
+    // 상태 변경
+    party.cleared = newClearedState;
+    
+    // UI 업데이트
+    renderRaidListModal();
+    renderRaidParties();
+    renderExpedition();
+    
+    // 저장
+    scheduleAutoSave();
+    
+    // 완료 알림
+    window.modalManager.showAlert({
+      title: '클리어 상태 변경',
+      message: `${party.name}을(를) ${newClearedState ? '클리어' : '해제'}했습니다.`
+    });
+  }
+}
+
+// 모달에서 개별 파티 슬롯 클리어 토글 함수
+function toggleRaidSlotClear(raidId, difficultyId, partyId, element) {
+  const parties = state.raidTabs[raidId][difficultyId] || [];
+  const party = parties.find(p => p.id === partyId);
+  
+  if (party) {
+    const newClearedState = !party.cleared;
+    
+    // 히스토리 기록
+    if (typeof recordHistory === 'function') {
+      recordHistory(
+        'update',
+        {
+          type: 'party_clear_modal',
+          id: `raid_${raidId}_${difficultyId}_${partyId}`,
+          path: `raidTabs.${raidId}.${difficultyId}.cleared`
+        },
+        { cleared: party.cleared },
+        { cleared: newClearedState },
+        `모달에서 ${party.name} 클리어 상태 변경: ${newClearedState ? '클리어' : '해제'}`
+      );
+    }
+    
+    // 상태 변경
+    party.cleared = newClearedState;
+    
+    // UI 업데이트
+    renderRaidListModal();
+    renderRaidParties();
+    renderExpedition();
+    
+    // 저장
+    scheduleAutoSave();
+    
+    // 완료 알림
+    window.modalManager.showAlert({
+      title: '클리어 상태 변경',
+      message: `${party.name}을(를) ${newClearedState ? '클리어' : '해제'}했습니다.`
+    });
+  }
+}
+
+// 모달에서 전체 클리어/해제 토글 함수
+function toggleAllRaidClearInModal(setCleared) {
+  let changedCount = 0;
+  
+  state.raidsData.forEach(raid => {
+    raid.difficulties.forEach(difficulty => {
+      const parties = state.raidTabs && state.raidTabs[raid.id] && state.raidTabs[raid.id][difficulty.id] 
+        ? state.raidTabs[raid.id][difficulty.id] 
+        : [];
+      
+      parties.forEach(party => {
+        if (party.cleared !== setCleared) {
+          party.cleared = setCleared;
+          changedCount++;
+        }
+      });
+    });
+  });
+  
+  if (changedCount > 0) {
+    // 히스토리 기록
+    if (typeof recordHistory === 'function') {
+      recordHistory(
+        'bulk_update',
+        {
+          type: 'bulk_raid_clear_modal',
+          path: 'raidTabs'
+        },
+        { cleared: !setCleared, count: changedCount },
+        { cleared: setCleared, count: changedCount },
+        `모달에서 전체 공격대 클리어 상태 변경: ${setCleared ? '클리어' : '해제'} (${changedCount}개 파티)`
+      );
+    }
+    
+    // UI 업데이트
+    renderRaidListModal();
+    renderRaidParties();
+    renderExpedition();
+    
+    // 저장
+    scheduleAutoSave();
+    
+    // 완료 알림
+    window.modalManager.showAlert({
+      title: '일괄 변경 완료',
+      message: `모달에서 ${changedCount}개 공격대를 ${setCleared ? '클리어' : '해제'}했습니다.`
+    });
+  }
+}
+
 // 공대 리스트 내보내기 (JSON)
 function exportRaidList() {
   try {
@@ -1183,6 +1428,28 @@ function renderRaidListModal() {
   const content = document.getElementById('raidListContent');
   if (!content) return;
   
+  // 전체 파티 데이터 수집
+  let allParties = [];
+  let clearedCount = 0;
+  let unclearedCount = 0;
+  
+  state.raidsData.forEach(raid => {
+    raid.difficulties.forEach(difficulty => {
+      const parties = state.raidTabs && state.raidTabs[raid.id] && state.raidTabs[raid.id][difficulty.id] 
+        ? state.raidTabs[raid.id][difficulty.id] 
+        : [];
+      
+      parties.forEach(party => {
+        allParties.push(party);
+        if (party.cleared) {
+          clearedCount++;
+        } else {
+          unclearedCount++;
+        }
+      });
+    });
+  });
+  
   let html = '<ul class="nav nav-tabs mb-4" id="raidListTabs" role="tablist">';
   
   // 레이드 탭 생성
@@ -1203,6 +1470,7 @@ function renderRaidListModal() {
   });
   
   html += '</ul>';
+  
   html += '<div class="tab-content" id="raidListTabContent">';
   
   // 각 레이드의 난이도별 공격대 카드 생성
@@ -1276,8 +1544,8 @@ function renderRaidListModal() {
                     <i class="bi bi-people-fill me-1"></i>${party.name}
                   </h6>
                   ${party.cleared ? 
-                    '<span class="badge bg-success" style="font-size: 0.6rem;"><i class="bi bi-check-circle-fill me-1"></i>클리어</span>' : 
-                    '<span class="badge bg-secondary" style="font-size: 0.6rem;"><i class="bi bi-circle me-1"></i>미클리어</span>'
+                    `<span class="badge bg-success" style="font-size: 0.6rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-check-circle-fill me-1"></i>클리어</span>` : 
+                    `<span class="badge bg-secondary" style="font-size: 0.6rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-circle me-1"></i>미클리어</span>`
                   }
                 </div>
                 <div class="card-body p-1">
@@ -1742,7 +2010,27 @@ window.addEventListener('load', function() {
 
 // 원정대 슬롯 이름 변경
 function renameExpeditionSlot(slotIndex) {
+  // 중복 클릭 방지 - 함수 레벨 잠금
+  if (renameExpeditionSlot.locked) {
+    return;
+  }
+  
+  // 중복 클릭 방지 - 작업 잠금 확인
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    return;
+  }
+  
+  // 잠금 설정
+  renameExpeditionSlot.locked = true;
+  
   const currentName = state.expeditionSlotNames[slotIndex];
+  
+  // 모달 닫힐 때 잠금 해제 함수
+  const unlockFunction = () => {
+    setTimeout(() => {
+      renameExpeditionSlot.locked = false;
+    }, 300);
+  };
   
   window.modalManager.showInput({
     title: '원정대 이름 변경',
@@ -1787,8 +2075,20 @@ function renameExpeditionSlot(slotIndex) {
         
         // 자동 저장
         scheduleAutoSave();
+        
+        // 완료 알림
+        window.modalManager.showAlert({
+          title: '이름 변경 완료',
+          message: `원정대 이름이 "${currentName}"에서 "${trimmedName}"으로 변경되었습니다.`,
+          onClose: unlockFunction
+        });
+      } else {
+        // 이름이 변경되지 않은 경우에도 잠금 해제
+        unlockFunction();
       }
-    }
+    },
+    onCancel: unlockFunction,
+    onClose: unlockFunction
   });
 }
 
@@ -1883,6 +2183,11 @@ async function autoAssign() {
 
   // 각 파티에 캐릭터 배치
   parties.forEach(party => {
+    // 클리어된 파티는 건너뛰기
+    if (party.cleared) {
+      return;
+    }
+    
     // 유틸리티 함수: 원정대 슬롯 인덱스 가져오기
     const getUsedExpeditionSlotIndices = () => {
       const used = new Set();
@@ -1958,12 +2263,25 @@ async function autoAssign() {
 
   // 동기화 중이 아니면 알림 표시
   const isSyncMode = window.realtimeSync && window.realtimeSync.isSyncActive();
-  if (!isSyncMode) {
-    window.modalManager.showAlert({
-      title: '자동 추천 완료',
-      message: `${assignedCount}명의 캐릭터를 공격대에 배치했습니다.\n서폿 우선 배치: ${supports.length}명 남음\nDPS 배치: ${dps.length}명 남음\n(모든 제약 조건 적용 완료)`
-    });
+  
+  let message = '';
+  if (assignedCount > 0) {
+    message = `${assignedCount}명의 캐릭터를 공격대에 배치했습니다.\n서폿 우선 배치: ${supports.length}명 남음\nDPS 배치: ${dps.length}명 남음\n(모든 제약 조건 적용 완료)`;
+  } else {
+    const clearedParties = parties.filter(p => p.cleared).length;
+    const totalParties = parties.length;
+    if (clearedParties === totalParties) {
+      message = '모든 공격대가 이미 클리어되어 배치할 파티가 없습니다.';
+    } else {
+      message = '배치 가능한 공격대가 없거나 모든 캐릭터가 이미 배치되었습니다.';
+    }
   }
+  
+  // 실시간 동기화 모드에서도 간단한 알림 표시
+  window.modalManager.showAlert({
+    title: '자동 추천 완료',
+    message: message
+  });
   } finally {
     // 잠금 해제 (안전한 확인)
     if (window.operationLock && typeof window.operationLock.release === 'function') {
@@ -2011,8 +2329,13 @@ async function balancedAssign() {
     return;
   }
 
-  // 빈 슬롯 수 계산 (기존 배치 유지)
+  // 빈 슬롯 수 계산 (기존 배치 유지, 클리어된 파티 제외)
   const totalEmptySlots = parties.reduce((sum, party) => {
+    // 클리어된 파티는 제외
+    if (party.cleared) {
+      return sum;
+    }
+    
     const members = Array.isArray(party.members) ? party.members : [];
     const partySize = party.size || members.length;
     const normalized = members.length < partySize
@@ -2036,6 +2359,11 @@ async function balancedAssign() {
   let assignedCount = 0;
   // 1) 서폿: 각 파티의 "부족한 서폿"만 채움
   parties.forEach(party => {
+    // 클리어된 파티는 건너뛰기
+    if (party.cleared) {
+      return;
+    }
+    
     if (!Array.isArray(party.members)) party.members = [];
     if (party.members.length < party.size) {
       party.members = party.members.concat(Array(party.size - party.members.length).fill(null));
@@ -2103,6 +2431,11 @@ async function balancedAssign() {
     let placedThisRound = 0;
 
     for (const party of parties) {
+      // 클리어된 파티는 건너뛰기
+      if (party.cleared) {
+        continue;
+      }
+      
       const emptyIndex = (party.members || []).findIndex(m => m === null);
       if (emptyIndex === -1) continue;
 
@@ -2161,19 +2494,26 @@ async function balancedAssign() {
   // 저장
   scheduleAutoSave();
 
-  // 각 파티의 평균 전투력 계산
-  const partyStats = parties.map(party => {
-    const validMembers = party.members.filter(m => m !== null);
-    const avgCp = validMembers.length > 0 
-      ? Math.round(validMembers.reduce((sum, m) => sum + parseCompareNumber(m.combatPower || '0'), 0) / validMembers.length)
-      : 0;
-    const supportCount = validMembers.filter(m => m.role === 'support').length;
-    return {
-      name: party.name,
-      members: validMembers.length,
-      avgCp: avgCp.toLocaleString(),
-      supports: supportCount
-    };
+  // 동기화 중이 아니면 알림 표시
+  const isSyncMode = window.realtimeSync && window.realtimeSync.isSyncActive();
+  
+  let message = '';
+  if (assignedCount > 0) {
+    message = `${assignedCount}명의 캐릭터를 공격대에 균등하게 배치했습니다.\n서폿 우선 배치: ${supports.length}명 남음\nDPS 배치: ${dps.length}명 남음\n(모든 제약 조건 적용 완료)`;
+  } else {
+    const clearedParties = parties.filter(p => p.cleared).length;
+    const totalParties = parties.length;
+    if (clearedParties === totalParties) {
+      message = '모든 공격대가 이미 클리어되어 배치할 파티가 없습니다.';
+    } else {
+      message = '배치 가능한 공격대가 없거나 모든 캐릭터가 이미 배치되었습니다.';
+    }
+  }
+  
+  // 실시간 동기화 모드에서도 간단한 알림 표시
+  window.modalManager.showAlert({
+    title: '균등 분배 완료',
+    message: message
   });
   } finally {
     // 잠금 해제
@@ -2812,5 +3152,8 @@ function loadDarkModeSetting() {
   updateDarkModeIcon(isDarkMode);
 }
 
-// 페이지 로드 시 다크모드 설정 적용
-document.addEventListener('DOMContentLoaded', loadDarkModeSetting);
+// 페이지 로드 시 다크모드 설정 적용 및 파티 순번 마이그레이션
+document.addEventListener('DOMContentLoaded', () => {
+  loadDarkModeSetting();
+  migratePartyOrder(); // 기존 파티 데이터에 순번 추가
+});
