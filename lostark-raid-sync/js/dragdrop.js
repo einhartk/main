@@ -512,7 +512,7 @@ async function handleExpeditionToRaidDrop(charId, targetPartyId, targetSlotIndex
   targetParty.members[targetSlotIndex] = newMember;
 
   // UI 업데이트 (즉시 반영)
-  renderRaidParties();
+  renderRaidParties(true); // 즉시 렌더링
   renderExpedition();
 
   // 비동기 저장 (UI 블로킹 방지)

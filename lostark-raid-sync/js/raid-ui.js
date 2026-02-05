@@ -49,109 +49,28 @@ function renderRaidTabs() {
   container.innerHTML = tabsHtml;
 }
 
+// 🔥 성능 최적화: 디바운스 헬퍼 함수
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 // 파티 드래그 앤 드롭 관련 전역 변수
 let draggedPartyElement = null;
 let draggedPartyData = null;
 
-// 파티 드래그 시작
-function handlePartyDragStart(e) {
-  const partyElement = e.target.closest('.col-md-6');
-  
-  // 클리어된 파티는 드래그 금지
-  if (partyElement.classList.contains('cleared-party')) {
-    e.preventDefault();
-    return false;
+// 드래그 리프 이벤트 핸들러
+function handleDragLeave(event) {
+  if (event.currentTarget && event.currentTarget.classList) {
+    event.currentTarget.classList.remove('drag-over');
   }
-  
-  draggedPartyElement = partyElement;
-  draggedPartyData = {
-    id: draggedPartyElement.getAttribute('data-party-id'),
-    order: parseInt(draggedPartyElement.getAttribute('data-party-order'))
-  };
-  
-  draggedPartyElement.classList.add('dragging');
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/html', draggedPartyElement.innerHTML);
-}
-
-// 파티 드래그 오버
-function handlePartyDragOver(e) {
-  if (e.preventDefault) {
-    e.preventDefault();
-  }
-  
-  e.dataTransfer.dropEffect = 'move';
-  
-  // 드래그 중인 파티 위에 시각적 표시
-  const targetElement = e.target.closest('.col-md-6');
-  if (targetElement && targetElement !== draggedPartyElement) {
-    targetElement.classList.add('drag-over');
-  }
-  
-  return false;
-}
-
-// 파티 드롭
-function handlePartyDrop(e) {
-  if (e.stopPropagation) {
-    e.stopPropagation();
-  }
-  
-  if (e.preventDefault) {
-    e.preventDefault();
-  }
-  
-  const targetElement = e.target.closest('.col-md-6');
-  if (targetElement && draggedPartyElement && targetElement !== draggedPartyElement) {
-    // 실제 순서 변경 로직 호출
-    const raidId = state.selectedRaid?.id;
-    const difficultyId = state.selectedDifficulty?.id;
-    
-    if (raidId && difficultyId) {
-      const container = document.getElementById('raidParties');
-      const allParties = Array.from(container.children);
-      const fromIndex = allParties.indexOf(draggedPartyElement);
-      const toIndex = allParties.indexOf(targetElement);
-      
-      if (fromIndex !== -1 && toIndex !== -1) {
-        reorderParties(raidId, difficultyId, fromIndex, toIndex);
-      }
-    }
-  }
-  
-  return false;
-}
-
-// 파티 드래그 종료
-function handlePartyDragEnd(e) {
-  // 모든 드래그 관련 클래스 제거
-  document.querySelectorAll('.drag-over').forEach(el => {
-    el.classList.remove('drag-over');
-  });
-  
-  if (draggedPartyElement) {
-    draggedPartyElement.style.opacity = '1';
-    draggedPartyElement.classList.remove('dragging');
-  }
-  
-  draggedPartyElement = null;
-  draggedPartyData = null;
-}
-
-// 드래그 후 삽입 위치 계산
-function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll('.col-md-6:not(.dragging)')];
-  
-  return draggableElements.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-    
-    if (offset < 0 && offset > closest.offset) {
-      return { offset: offset, element: child };
-    } else {
-      return closest;
-    }
-  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
 // 전체 클리어/해제 토글 함수
@@ -196,8 +115,13 @@ function toggleAllRaidClear(setCleared) {
   }
 }
 
-// 공격대 파티 렌더링
-function renderRaidParties() {
+// 공격대 파티 렌더링 - 즉시 렌더링으로 변경 (사용자 경험 향상)
+function renderRaidParties(forceRender = false) {
+  renderRaidPartiesInternal(forceRender);
+}
+
+// 🔥 내부 렌더링 함수 (기존 로직 그대로 유지)
+function renderRaidPartiesInternal(forceRender = false) {
   const container = document.getElementById('raidParties');
   if (!container) {
     console.error('❌ [RENDER] raidParties 컨테이너를 찾을 수 없음');
@@ -284,14 +208,13 @@ function renderRaidParties() {
     }
     
     // 드래그 앤 드롭 이벤트 리스너 추가 (클리어 안된 파티만)
+    // 이벤트 위임 방식으로 변경하여 메모리 누수 방지
     if (!party.cleared) {
-      partyDiv.addEventListener('dragstart', handlePartyDragStart);
-      partyDiv.addEventListener('dragover', handlePartyDragOver);
-      partyDiv.addEventListener('drop', handlePartyDrop);
-      partyDiv.addEventListener('dragend', handlePartyDragEnd);
+      partyDiv.setAttribute('data-draggable', 'true');
+      partyDiv.setAttribute('data-party-id', party.id);
     }
     
-    container.appendChild(partiesContainer);
+    partiesContainer.appendChild(partyDiv);
 
     // 원정대에서 상세 정보를 가져와서 계산 (이름 또는 id로 조회)
     const validMembers = party.members.filter(m => m !== null);
@@ -314,7 +237,7 @@ function renderRaidParties() {
                   <span class="input-group-text" style="background: white; color: #2c3e50; border: 1px solid #ced4da; font-size: 0.85rem;">
                     <i class="bi bi-people-fill"></i>
                   </span>
-                  <input type="text" class="form-control" id="raidName-${party.id}" 
+                  <input type="text" class="form-control" id="raidName-${party.id}-${index}" 
                          value="${party.name || `${party.raidName} ${party.difficultyName} ${party.displayName || party.id}`}" 
                          placeholder="파티 이름" 
                          onchange="updateRaidName('${party.id}', this.value)"
@@ -353,7 +276,7 @@ function renderRaidParties() {
             <!-- 중앙: 서폿 정보 -->
             <div class="col-md-3">
               <div class="d-flex align-items-center justify-content-center">
-                <span id="support-${party.id}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; font-weight: 600;">
+                <span id="support-${party.id}-${index}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; font-weight: 600;">
                   <i class="bi bi-shield-fill me-1"></i>
                   <span class="fw-bold">서폿</span> ${supportCount}/${maxSupports}
                 </span>
@@ -365,11 +288,11 @@ function renderRaidParties() {
               <div class="d-flex align-items-center justify-content-end gap-3">
                 <!-- 클리어 상태 -->
                 <div class="form-check form-switch mb-0">
-                  <input class="form-check-input" type="checkbox" id="cleared-${party.id}" 
+                  <input class="form-check-input" type="checkbox" id="cleared-${party.id}-${index}" 
                          ${party.cleared === true ? 'checked' : ''} 
                          onchange="toggleRaidClear('${party.id}', this.checked)"
                          style="cursor: pointer;">
-                  <label class="form-check-label d-flex align-items-center" for="cleared-${party.id}" 
+                  <label class="form-check-label d-flex align-items-center" for="cleared-${party.id}-${index}" 
                          style="font-size: 0.8rem; color: ${party.cleared === true ? '#28a745' : '#6c757d'}; cursor: pointer; font-weight: 500; margin-left: 8px;">
                     <i class="bi ${party.cleared === true ? 'bi-check-circle-fill text-success' : 'bi-circle text-secondary'} me-2"></i>
                     <span class="${party.cleared === true ? 'text-success' : 'text-secondary'}">클리어</span>
@@ -381,12 +304,12 @@ function renderRaidParties() {
                 
                 <!-- 파티 크기 선택 -->
                 <div class="btn-group btn-group-sm" role="group" style="box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                  <input type="radio" class="btn-check" name="partySize-${party.id}" id="size4-${party.id}" value="4" ${party.size === 4 ? 'checked' : ''} onchange="setRaidSize('${party.id}', 4)">
-                  <label class="btn ${party.size === 4 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size4-${party.id}" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 500; border-top-left-radius: 6px !important; border-bottom-left-radius: 6px !important;">
+                  <input type="radio" class="btn-check" name="partySize-${party.id}" id="size4-${party.id}-${index}" value="4" ${party.size === 4 ? 'checked' : ''} onchange="setRaidSize('${party.id}', 4)">
+                  <label class="btn ${party.size === 4 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size4-${party.id}-${index}" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 500; border-top-left-radius: 6px !important; border-bottom-left-radius: 6px !important;">
                     <i class="bi bi-people-fill me-1"></i>4인
                   </label>
-                  <input type="radio" class="btn-check" name="partySize-${party.id}" id="size8-${party.id}" value="8" ${party.size === 8 ? 'checked' : ''} onchange="setRaidSize('${party.id}', 8)">
-                  <label class="btn ${party.size === 8 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size8-${party.id}" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 500; border-top-right-radius: 6px !important; border-bottom-right-radius: 6px !important;">
+                  <input type="radio" class="btn-check" name="partySize-${party.id}" id="size8-${party.id}-${index}" value="8" ${party.size === 8 ? 'checked' : ''} onchange="setRaidSize('${party.id}', 8)">
+                  <label class="btn ${party.size === 8 ? 'btn-primary' : 'btn-outline-primary'} text-white" for="size8-${party.id}-${index}" style="font-size: 0.75rem; padding: 4px 8px; font-weight: 500; border-top-right-radius: 6px !important; border-bottom-right-radius: 6px !important;">
                     <i class="bi bi-people-fill me-1"></i>8인
                   </label>
                 </div>
@@ -404,8 +327,8 @@ function renderRaidParties() {
                   <span class="input-group-text">
                     <i class="bi bi-clock"></i> 약속 시간
                   </span>
-                  <select class="form-select" id="scheduledWeekday-${party.id}" 
-                          onchange="updateRaidScheduledTime('${party.id}', this.value, document.getElementById('scheduledHour-${party.id}').value)">
+                  <select class="form-select" id="scheduledWeekday-${party.id}-${index}" 
+                          onchange="updateRaidScheduledTime('${party.id}', this.value, document.getElementById('scheduledHour-${party.id}-${index}').value)">
                     <option value="">요일 선택</option>
                     <option value="monday" ${party.scheduledWeekday === 'monday' ? 'selected' : ''}>월요일</option>
                     <option value="tuesday" ${party.scheduledWeekday === 'tuesday' ? 'selected' : ''}>화요일</option>
@@ -415,16 +338,18 @@ function renderRaidParties() {
                     <option value="saturday" ${party.scheduledWeekday === 'saturday' ? 'selected' : ''}>토요일</option>
                     <option value="sunday" ${party.scheduledWeekday === 'sunday' ? 'selected' : ''}>일요일</option>
                   </select>
-                  <input type="time" class="form-control" id="scheduledHour-${party.id}" 
+                  <input type="text" class="form-control clockpicker" id="scheduledHour-${party.id}-${index}" 
+                         placeholder="클릭하여 시간 선택" 
                          value="${party.scheduledHour || ''}" 
-                         onchange="updateRaidScheduledTime('${party.id}', document.getElementById('scheduledWeekday-${party.id}').value, this.value)">
+                         readonly style="cursor: pointer; background: white;"
+                         data-party-id="${party.id}">
                   <button class="btn btn-outline-secondary" type="button" onclick="clearRaidScheduledTime('${party.id}')" title="시간 초기화">
                     <i class="bi bi-x-circle"></i>
                   </button>
                 </div>
                 <div class="input-group input-group-sm" style="flex: 0 0 auto;">
                   <span class="input-group-text">최소 레벨</span>
-                  <input type="number" class="form-control" id="minIlvl-${party.id}" 
+                  <input type="number" class="form-control" id="minIlvl-${party.id}-${index}" 
                          value="${party.minIlvl || 0}" 
                          placeholder="0" 
                          min="0" 
@@ -435,7 +360,7 @@ function renderRaidParties() {
                 </div>
                 <div class="input-group input-group-sm" style="flex: 0 0 auto;">
                   <span class="input-group-text">최소 전투력</span>
-                  <input type="number" class="form-control" id="minCombatPower-${party.id}" 
+                  <input type="number" class="form-control" id="minCombatPower-${party.id}-${index}" 
                          value="${party.minCombatPower || 0}" 
                          placeholder="0" 
                          min="0" 
@@ -479,11 +404,23 @@ function renderRaidParties() {
       </div>
     `;
 
-    container.appendChild(partyDiv);
+    partiesContainer.appendChild(partyDiv);
   });
+
+  // 최종적으로 partiesContainer를 container에 추가
+  container.appendChild(partiesContainer);
 
   updateSupportCount();
   setupRaidEventListeners();
+  
+  // ClockPicker 초기화 (모든 파티의 시간 선택기)
+  setTimeout(() => {
+    sortedParties.forEach(party => {
+      if (window.initializeClockPicker) {
+        window.initializeClockPicker(party.id);
+      }
+    });
+  }, 100);
 }
 
 // 🔥 **핵심 수정: 전역 함수로 노출**
@@ -544,13 +481,96 @@ function getCharacterDetailsFromExpedition(characterNameOrId) {
 }
 
 
-// 드래그 앤 드롭 이벤트 설정
+// 드래그 앤 드롭 이벤트 설정 (이벤트 위임 방식)
 function setupRaidEventListeners() {
-  // 드래그 앤 드롭 이벤트 리스너 설정
+  const container = document.getElementById('raidParties');
+  if (!container) return;
+  
+  // 드래그 앤 드롭 이벤트 위임
+  container.addEventListener('dragstart', (e) => {
+    const partyDiv = e.target.closest('[data-draggable="true"]');
+    if (partyDiv && !partyDiv.classList.contains('cleared-party')) {
+      // 전역 변수 설정
+      draggedPartyElement = partyDiv;
+      draggedPartyData = {
+        id: draggedPartyElement.getAttribute('data-party-id'),
+        order: parseInt(draggedPartyElement.getAttribute('data-party-order'))
+      };
+      
+      draggedPartyElement.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', draggedPartyElement.innerHTML);
+    }
+  });
+  
+  // 전체 컨테이너에서 dragover 이벤트 처리 (드롭 허용을 위해)
+  container.addEventListener('dragover', (e) => {
+    // 드래그 가능한 요소 위에 있을 때만 드롭 허용
+    const partyDiv = e.target.closest('[data-draggable="true"]');
+    if (partyDiv && !partyDiv.classList.contains('cleared-party')) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // 드래그 중인 파티 위에 시각적 표시
+      if (draggedPartyElement && partyDiv !== draggedPartyElement) {
+        // 기존 드래그 오버 표시 제거
+        document.querySelectorAll('.drag-over').forEach(el => {
+          el.classList.remove('drag-over');
+        });
+        partyDiv.classList.add('drag-over');
+      }
+    } else {
+      // 드래그 가능한 영역이 아니면 드롭 금지
+      e.dataTransfer.dropEffect = 'none';
+    }
+  });
+  
+  container.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const targetElement = e.target.closest('[data-draggable="true"]');
+    if (targetElement && draggedPartyElement && targetElement !== draggedPartyElement && 
+        !targetElement.classList.contains('cleared-party')) {
+      
+      // 실제 순서 변경 로직 호출
+      const raidId = state.selectedRaid?.id;
+      const difficultyId = state.selectedDifficulty?.id;
+      
+      if (raidId && difficultyId) {
+        // partiesContainer를 기준으로 인덱스 계산 - 더 정확한 선택자 사용
+        const partiesContainer = container.querySelector('.row:not(.mb-3)');
+        if (!partiesContainer) return;
+        
+        const allParties = Array.from(partiesContainer.children);
+        const fromIndex = allParties.indexOf(draggedPartyElement);
+        const toIndex = allParties.indexOf(targetElement);
+        
+        if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+          reorderParties(raidId, difficultyId, fromIndex, toIndex);
+        }
+      }
+    }
+  });
+  
+  container.addEventListener('dragend', (e) => {
+    // 모든 드래그 관련 클래스 제거
+    document.querySelectorAll('.drag-over').forEach(el => {
+      el.classList.remove('drag-over');
+    });
+    
+    if (draggedPartyElement) {
+      draggedPartyElement.style.opacity = '1';
+      draggedPartyElement.classList.remove('dragging');
+    }
+    
+    draggedPartyElement = null;
+    draggedPartyData = null;
+  });
+
+  // 전역 드래그 앤 드롭 이벤트 (기존과 동일)
   document.addEventListener('dragover', handleDragOver);
   document.addEventListener('drop', handleDrop);
-
-  // 드래그 리프 이벤트 방지
   document.addEventListener('dragleave', handleDragLeave);
 }
 

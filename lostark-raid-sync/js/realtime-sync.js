@@ -288,7 +288,6 @@ class RealtimeSync {
         // 오래된 탭에서의 동기화 방지: 10분 이상 비활성 상태였으면 동기화 건너뛰기
         const inactiveTime = now - this.lastActivityTime;
         if (inactiveTime > 10 * 60 * 1000 && !this.isPageActive) {
-            console.warn('⚠️ [SYNC] Skipping sync from inactive tab');
             return;
         }
         
@@ -306,6 +305,29 @@ class RealtimeSync {
                 state.raidTabs = JSON.parse(compressedData.rt);
             } catch (error) {
                 console.error('❌ [SYNC] Failed to parse raidTabs:', error);
+            }
+        }
+        
+        if (compressedData.rt) {
+            try {
+                const raidTabs = JSON.parse(compressedData.rt);
+                let totalParties = 0;
+                
+                Object.keys(raidTabs).forEach(raidId => {
+                    const difficulties = raidTabs[raidId];
+                    Object.keys(difficulties).forEach(difficultyId => {
+                        const parties = difficulties[difficultyId] || [];
+                        totalParties += parties.length;
+                        
+                        parties.forEach((party, partyIndex) => {
+                            // 공격대 로드
+                        });
+                    });
+                });
+                
+                // 전체 공격대 로드 완료
+            } catch (error) {
+                console.error('❌ [SYNC] 공격대 정보 로드 실패:', error);
             }
         }
         if (compressedData.es) {
@@ -496,7 +518,6 @@ class RealtimeSync {
             
             // 마지막 업데이트가 1분 이상이면 데이터 새로고침
             if (now - lastUpdateTime > 60000) {
-                console.log('🔄 [SYNC] Stale tab detected, refreshing data...');
                 await this.forceDataRefresh();
             }
         } catch (error) {
@@ -705,7 +726,6 @@ class RealtimeSync {
         // 오래된 탭에서의 동기화 방지
         const inactiveTime = Date.now() - this.lastActivityTime;
         if (inactiveTime > 10 * 60 * 1000 && !this.isPageActive) {
-            console.warn('⚠️ [SYNC] Blocking sync from inactive tab');
             return Promise.resolve();
         }
 
@@ -1073,7 +1093,6 @@ setInterval(async () => {
   if (window.realtimeSync && typeof window.realtimeSync.isSyncActive === 'function' && window.realtimeSync.isSyncActive()) {
     try {
       await cleanupFirebaseHistory();
-      console.log('🧹 [SYNC] Firebase 히스토리 주기적 정리 완료');
     } catch (error) {
       console.error('🧹 [SYNC] Firebase 히스토리 주기적 정리 실패:', error);
     }

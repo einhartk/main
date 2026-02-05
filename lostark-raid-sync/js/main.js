@@ -234,7 +234,7 @@ function reorderParties(raidId, difficultyId, fromIndex, toIndex) {
     );
   }
   
-  // UI 업데이트
+  // UI 업데이트 - 즉시 렌더링 (드래그 앤 드롭은 즉시 피드백 필요)
   renderRaidParties();
   scheduleAutoSave();
 }
@@ -345,7 +345,7 @@ async function addNewRaid(skipHistory = false) {
     // State Manager가 없으면 기존 방식으로 처리
     if (!window.stateManager || !window.stateManager.atomicUpdate) {
       state.raidTabs[raidId][difficultyId].push(newParty);
-      renderRaidParties();
+      renderRaidParties(true); // 즉시 렌더링
       scheduleAutoSave();
     } else {
       // State Manager로 원자적 업데이트
@@ -401,7 +401,10 @@ async function updateRaidName(partyId, newName) {
     );
     
     party.name = newName;
+    
+    // UI 업데이트 - 즉시 렌더링 (파티 이름 변경은 즉시 피드백 필요)
     renderRaidParties();
+    
     scheduleAutoSave();
   }
 }
@@ -430,7 +433,10 @@ function updateRaidRequirements(partyId, requirementType, value) {
       );
       
       party[requirementType] = newValue;
+      
+      // UI 업데이트 - 즉시 렌더링 (요구사항 변경은 즉시 피드백 필요)
       renderRaidParties();
+      
       scheduleAutoSave();
     }
   }
@@ -495,7 +501,10 @@ async function performRaidSizeChange(party, size, raidId, difficultyId, partyId)
   }
 
   party.maxSupports = party.size === 8 ? 2 : 1; // 4인 1서폿, 8인 2서폿
+  
+  // UI 업데이트 - 즉시 렌더링 (파티 크기 변경은 즉시 피드백 필요)
   renderRaidParties();
+  
   scheduleAutoSave();
   
   window.modalManager.showAlert({
@@ -702,7 +711,7 @@ async function removeRaid(partyId) {
         parties.splice(index, 1);
 
         try {
-          renderRaidParties();
+          renderRaidParties(true); // 즉시 렌더링
           scheduleAutoSave();
         } finally {
           if (window.operationLock && typeof window.operationLock.release === 'function') {
@@ -792,6 +801,10 @@ async function removeRaid(partyId) {
       if (state.raidTabs && state.raidTabs[raidId] && state.raidTabs[raidId][difficultyId]) {
         state.raidTabs[raidId][difficultyId] = newParties;
       }
+      
+      // UI 업데이트 및 저장
+      renderRaidParties(true); // 즉시 렌더링
+      scheduleAutoSave();
     }
 
     // 잠금 해제
@@ -943,7 +956,7 @@ async function saveCharacterEdit() {
       editCombatPowerInput.value = newCombatPower;
       originalCombatPowerSpan.textContent = newCombatPower;
     }
-    
+
     // UI 업데이트 (저장 후)
     if (partyId !== null && slotIndex !== null) {
       // 공격대 파티 캐릭터 수정 시
@@ -1426,7 +1439,9 @@ function captureRaidListWithLibrary() {
 
 function renderRaidListModal() {
   const content = document.getElementById('raidListContent');
-  if (!content) return;
+  if (!content) {
+    return;
+  }
   
   // 전체 파티 데이터 수집
   let allParties = [];
@@ -1518,7 +1533,19 @@ function renderRaidListModal() {
           </div>
         `;
       } else {
-        parties.forEach(party => {
+        // 유효한 파티만 필터링 (null, undefined, 빈 객체 제외)
+        const validParties = parties.filter(party => party && typeof party === 'object' && party.id);
+        
+        if (validParties.length === 0) {
+          html += `
+            <div class="col-12">
+              <div class="alert alert-light text-center">
+                <i class="bi bi-inbox me-2"></i>생성된 공격대가 없습니다
+              </div>
+            </div>
+          `;
+        } else {
+          validParties.forEach(party => {
           const validMembers = party.members.filter(m => m !== null);
           const supportCount = validMembers.filter(m => m?.role === 'support').length;
           const completionRate = party.size > 0 ? Math.round((validMembers.length / party.size) * 100) : 0;
@@ -1537,53 +1564,54 @@ function renderRaidListModal() {
             : 0;
           
           html += `
-            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-              <div class="card border-0 shadow-sm ${party.cleared ? 'bg-light' : ''}" style="font-size: 0.7rem;">
-                <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
-                  <h6 class="card-title mb-0" style="font-size: 0.75rem;">
-                    <i class="bi bi-people-fill me-1"></i>${party.name}
-                  </h6>
-                  ${party.cleared ? 
-                    `<span class="badge bg-success" style="font-size: 0.6rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-check-circle-fill me-1"></i>클리어</span>` : 
-                    `<span class="badge bg-secondary" style="font-size: 0.6rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-circle me-1"></i>미클리어</span>`
-                  }
-                </div>
-                <div class="card-body p-1">
-                  <div class="text-center mb-1">
-                    <small class="text-muted">인원 ${validMembers.length}/${party.size}</small>
-                    <span class="mx-1">|</span>
-                    <small class="text-primary">평균 CP ${avgCombatPower.toLocaleString()}</small>
-                  </div>
-                  
-                  ${validMembers.length > 0 ? `
-                    <div class="d-flex flex-column gap-0">
-                      ${validMembers.map(member => {
-                        const charDetails = getCharacterDetailsFromExpedition(member.name);
-                        const roleIcon = charDetails?.role === 'support' ? '🛡️' : '⚔️';
-                        const roleColor = charDetails?.role === 'support' ? 'text-success' : 'text-danger';
-                        return `
-                          <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size: 0.65rem;">
-                            <span class="text-truncate" style="max-width: 70px;">
-                              ${member.name || '알 수 없음'}
-                            </span>
-                            <span class="${roleColor}" style="font-size: 0.7rem;">${roleIcon}</span>
-                            <small class="text-muted">${charDetails?.ilvl || '?'}</small>
-                            <small class="text-primary">${(charDetails?.combatPower || '0').toLocaleString()}</small>
-                          </div>
-                        `;
-                      }).join('')}
-                    </div>
-                  ` : `
-                    <div class="text-center text-muted py-2" style="font-size: 0.65rem;">
-                      배정된 캐릭터 없음
-                    </div>
-                  `}
-                </div>
-              </div>
+        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+          <div class="card border-0 shadow-sm ${party.cleared ? 'bg-light' : ''}" style="font-size: 0.7rem;">
+            <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
+              <h6 class="card-title mb-0" style="font-size: 0.75rem;">
+                <i class="bi bi-people-fill me-1"></i>${party.name}
+              </h6>
+              ${party.cleared ? 
+                `<span class="badge bg-success" style="font-size: 0.6rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-check-circle-fill me-1"></i>클리어</span>` : 
+                `<span class="badge bg-secondary" style="font-size: 0.6rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-circle me-1"></i>미클리어</span>`
+              }
             </div>
-          `;
+            <div class="card-body p-1">
+              <div class="text-center mb-1">
+                <small class="text-muted">인원 ${validMembers.length}/${party.size}</small>
+                <span class="mx-1">|</span>
+                <small class="text-primary">평균 CP ${avgCombatPower.toLocaleString()}</small>
+              </div>
+              
+              ${validMembers.length > 0 ? `
+                <div class="d-flex flex-column gap-0">
+                  ${validMembers.map(member => {
+                    const charDetails = getCharacterDetailsFromExpedition(member.name);
+                    const roleIcon = charDetails?.role === 'support' ? '🛡️' : '⚔️';
+                    const roleColor = charDetails?.role === 'support' ? 'text-success' : 'text-danger';
+                    return `
+                      <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size: 0.65rem;">
+                        <span class="text-truncate" style="max-width: 70px;">
+                          ${member.name || '알 수 없음'}
+                        </span>
+                        <span class="${roleColor}" style="font-size: 0.7rem;">${roleIcon}</span>
+                        <small class="text-muted">${charDetails?.ilvl || '?'}</small>
+                        <small class="text-primary">${(charDetails?.combatPower || '0').toLocaleString()}</small>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              ` : `
+                <div class="text-center text-muted py-2" style="font-size: 0.65rem;">
+                  배정된 캐릭터 없음
+                </div>
+              `}
+            </div>
+          </div>
+        </div>
+      `;
         });
-      }
+        } // validParties.length === 0 else 끝
+      } // parties.length === 0 else 끝
       
       html += `
           </div>
@@ -2572,7 +2600,12 @@ async function toggleRaidClear(partyId, isCleared) {
       }
     }
     
-    // UI 업데이트
+    // 알림
+    const message = isCleared ? 
+      `${party.name || partyId} 클리어 완료!` : 
+      `${party.name || partyId} 클리어 취소`;
+    
+    // UI 업데이트 - 즉시 렌더링 (클리어 상태 변경은 즉시 피드백 필요)
     renderRaidParties();
     
     // 동기화
@@ -2581,11 +2614,6 @@ async function toggleRaidClear(partyId, isCleared) {
     } else {
       scheduleAutoSave();
     }
-    
-    // 알림
-    const message = isCleared ? 
-      `${party.name || partyId} 클리어 완료!` : 
-      `${party.name || partyId} 클리어 취소`;
     
     showNotification(message, isCleared ? 'success' : 'info');
     
@@ -2620,8 +2648,6 @@ function checkWeeklyReset() {
 
 // 주간 리셋 실행
 async function performWeeklyReset() {
-  console.log('🔄 [WEEKLY RESET] 주간 리셋 실행...');
-  
   try {
     // 모든 공격대 클리어 상태 초기화
     state.raidsData.forEach(raid => {
@@ -2656,8 +2682,6 @@ async function performWeeklyReset() {
     
     // 알림
     showNotification('주간 리셋이 완료되었습니다. 모든 공격대 클리어 상태가 초기화되었습니다.', 'success', 10000);
-    
-    console.log('✅ [WEEKLY RESET] 주간 리셋 완료');
     
   } catch (error) {
     console.error('❌ [WEEKLY RESET] 리셋 실패:', error);
@@ -2714,12 +2738,46 @@ checkWeeklyReset();
 
 // === 시간 스케줄러 기능 ===
 
+// ClockPicker 초기화 함수
+function initializeClockPicker(partyId) {
+  const timeInput = document.getElementById(`scheduledHour-${partyId}`);
+  if (!timeInput) return;
+  
+  // 기존 ClockPicker가 있으면 파괴
+  if (timeInput._clockpicker) {
+    timeInput._clockpicker.remove();
+  }
+  
+  // ClockPicker 초기화
+  $(timeInput).clockpicker({
+    placement: 'bottom',
+    align: 'left',
+    donetext: '완료',
+    autoclose: true,
+    'default': 'now',
+    vibrate: true,
+    fromnow: 0,
+    twelvehour: false,
+    afterDone: function() {
+      const selectedTime = $(timeInput).val();
+      const weekdaySelect = document.getElementById(`scheduledWeekday-${partyId}`);
+      const weekday = weekdaySelect ? weekdaySelect.value : null;
+      
+      updateRaidScheduledTime(partyId, weekday, selectedTime);
+    }
+  });
+  
+  // 인스턴스 저장
+  timeInput._clockpicker = $(timeInput).data('clockpicker');
+}
+
 // 🔥 **핵심 수정: 스케줄러 관련 함수 전역 노출**
 window.updateRaidScheduledTime = updateRaidScheduledTime;
 window.clearRaidScheduledTime = clearRaidScheduledTime;
 window.openSchedulerModal = openSchedulerModal;
 window.refreshScheduler = refreshScheduler;
 window.exportSchedule = exportSchedule;
+window.initializeClockPicker = initializeClockPicker;
 
 // 공격대 약속 시간 업데이트
 async function updateRaidScheduledTime(partyId, weekday, hour) {
@@ -2829,6 +2887,10 @@ async function clearRaidScheduledTime(partyId) {
   }
   if (hourInput) {
     hourInput.value = '';
+    // ClockPicker도 초기화
+    if (hourInput._clockpicker) {
+      $(hourInput).clockpicker('done');
+    }
   }
   
   await updateRaidScheduledTime(partyId, null, null);

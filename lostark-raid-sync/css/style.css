@@ -345,6 +345,84 @@ main {
   animation: fadeIn 0.3s ease-out forwards;
 }
 
+/* ClockPicker 시계 선택기 스타일 */
+.clockpicker {
+  display: inline-block;
+}
+
+.clockpicker-popover {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #dee2e6 !important;
+}
+
+.clockpicker-popover .popover-title {
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6 !important;
+  border-radius: 8px 8px 0 0 !important;
+  font-weight: 600 !important;
+  color: #495057 !important;
+}
+
+.clockpicker-plate {
+  background-color: white !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 50% !important;
+}
+
+.clockpicker-tick {
+  color: #495057 !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.clockpicker-tick:hover {
+  background-color: #e9ecef !important;
+  color: #495057 !important;
+}
+
+.clockpicker-tick.active {
+  background-color: #0d6efd !important;
+  color: white !important;
+}
+
+.clockpicker-button {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+  color: white !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.clockpicker-button:hover {
+  background-color: #0b5ed7 !important;
+  border-color: #0a58ca !important;
+  color: white !important;
+}
+
+.clockpicker-button.am-button {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+}
+
+.clockpicker-button.am-button:hover {
+  background-color: #5c636a !important;
+  border-color: #565e64 !important;
+}
+
+.clockpicker-canvas {
+  cursor: pointer !important;
+}
+
+.clockpicker-canvas line {
+  stroke: #0d6efd !important;
+  stroke-width: 2 !important;
+}
+
+.clockpicker-canvas circle {
+  fill: #0d6efd !important;
+}
+
 /* 각 원정대 카드에 지연 애니메이션 적용 */
 #expeditionGoldContainer .col-12.col-md-6.col-lg-3 {
   animation-delay: calc(var(--index) * 0.1s);
@@ -580,6 +658,206 @@ body.modal-open {
 .btn {
     border-radius: 6px;
     font-weight: 500;
+}
+
+/* Outline 버튼 스타일 강제 복원 - ClockPicker CSS 덮어쓰기 방지 */
+.btn.btn-outline-danger {
+    color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-danger:hover {
+    color: #fff !important;
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+}
+
+.btn.btn-outline-danger:focus, .btn.btn-outline-danger.focus {
+    color: #fff !important;
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.btn.btn-outline-danger:disabled, .btn.btn-outline-danger.disabled {
+    color: #dc3545 !important;
+    background-color: transparent !important;
+}
+
+/* Outline 버튼 스타일 강제 복원 */
+.btn.btn-outline-primary {
+    color: #007bff !important;
+    border-color: #007bff !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-primary:hover {
+    color: #fff !important;
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+}
+
+.btn.btn-outline-primary:focus, .btn.btn-outline-primary.focus {
+    color: #fff !important;
+    background-color: #007bff !important;
+    border-color: #007bff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+.btn.btn-outline-primary:disabled, .btn.btn-outline-primary.disabled {
+    color: #007bff !important;
+    background-color: transparent !important;
+}
+
+/* 다른 아웃라인 버튼 스타일 강제 복원 */
+.btn.btn-outline-secondary {
+    color: #6c757d !important;
+    border-color: #6c757d !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-secondary:hover {
+    color: #fff !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+
+.btn.btn-outline-secondary:focus, .btn.btn-outline-secondary.focus {
+    color: #fff !important;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25) !important;
+}
+
+.btn.btn-outline-secondary:disabled, .btn.btn-outline-secondary.disabled {
+    color: #6c757d !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-success {
+    color: #28a745 !important;
+    border-color: #28a745 !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-success:hover {
+    color: #fff !important;
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.btn.btn-outline-success:focus, .btn.btn-outline-success.focus {
+    color: #fff !important;
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+}
+
+.btn.btn-outline-success:disabled, .btn.btn-outline-success.disabled {
+    color: #28a745 !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-warning {
+    color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-warning:hover {
+    color: #212529 !important;
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+}
+
+.btn.btn-outline-warning:focus, .btn.btn-outline-warning.focus {
+    color: #212529 !important;
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25) !important;
+}
+
+.btn.btn-outline-warning:disabled, .btn.btn-outline-warning.disabled {
+    color: #ffc107 !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-info {
+    color: #17a2b8 !important;
+    border-color: #17a2b8 !important;
+    background-color: transparent !important;
+}
+
+.btn.btn-outline-info:hover {
+    color: #fff !important;
+    background-color: #17a2b8 !important;
+    border-color: #17a2b8 !important;
+}
+
+.btn.btn-outline-info:focus, .btn.btn-outline-info.focus {
+    color: #fff !important;
+    background-color: #17a2b8 !important;
+    border-color: #17a2b8 !important;
+    box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.25) !important;
+}
+
+.btn.btn-outline-info:disabled, .btn.btn-outline-info.disabled {
+    color: #17a2b8 !important;
+    background-color: transparent !important;
+}
+
+/* Form Switch 스타일 강제 복원 - ClockPicker CSS 덮어쓰기 방지 */
+.form-check-input {
+    width: 1em !important;
+    height: 1em !important;
+    margin-top: 0.25em !important;
+    vertical-align: top !important;
+    background-color: #fff !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+    border: 1px solid rgba(0, 0, 0, 0.25) !important;
+    border-radius: 0.25em !important;
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out !important;
+}
+
+.form-check-input[type=checkbox] {
+    border-radius: 0.25em !important;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+.form-check-input:checked[type=checkbox] {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e") !important;
+}
+
+.form-check-input:focus {
+    border-color: #86b7fe !important;
+    outline: 0 !important;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Form Switch 스타일 강제 복원 */
+.form-check.form-switch .form-check-input {
+    width: 2em !important;
+    margin-left: -2.5em !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='rgba%280, 0, 0, .25%29'/%3e%3c/svg%3e") !important;
+    background-position: left center !important;
+    border-radius: 2em !important;
+    transition: background-position .15s ease-in-out !important;
+}
+
+.form-check.form-switch .form-check-input:checked {
+    background-position: right center !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e") !important;
+}
+
+.form-check.form-switch .form-check-input:focus {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%2386b7fe'/%3e%3c/svg%3e") !important;
 }
 
 .card {
