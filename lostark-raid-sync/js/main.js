@@ -1565,22 +1565,32 @@ function renderRaidListModal() {
           
           html += `
         <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
-          <div class="card border-0 shadow-sm ${party.cleared ? 'bg-light' : ''}" style="font-size: 0.7rem;">
-            <div class="card-header bg-light py-1 d-flex justify-content-between align-items-center">
-              <h6 class="card-title mb-0" style="font-size: 0.75rem;">
+          <div class="card border-0 shadow-sm ${party.cleared ? 'bg-light' : ''}" style="font-size: 0.9rem;">
+            <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+              <h6 class="card-title mb-0" style="font-size: 0.95rem;">
                 <i class="bi bi-people-fill me-1"></i>${party.name}
               </h6>
               ${party.cleared ? 
-                `<span class="badge bg-success" style="font-size: 0.6rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-check-circle-fill me-1"></i>클리어</span>` : 
-                `<span class="badge bg-secondary" style="font-size: 0.6rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-circle me-1"></i>미클리어</span>`
+                `<span class="badge bg-success" style="font-size: 0.75rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-check-circle-fill me-1"></i>클리어</span>` : 
+                `<span class="badge bg-secondary" style="font-size: 0.75rem; cursor: pointer;" onclick="toggleRaidSlotClearInHeader('${raidId}', '${difficultyId}', '${party.id}', this)"><i class="bi bi-circle me-1"></i>미클리어</span>`
               }
             </div>
-            <div class="card-body p-1">
-              <div class="text-center mb-1">
-                <small class="text-muted">인원 ${validMembers.length}/${party.size}</small>
+            <div class="card-body p-2">
+              <div class="text-center mb-2">
+                <small class="text-muted" style="font-size: 0.8rem;">인원 ${validMembers.length}/${party.size}</small>
                 <span class="mx-1">|</span>
-                <small class="text-primary">평균 CP ${avgCombatPower.toLocaleString()}</small>
+                <small class="text-primary" style="font-size: 0.8rem;">평균 CP ${avgCombatPower.toLocaleString()}</small>
               </div>
+              
+              <!-- 약속 시간 표시 -->
+              ${party.scheduledWeekday && party.scheduledHour ? `
+                <div class="text-center mb-2 p-1 bg-light rounded">
+                  <small class="text-info" style="font-size: 0.7rem;">
+                    <i class="bi bi-clock-fill me-1"></i>
+                    ${getWeekdayName(party.scheduledWeekday)} ${party.scheduledHour}
+                  </small>
+                </div>
+              ` : ''}
               
               ${validMembers.length > 0 ? `
                 <div class="d-flex flex-column gap-0">
@@ -1589,19 +1599,19 @@ function renderRaidListModal() {
                     const roleIcon = charDetails?.role === 'support' ? '🛡️' : '⚔️';
                     const roleColor = charDetails?.role === 'support' ? 'text-success' : 'text-danger';
                     return `
-                      <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size: 0.65rem;">
-                        <span class="text-truncate" style="max-width: 70px;">
+                      <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size: 0.75rem;">
+                        <span class="text-truncate" style="max-width: 90px; font-weight: 500;">
                           ${member.name || '알 수 없음'}
                         </span>
-                        <span class="${roleColor}" style="font-size: 0.7rem;">${roleIcon}</span>
-                        <small class="text-muted">${charDetails?.ilvl || '?'}</small>
-                        <small class="text-primary">${(charDetails?.combatPower || '0').toLocaleString()}</small>
+                        <span class="${roleColor}" style="font-size: 0.8rem;">${roleIcon}</span>
+                        <small class="text-muted" style="font-size: 0.75rem;">${charDetails?.ilvl || '?'}</small>
+                        <small class="text-primary" style="font-size: 0.75rem;">${(charDetails?.combatPower || '0').toLocaleString()}</small>
                       </div>
                     `;
                   }).join('')}
                 </div>
               ` : `
-                <div class="text-center text-muted py-2" style="font-size: 0.65rem;">
+                <div class="text-center text-muted py-2" style="font-size: 0.75rem;">
                   배정된 캐릭터 없음
                 </div>
               `}
@@ -2202,9 +2212,39 @@ async function autoAssign() {
     return;
   }
 
-  // 역할별로 캐릭터 분류
-  const supports = allCharacters.filter(char => char.role === 'support');
-  const dps = allCharacters.filter(char => char.role === 'dps');
+  // 역할별로 캐릭터 분류 (시너지 효율 고려)
+  let supports, dps;
+  if (window.synergyChecker && allCharacters.length > 0) {
+    // 시너지 체커가 있으면 시너지 효율도 고려하여 분류
+    const characterSynergyScores = allCharacters.map(char => {
+      // 개별 캐릭터를 파티로 만들어 시너지 확인
+      const tempParty = [char];
+      const synergyInfo = window.synergyChecker.getPartySynergyComposition(tempParty);
+      const totalScore = synergyInfo.synergyDetails.reduce((sum, detail) => {
+        return sum + (detail.synergyType === 'support' ? 5 : 3); // 서폿 5점, 딜러 3점
+      }, 0);
+      
+      return {
+        ...char,
+        synergyScore: totalScore || 0,
+        combatPower: parseCompareNumber(char.combatPower || '0')
+      };
+    });
+    
+    // 전투력과 시너지 점수를 종합하여 정렬 (전투력 70% + 시너지 30%)
+    const sortedBySynergy = characterSynergyScores.sort((a, b) => {
+      const scoreA = a.combatPower * 0.7 + a.synergyScore * 0.3;
+      const scoreB = b.combatPower * 0.7 + b.synergyScore * 0.3;
+      return scoreB - scoreA;
+    });
+    
+    supports = sortedBySynergy.filter(char => char.role === 'support');
+    dps = sortedBySynergy.filter(char => char.role === 'dps');
+  } else {
+    // 기존 방식: 단순 역할별 분류
+    supports = allCharacters.filter(char => char.role === 'support');
+    dps = allCharacters.filter(char => char.role === 'dps');
+  }
 
   let assignedCount = 0;
   let supportCount = 0;
@@ -2372,12 +2412,45 @@ async function balancedAssign() {
     return sum + normalized.filter(m => m === null).length;
   }, 0);
   
-  // 캐릭터를 전투력 순으로 정렬
-  const sortedCharacters = allCharacters.sort((a, b) => {
-    const cpA = parseCompareNumber(a.combatPower || '0');
-    const cpB = parseCompareNumber(b.combatPower || '0');
-    return cpB - cpA; // 내림차순 (높은 CP 우선)
-  });
+  // 캐릭터를 전투력 순으로 정렬 (시너지 효율도 고려)
+  let sortedCharacters;
+  if (window.synergyChecker && allCharacters.length > 0) {
+    // 시너지 체커가 있으면 시너지 효율도 고려하여 정렬
+    const characterSynergyScores = allCharacters.map(char => {
+      // 개별 캐릭터를 파티로 만들어 시너지 확인
+      const tempParty = [char];
+      const synergyInfo = window.synergyChecker.getPartySynergyComposition(tempParty);
+      const totalScore = synergyInfo.synergyDetails.reduce((sum, detail) => {
+        return sum + (detail.synergyType === 'support' ? 5 : 3); // 서폿 5점, 딜러 3점
+      }, 0);
+      
+      return {
+        ...char,
+        synergyScore: totalScore || 0,
+        combatPower: parseCompareNumber(char.combatPower || '0')
+      };
+    });
+    
+    // 전투력과 시너지 점수를 종합하여 정렬 (전투력 70% + 시너지 30%)
+    sortedCharacters = characterSynergyScores.sort((a, b) => {
+      const scoreA = a.combatPower * 0.7 + a.synergyScore * 0.3;
+      const scoreB = b.combatPower * 0.7 + b.synergyScore * 0.3;
+      return scoreB - scoreA;
+    }).map(item => ({
+      name: item.name,
+      role: item.role,
+      combatPower: item.combatPower,
+      ilvl: item.ilvl,
+      image: item.image
+    }));
+  } else {
+    // 기존 방식: 전투력 순으로만 정렬
+    sortedCharacters = allCharacters.sort((a, b) => {
+      const cpA = parseCompareNumber(a.combatPower || '0');
+      const cpB = parseCompareNumber(b.combatPower || '0');
+      return cpB - cpA; // 내림차순 (높은 CP 우선)
+    });
+  }
 
   // 역할별로 분리
   const supports = sortedCharacters.filter(char => char.role === 'support');
@@ -2740,35 +2813,30 @@ checkWeeklyReset();
 
 // ClockPicker 초기화 함수
 function initializeClockPicker(partyId) {
-  const timeInput = document.getElementById(`scheduledHour-${partyId}`);
-  if (!timeInput) return;
+  // 새 ID 형식으로 모든 시간 입력창 찾기 (partyId로 시작하는 모든 요소)
+  const timeInputs = document.querySelectorAll(`[id^="scheduledHour-${partyId}"]`);
   
-  // 기존 ClockPicker가 있으면 파괴
-  if (timeInput._clockpicker) {
-    timeInput._clockpicker.remove();
-  }
-  
-  // ClockPicker 초기화
-  $(timeInput).clockpicker({
-    placement: 'bottom',
-    align: 'left',
-    donetext: '완료',
-    autoclose: true,
-    'default': 'now',
-    vibrate: true,
-    fromnow: 0,
-    twelvehour: false,
-    afterDone: function() {
-      const selectedTime = $(timeInput).val();
-      const weekdaySelect = document.getElementById(`scheduledWeekday-${partyId}`);
-      const weekday = weekdaySelect ? weekdaySelect.value : null;
-      
-      updateRaidScheduledTime(partyId, weekday, selectedTime);
+  timeInputs.forEach(timeInput => {
+    if (!timeInput) return;
+    
+    // 기존 ClockPicker가 있으면 파괴
+    if (timeInput._clockpicker) {
+      timeInput._clockpicker.remove();
     }
+    
+    // ClockPicker 초기화
+    $(timeInput).clockpicker({
+      placement: 'bottom',
+      align: 'left',
+      donetext: '완료',
+      autoclose: true,
+      twelvehour: false,
+      vibrate: true
+    });
+    
+    // 인스턴스 저장
+    timeInput._clockpicker = $(timeInput).data('clockpicker');
   });
-  
-  // 인스턴스 저장
-  timeInput._clockpicker = $(timeInput).data('clockpicker');
 }
 
 // 🔥 **핵심 수정: 스케줄러 관련 함수 전역 노출**
@@ -2879,19 +2947,23 @@ async function updateRaidScheduledTime(partyId, weekday, hour) {
 
 // 약속 시간 초기화
 async function clearRaidScheduledTime(partyId) {
-  const weekdaySelect = document.getElementById(`scheduledWeekday-${partyId}`);
-  const hourInput = document.getElementById(`scheduledHour-${partyId}`);
+  // 새 ID 형식으로 모든 요소 찾기
+  const weekdaySelects = document.querySelectorAll(`[id^="scheduledWeekday-${partyId}"]`);
+  const hourInputs = document.querySelectorAll(`[id^="scheduledHour-${partyId}"]`);
   
-  if (weekdaySelect) {
-    weekdaySelect.value = '';
-  }
-  if (hourInput) {
-    hourInput.value = '';
-    // ClockPicker도 초기화
-    if (hourInput._clockpicker) {
-      $(hourInput).clockpicker('done');
+  weekdaySelects.forEach(select => {
+    if (select) select.value = '';
+  });
+  
+  hourInputs.forEach(input => {
+    if (input) {
+      input.value = '';
+      // ClockPicker도 초기화
+      if (input._clockpicker) {
+        $(input).clockpicker('done');
+      }
     }
-  }
+  });
   
   await updateRaidScheduledTime(partyId, null, null);
 }

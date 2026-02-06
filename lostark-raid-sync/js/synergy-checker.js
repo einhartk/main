@@ -111,16 +111,24 @@ class SynergyChecker {
 
   // 시너지 효율성 점수 계산 (중복이 적을수록 높은 점수)
   calculateSynergyEfficiency(party) {
+    console.log(`🔍 [SYNERGY] 파티 효율 계산 시작: ${party.map(c => c.name || '알 수 없음').join(', ')}`);
+    
     const overlapCheck = this.checkSynergyOverlap(party);
     const { overlaps, totalSynergyTypes } = overlapCheck;
+    
+    console.log(`  📊 총 시너지 타입: ${totalSynergyTypes}개`);
+    console.log(`  ⚠️ 중복 시너지: ${overlaps.length}개`);
     
     // 기본 점수: 시너지 타입 수 × 10점
     let efficiencyScore = totalSynergyTypes * 10;
     
     // 중복 페널티: 중복된 시너지당 -15점
     overlaps.forEach(overlap => {
-      efficiencyScore -= (overlap.count - 1) * 15;
+      console.log(`  ❌ ${overlap.typeName}: ${overlap.count}개 중복 (-${overlap.count * 15}점)`);
+      efficiencyScore -= overlap.count * 15;
     });
+    
+    console.log(`  📈 최종 효율 점수: ${efficiencyScore}점`);
     
     // 최소 점수 보장
     efficiencyScore = Math.max(0, efficiencyScore);
@@ -160,6 +168,8 @@ class SynergyChecker {
     const synergyTypes = new Set();
     const synergyDetails = [];
     
+    console.log(`🔍 [SYNERGY] 파티 시너지 분석 시작: ${party.map(c => c.name || '알 수 없음').join(', ')}`);
+    
     // 파티 내 각 캐릭터의 시너지 타입 추출
     party.forEach(character => {
       // 서포터 역할 캐릭터는 서포터 시너지로 취급
@@ -172,6 +182,7 @@ class SynergyChecker {
           synergyType: 'support',
           synergyName: '서포터 시너지'
         });
+        console.log(`  🛡️ ${character.name} (${character.className}) -> 서포터 시너지`);
         return;
       }
       
@@ -187,9 +198,18 @@ class SynergyChecker {
             synergyType: synergyType,
             synergyName: group.name
           });
+          console.log(`  ⚔️ ${character.name} (${character.className}) -> ${group.name} 시너지`);
         }
       });
     });
+    
+    const totalScore = synergyDetails.reduce((sum, detail) => {
+      const score = detail.synergyType === 'support' ? 5 : 3;
+      console.log(`  📊 ${detail.character} 시너지 점수: ${score} (${detail.synergyType})`);
+      return sum + score;
+    }, 0);
+    
+    console.log(`🔍 [SYNERGY] 파티 시너지 분석 완료: 총 ${synergyTypes.size}개 타입, 총 ${totalScore}점`);
     
     return {
       partySize: party.length,
@@ -629,3 +649,6 @@ window.checkCurrentPartySynergy = function() {
     synergyGroups: window.synergyChecker.groupCharactersBySynergy(availableCharacters)
   };
 };
+
+// 전역으로 노출
+window.synergyChecker = new SynergyChecker();
