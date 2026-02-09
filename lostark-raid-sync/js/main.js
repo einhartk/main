@@ -900,9 +900,12 @@ async function saveCharacterEdit() {
     // 히스토리 기록 (수정 전 데이터)
     const oldCharacter = { ...character };
     const newCombatPower = document.getElementById('editCombatPower').value || '0';
+    const newIlvl = document.getElementById('editIlvl').value || '0';
     const newRole = document.querySelector('input[name="editRole"]:checked').value;
     
-    character.combatPower = newCombatPower;
+    // 콤마 포맷 적용하여 저장
+    character.combatPower = newCombatPower.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    character.ilvl = newIlvl.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     character.role = newRole;
 
     // 히스토리 기록
@@ -952,9 +955,17 @@ async function saveCharacterEdit() {
     // 모달 입력 필드 즉시 업데이트 (모달이 열려있을 경우)
     const editCombatPowerInput = document.getElementById('editCombatPower');
     const originalCombatPowerSpan = document.getElementById('originalCombatPower');
+    const editIlvlInput = document.getElementById('editIlvl');
+    const originalIlvlSpan = document.getElementById('originalIlvl');
+    
     if (editCombatPowerInput && originalCombatPowerSpan) {
-      editCombatPowerInput.value = newCombatPower;
-      originalCombatPowerSpan.textContent = newCombatPower;
+      editCombatPowerInput.value = newCombatPower.replace(/,/g, ''); // 입력 필드는 콤마 제거
+      originalCombatPowerSpan.textContent = newCombatPower.replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
+    }
+    
+    if (editIlvlInput && originalIlvlSpan) {
+      editIlvlInput.value = newIlvl.replace(/,/g, ''); // 입력 필드는 콤마 제거
+      originalIlvlSpan.textContent = newIlvl.replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
     }
 
     // UI 업데이트 (저장 후)

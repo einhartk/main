@@ -377,8 +377,10 @@ async function editCharacter(expeditionIndex, characterIndex, partyId = null, sl
     
     // 수정 모달에 정보 표시
     document.getElementById('editName').value = character.name;
-    document.getElementById('editCombatPower').value = character.combatPower || '0';
-    document.getElementById('originalCombatPower').textContent = character.combatPower || '0';
+    document.getElementById('editCombatPower').value = (character.combatPower || '0').replace(/,/g, ''); // 입력 필드는 콤마 제거
+    document.getElementById('originalCombatPower').textContent = (character.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
+    document.getElementById('editIlvl').value = (character.ilvl || '0').replace(/,/g, ''); // 입력 필드는 콤마 제거
+    document.getElementById('originalIlvl').textContent = (character.ilvl || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
     
     // 역할 라디오 버튼 설정
     const roleRadio = document.querySelector(`input[name="editRole"][value="${character.role}"]`);
@@ -504,6 +506,10 @@ async function fetchCharacterData(characterName) {
     
     const characters = await Promise.all(characterPromises);
     return characters.filter(char => char !== null)
+      .filter(char => {
+        const ilvl = parseFloat((char.ilvl || '0').replace(',', ''));
+        return ilvl >= 1700; // 1700 이상만 필터링
+      })
       .sort((a, b) => parseFloat((b.ilvl || '0').replace(',', '')) - parseFloat((a.ilvl || '0').replace(',', '')));
     
   } catch (error) {
@@ -970,6 +976,9 @@ async function displaySearchResults(characters, successCount, failCount, failedN
   if (failCount > 0) {
     message += `\n\n조회 실패: ${failedNames.join(', ')}`;
   }
+  
+  // 1700 미만 필터링 안내
+  message += `\n\n💡 1700 미만 캐릭터는 자동으로 제외됩니다.`;
   
   // 동기화 중이 아니면 알림 표시
   const isSyncMode = window.realtimeSync && window.realtimeSync.isSyncActive();

@@ -94,8 +94,20 @@ main {
     flex-grow: 1; /* 남은 공간 모두 차지 */
     display: grid;
     grid-template-columns: repeat(3, 1fr); /* 가로 3개 */
-    gap: 2px; /* 캐릭터 카드 사이 간격 */
+    gap: 2px;
+    max-height: 130px; /* 6개 카드 높이 제한 (2행 * 55px + 간격) */
+    overflow-y: auto; /* 세로 스크롤 */
     align-content: start; /* 위쪽부터 정렬 */
+}
+
+/* 사이드 패널 스크롤바 숨기기 (기능 유지) */
+.expedition-side-panel .expedition-slots::-webkit-scrollbar {
+  display: none; /* 스크롤바 완전히 숨기기 */
+}
+
+.expedition-side-panel .expedition-slots {
+  -ms-overflow-style: none; /* IE, Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 .expedition-side-panel .expedition-slot:hover {
@@ -257,6 +269,18 @@ main {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 6px;
+  max-height: 240px; /* 6개 카드 높이 제한 */
+  overflow-y: auto; /* 세로 스크롤 */
+}
+
+/* 스크롤바 숨기기 (기능 유지) */
+.expedition-slots::-webkit-scrollbar {
+  display: none; /* 스크롤바 완전히 숨기기 */
+}
+
+.expedition-slots {
+  -ms-overflow-style: none; /* IE, Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 .expedition-slot {
@@ -582,6 +606,7 @@ body.modal-open {
     
     .expedition-slots {
         grid-template-columns: repeat(2, 1fr);
+        max-height: 240px; /* 스크롤 높이 유지 */
     }
 }
 
@@ -598,6 +623,7 @@ body.modal-open {
     
     .expedition-slots {
         grid-template-columns: repeat(2, 1fr);
+        max-height: 240px; /* 스크롤 높이 유지 */
     }
 }
 
@@ -614,6 +640,7 @@ body.modal-open {
     
     .expedition-slots {
         grid-template-columns: 1fr;
+        max-height: 240px; /* 스크롤 높이 유지 */
     }
 }
 
