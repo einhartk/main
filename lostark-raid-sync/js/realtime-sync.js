@@ -806,7 +806,13 @@ class RealtimeSync {
         const connectedUsers = document.getElementById('connectedUsers');
         if (!connectedUsers) return;
         
-        this.dbRef.child('users').once('value', (snapshot) => {
+        // 기존 리스너가 있으면 제거
+        if (this.usersListener) {
+            this.dbRef.child('users').off('value', this.usersListener);
+        }
+        
+        // 실시간 리스너 설정
+        this.usersListener = (snapshot) => {
             const users = snapshot.val();
             if (users) {
                 // 중복 사용자 제거 (같은 기본 사용자 이름)
@@ -824,8 +830,12 @@ class RealtimeSync {
                 const userCount = Object.keys(uniqueUsers).length;
                 const userNames = Object.values(uniqueUsers).map(user => user.name).join(', ');
                 connectedUsers.innerHTML = `<small><span class="user-indicator"></span>${userCount}명 접속 중: ${userNames}</small>`;
+            } else {
+                connectedUsers.innerHTML = `<small><span class="user-indicator"></span>1명 접속 중: ${this.currentUser}</small>`;
             }
-        });
+        };
+        
+        this.dbRef.child('users').on('value', this.usersListener);
     }
     
     // 랜덤 코드 생성
@@ -1054,6 +1064,12 @@ class RealtimeSync {
         
         if (this.presenceInterval) {
             clearInterval(this.presenceInterval);
+        }
+        
+        // 사용자 리스너 정리
+        if (this.usersListener && this.dbRef) {
+            this.dbRef.child('users').off('value', this.usersListener);
+            this.usersListener = null;
         }
         
         if (this.dbRef) {

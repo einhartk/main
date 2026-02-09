@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- ClockPicker CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/clockpicker@0.0.7/dist/jquery-clockpicker.min.css">
+    <!-- XLSX Library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -159,9 +161,12 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <button class="btn btn-primary" onclick="exportRaidList()">
-                            <i class="bi bi-download"></i> 내보내기
+                            <i class="bi bi-download"></i> 내보내기 (JSON)
                         </button>
-                        <button class="btn btn-success" onclick="generatePromotionText()">
+                        <button class="btn btn-success" onclick="exportRaidListToExcel()">
+                            <i class="bi bi-file-earmark-excel"></i> 내보내기 (엑셀)
+                        </button>
+                        <button class="btn btn-secondary" onclick="generatePromotionText()">
                             <i class="bi bi-megaphone"></i> 홍보글 생성
                         </button>
                         <button class="btn btn-secondary" onclick="captureRaidList()">
@@ -224,7 +229,12 @@
                     <form id="characterEditForm">
                         <div class="mb-3">
                             <label class="form-label">캐릭터 이름</label>
-                            <input type="text" class="form-control" id="editName" readonly>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="editName" readonly>
+                                <button class="btn btn-outline-primary" type="button" id="refreshCharacterData">
+                                    <i class="bi bi-arrow-clockwise"></i> API 조회
+                                </button>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">전투력</label>

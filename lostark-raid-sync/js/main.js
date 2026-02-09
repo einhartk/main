@@ -1191,6 +1191,242 @@ function exportRaidList() {
   }
 }
 
+// 파티 통계 계산 함수
+function calculatePartyStats(party) {
+  if (!party || !party.members) {
+    return {
+      maxIlvl: 0,
+      avgIlvl: 0,
+      totalCombatPower: 0,
+      memberCount: 0,
+      createdAt: party?.createdAt || null
+    };
+  }
+  
+  const members = party.members.filter(m => m !== null && m !== undefined);
+  const memberCount = members.length;
+  
+  if (memberCount === 0) {
+    return {
+      maxIlvl: 0,
+      avgIlvl: 0,
+      totalCombatPower: 0,
+      memberCount: 0,
+      createdAt: party?.createdAt || null
+    };
+  }
+  
+  // 원정대 슬롯에서 캐릭터 정보 가져오기
+  let totalIlvl = 0;
+  let totalCombatPower = 0;
+  let maxIlvl = 0;
+  let validMembers = 0;
+  
+  members.forEach(member => {
+    if (member && member.name) {
+      // 원정대 슬롯에서 캐릭터 정보 찾기
+      let characterInfo = null;
+      for (let i = 0; i < state.expeditionSlots.length; i++) {
+        const slot = state.expeditionSlots[i];
+        if (slot) {
+          const char = slot.find(c => c && c.name === member.name);
+          if (char) {
+            characterInfo = char;
+            break;
+          }
+        }
+      }
+      
+      if (characterInfo) {
+        const ilvl = parseCompareNumber(characterInfo.ilvl || '0');
+        const combatPower = parseCompareNumber(characterInfo.combatPower || '0');
+        
+        totalIlvl += ilvl;
+        totalCombatPower += combatPower;
+        maxIlvl = Math.max(maxIlvl, ilvl);
+        validMembers++;
+      }
+    }
+  });
+  
+  return {
+    maxIlvl: maxIlvl,
+    avgIlvl: validMembers > 0 ? Math.round(totalIlvl / validMembers) : 0,
+    totalCombatPower: totalCombatPower,
+    memberCount: validMembers,
+    createdAt: party?.createdAt || null
+  };
+}
+
+// 공대 리스트 엑셀 내보내기
+function exportRaidListToExcel() {
+  try {
+    // 워크북 생성
+    const workbook = XLSX.utils.book_new();
+    let totalPartyCount = 0;
+    
+    // 모든 레이드 정보 내보내기 (레이드별 탭)
+    Object.entries(state.raidTabs).forEach(([raidId, difficulties]) => {
+      const raid = state.raidsData[raidId];
+      const raidName = raid?.name || raidId;
+      
+      const raidData = [];
+      
+      // 난이도별로 그룹화하여 데이터 생성
+      Object.entries(difficulties).forEach(([difficultyId, parties]) => {
+        
+        if (parties.length === 0) {
+          // 파티가 없는 난이도도 섹션은 추가
+          raidData.push({
+            '난이도': difficultyId,
+            '파티': '',
+            '파티명': '',
+            '원정대 슬롯': '',
+            '최고 레벨': '',
+            '평균 레벨': '',
+            '총 전투력': '',
+            '클리어 여부': '',
+            '파티원 정보': '',
+            '생성 시간': ''
+          });
+          return;
+        }
+        
+        // 난이도 헤더 추가
+        raidData.push({
+          '난이도': difficultyId,
+          '파티': '',
+          '파티명': '',
+          '원정대 슬롯': '',
+          '최고 레벨': '',
+          '평균 레벨': '',
+          '총 전투력': '',
+          '클리어 여부': '',
+          '파티원 정보': '',
+          '생성 시간': ''
+        });
+        
+        // 해당 난이도의 모든 파티 정보 추가
+        parties.forEach((party, index) => {
+          const partyStats = calculatePartyStats(party);
+          
+          // 파티 기본 정보 행 추가
+          const partyRowData = {
+            '난이도': '',
+            '파티': index + 1,
+            '파티명': party.name || `${index + 1}팟`,
+            '원정대 슬롯': partyStats.memberCount,
+            '최고 레벨': partyStats.maxIlvl,
+            '평균 레벨': partyStats.avgIlvl,
+            '총 전투력': partyStats.totalCombatPower,
+            '클리어 여부': party.cleared ? '✅ 클리어' : '⏳ 진행중',
+            '파티원 정보': '',
+            '생성 시간': partyStats.createdAt || new Date().toLocaleString('ko-KR')
+          };
+          
+          raidData.push(partyRowData);
+          totalPartyCount++;
+          
+          // 파티원 정보를 가로로 4칸에 표시
+          if (party.members && party.members.length > 0) {
+            // 캐릭터 정보 수집
+            const memberInfos = [];
+            party.members.forEach((member) => {
+              if (member && member.name) {
+                // 원정대 슬롯에서 캐릭터 상세 정보 찾기
+                let characterInfo = null;
+                for (let i = 0; i < state.expeditionSlots.length; i++) {
+                  const slot = state.expeditionSlots[i];
+                  if (slot) {
+                    const char = slot.find(c => c && c.name === member.name);
+                    if (char) {
+                      characterInfo = char;
+                      break;
+                    }
+                  }
+                }
+                
+                let memberInfo = '';
+                if (characterInfo) {
+                  const ilvl = parseCompareNumber(characterInfo.ilvl || '0');
+                  const combatPower = parseCompareNumber(characterInfo.combatPower || '0');
+                  memberInfo = `${member.name} ${characterInfo.className || '알 수 없음'} ${ilvl} ${combatPower.toLocaleString()}`;
+                } else {
+                  memberInfo = `${member.name} 정보없음`;
+                }
+                
+                memberInfos.push(memberInfo);
+              }
+            });
+            
+            // 가로로 4칸에 표시 (첫 칸 비우기)
+            const memberRowData = {
+              '난이도': '', // 첫 칸 비우기
+              '파티': '파티원',
+              '파티명': memberInfos[0] || '', // 1번 캐릭터
+              '원정대 슬롯': memberInfos[1] || '', // 2번 캐릭터
+              '최고 레벨': memberInfos[2] || '', // 3번 캐릭터
+              '평균 레벨': memberInfos[3] || '', // 4번 캐릭터
+              '총 전투력': memberInfos[4] || '', // 5번 캐릭터 (있을 경우)
+              '클리어 여부': memberInfos[5] || '', // 6번 캐릭터 (있을 경우)
+              '파티원 정보': memberInfos[6] || '', // 7번 캐릭터 (있을 경우)
+              '생성 시간': memberInfos[7] || '' // 8번 캐릭터 (있을 경우)
+            };
+            
+            raidData.push(memberRowData);
+          }
+        });
+        
+        // 난이도 구분을 위한 빈 행 추가
+        raidData.push({
+          '난이도': '',
+          '파티': '',
+          '파티명': '',
+          '원정대 슬롯': '',
+          '최고 레벨': '',
+          '평균 레벨': '',
+          '총 전투력': '',
+          '클리어 여부': '',
+          '파티원 정보': '',
+          '생성 시간': ''
+        });
+      });
+      
+      // 레이드별 워크시트 생성 (데이터가 있는 경우만)
+      if (raidData.length > 0) {
+        const worksheet = XLSX.utils.json_to_sheet(raidData);
+        
+        // 시트 이름 길이 제한 (Excel 시트 이름은 최대 31자)
+        const sheetName = raidName.length > 31 ? raidName.substring(0, 31) : raidName;
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      }
+    });
+    
+    // 데이터가 없는 경우 처리
+    if (totalPartyCount === 0) {
+      window.modalManager?.showAlert?.({ 
+        title: '내보내기 실패', 
+        message: '내보낼 공대 데이터가 없습니다.' 
+      });
+      return;
+    }
+    
+    // 엑셀 파일 다운로드
+    XLSX.writeFile(workbook, `공대_리스트_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    
+    window.modalManager?.showAlert?.({ 
+      title: '엑셀 내보내기 완료', 
+      message: `공대 리스트가 엑셀 파일로 저장되었습니다.\n총 ${totalPartyCount}개 파티 정보가 포함되었습니다.\n레이드별로 탭이 구분되어 있습니다.` 
+    });
+  } catch (error) {
+    console.error('❌ [EXCEL] exportRaidListToExcel 오류:', error);
+    window.modalManager?.showAlert?.({ 
+      title: '오류', 
+      message: '엑셀 내보내기 중 오류가 발생했습니다: ' + (error.message || error) 
+    });
+  }
+}
+
 // 홍보글 생성 함수
 function generatePromotionText() {
   try {
@@ -2857,6 +3093,7 @@ window.openSchedulerModal = openSchedulerModal;
 window.refreshScheduler = refreshScheduler;
 window.exportSchedule = exportSchedule;
 window.initializeClockPicker = initializeClockPicker;
+window.exportRaidListToExcel = exportRaidListToExcel;
 
 // 공격대 약속 시간 업데이트
 async function updateRaidScheduledTime(partyId, weekday, hour) {

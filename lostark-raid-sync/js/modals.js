@@ -351,107 +351,66 @@ async function searchCharacters() {
   }
 }
 
-// 캐릭터 정보 수정 함수
-async function editCharacter(expeditionIndex, characterIndex, partyId = null, slotIndex = null) {
+// API로 캐릭터 정보 새로고침
+async function refreshCharacterFromAPI(characterName) {
+  const refreshButton = document.getElementById('refreshCharacterData');
+  const originalText = refreshButton.innerHTML;
+  
   try {
-    // 캐릭터 정보 찾기
-    let character = null;
+    // 로딩 상태 표시
+    refreshButton.disabled = true;
+    refreshButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>조회 중...';
     
-    if (partyId !== null && slotIndex !== null) {
-      // 공격대 파티 캐릭터
-      const parties = getCurrentTabParties();
-      const party = parties.find(p => p.id === partyId);
-      if (party && party.members[slotIndex]) {
-        character = party.members[slotIndex];
+    // API로 캐릭터 정보 조회
+    const characters = await fetchCharacterData(characterName);
+    
+    if (characters && characters.length > 0) {
+      // 가장 높은 아이템 레벨 캐릭터 선택
+      const targetCharacter = characters.find(char => char.name === characterName) || characters[0];
+      
+      if (targetCharacter) {
+        // 입력 필드 업데이트
+        const editCombatPowerInput = document.getElementById('editCombatPower');
+        const originalCombatPowerSpan = document.getElementById('originalCombatPower');
+        const editIlvlInput = document.getElementById('editIlvl');
+        const originalIlvlSpan = document.getElementById('originalIlvl');
+        
+        if (editCombatPowerInput && originalCombatPowerSpan) {
+          editCombatPowerInput.value = (targetCharacter.combatPower || '0').replace(/,/g, '');
+          originalCombatPowerSpan.textContent = (targetCharacter.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+        
+        if (editIlvlInput && originalIlvlSpan) {
+          editIlvlInput.value = (targetCharacter.ilvl || '0').replace(/,/g, '');
+          originalIlvlSpan.textContent = (targetCharacter.ilvl || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+        
+        // 성공 메시지 표시
+        window.modalManager.showAlert({
+          title: '업데이트 완료',
+          message: '캐릭터 정보가 업데이트되었습니다.'
+        });
       }
     } else {
-      // 원정대 캐릭터
-      if (state.expeditionSlots[expeditionIndex] && state.expeditionSlots[expeditionIndex][characterIndex]) {
-        character = state.expeditionSlots[expeditionIndex][characterIndex];
-      }
+      window.modalManager.showAlert({
+        title: '조회 실패',
+        message: '캐릭터 정보를 찾을 수 없습니다.'
+      });
     }
-    
-    if (!character) {
-      return;
-    }
-    
-    // 수정 모달에 정보 표시
-    document.getElementById('editName').value = character.name;
-    document.getElementById('editCombatPower').value = (character.combatPower || '0').replace(/,/g, ''); // 입력 필드는 콤마 제거
-    document.getElementById('originalCombatPower').textContent = (character.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
-    document.getElementById('editIlvl').value = (character.ilvl || '0').replace(/,/g, ''); // 입력 필드는 콤마 제거
-    document.getElementById('originalIlvl').textContent = (character.ilvl || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
-    
-    // 역할 라디오 버튼 설정
-    const roleRadio = document.querySelector(`input[name="editRole"][value="${character.role}"]`);
-    if (roleRadio) roleRadio.checked = true;
-    
-    // 저장 함수에 현재 위치 정보 저장
-    window.currentEditPosition = { expeditionIndex, characterIndex, partyId, slotIndex };
-
-    // 슬롯 단위 락 (공격대 캐릭터 슬롯 / 원정대 캐릭터 수정)
-    let slotLockKey = null;
-    if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
-      if (partyId !== null && slotIndex !== null && state.selectedRaid && state.selectedDifficulty) {
-        slotLockKey = `raidSlot:${state.selectedRaid.id}:${state.selectedDifficulty.id}:${partyId}:${slotIndex}`;
-      } else if (partyId === null && expeditionIndex !== null && characterIndex !== null) {
-        // 원정대 캐릭 수정도 동일하게 보호(요청 범위 밖이지만 충돌 방지)
-        slotLockKey = `expeditionChar:${expeditionIndex}:${characterIndex}`;
-      }
-
-      if (slotLockKey) {
-        const lockedByOther = await window.realtimeSync.isSlotLockedByOther(slotLockKey);
-        if (lockedByOther) {
-          window.modalManager.showAlert({
-            title: '편집 중',
-            message: '다른 사용자가 이 슬롯을 편집 중입니다. 잠시 후 다시 시도해주세요.'
-          });
-          return;
-        }
-
-        const ok = await window.realtimeSync.acquireSlotLock(slotLockKey);
-        if (!ok) {
-          window.modalManager.showAlert({
-            title: '편집 충돌',
-            message: '다른 사용자가 이 슬롯을 편집 중입니다. 잠시 후 다시 시도해주세요.'
-          });
-          return;
-        }
-      }
-    }
-    
-    // 모달 열기
-    const modalEl = document.getElementById('characterEditModal');
-    const modal = new bootstrap.Modal(modalEl);
-
-    if (slotLockKey) {
-      modalEl.addEventListener('hidden.bs.modal', async () => {
-        try {
-          if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
-            await window.realtimeSync.releaseSlotLock(slotLockKey);
-          }
-        } catch (_) {}
-      }, { once: true });
-    }
-
-    modal.show();
-    
   } catch (error) {
-    console.error('❌ [CHARACTER EDIT ERROR]:', error);
-    try {
-      // 예외로 모달이 정상적으로 안 열렸을 때도 락이 남지 않게 정리
-      if (window.realtimeSync && window.realtimeSync.isSyncActive && window.realtimeSync.isSyncActive()) {
-        await window.realtimeSync.releaseSlotLock();
-      }
-    } catch (_) {}
+    console.error('캐릭터 정보 조회 실패:', error);
     window.modalManager.showAlert({
-      title: '오류',
-      message: '캐릭터 정보 수정 중 오류가 발생했습니다: ' + error.message
+      title: '조회 오류',
+      message: '캐릭터 정보 조회에 실패했습니다.'
     });
+  } finally {
+    // 버튼 상태 복원
+    refreshButton.disabled = false;
+    refreshButton.innerHTML = originalText;
   }
 }
 
-// 캐릭터 데이터 조회
+// 캐릭터 정보 수정 함수
 async function fetchCharacterData(characterName) {
   try {
     // 1단계: 원정대 캐릭터 목록 조회
@@ -996,3 +955,67 @@ async function displaySearchResults(characters, successCount, failCount, failedN
   // 자동 저장/동기화
   scheduleAutoSave();
 }
+
+// 캐릭터 정보 수정 함수
+async function editCharacter(expeditionIndex, characterIndex, partyId = null, slotIndex = null) {
+  try {
+    // 캐릭터 정보 찾기
+    let character = null;
+    
+    if (partyId !== null && slotIndex !== null) {
+      // 공격대 파티 캐릭터
+      const parties = getCurrentTabParties();
+      const party = parties.find(p => p.id === partyId);
+      if (party && party.members[slotIndex]) {
+        character = party.members[slotIndex];
+      }
+    } else {
+      // 원정대 캐릭터
+      if (state.expeditionSlots[expeditionIndex] && state.expeditionSlots[expeditionIndex][characterIndex]) {
+        character = state.expeditionSlots[expeditionIndex][characterIndex];
+      }
+    }
+    
+    if (!character) {
+      return;
+    }
+    
+    // 수정 모달에 정보 표시
+    document.getElementById('editName').value = character.name;
+    document.getElementById('editCombatPower').value = (character.combatPower || '0').replace(/,/g, ''); // 입력 필드는 콤마 제거
+    document.getElementById('originalCombatPower').textContent = (character.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
+    document.getElementById('editIlvl').value = (character.ilvl || '0').replace(/,/g, ''); // 입력 필드는 콤마 제거
+    document.getElementById('originalIlvl').textContent = (character.ilvl || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
+    
+    // 역할 라디오 버튼 설정
+    const roleRadio = document.querySelector(`input[name="editRole"][value="${character.role}"]`);
+    if (roleRadio) roleRadio.checked = true;
+    
+    // 저장 함수에 현재 위치 정보 저장
+    window.currentEditPosition = { expeditionIndex, characterIndex, partyId, slotIndex };
+
+    // API 조회 버튼 이벤트 리스너
+    const refreshButton = document.getElementById('refreshCharacterData');
+    if (refreshButton) {
+      refreshButton.onclick = async () => {
+        await refreshCharacterFromAPI(character.name);
+      };
+    }
+
+    // 모달 열기
+    const modalEl = document.getElementById('characterEditModal');
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+    
+  } catch (error) {
+    console.error('❌ [CHARACTER EDIT ERROR]:', error);
+    window.modalManager.showAlert({
+      title: '오류',
+      message: '캐릭터 정보 수정 중 오류가 발생했습니다: ' + error.message
+    });
+  }
+}
+
+// 전역 함수 노출
+window.editCharacter = editCharacter;
+window.refreshCharacterFromAPI = refreshCharacterFromAPI;
