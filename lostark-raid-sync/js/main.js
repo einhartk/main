@@ -308,6 +308,7 @@ async function addNewRaid(skipHistory = false) {
     scheduledHour: null, // 약속 시간
     scheduledTime: null, // 기존 호환성 (ISO 문자열)
     scheduledTimeDisplay: '', // 기존 호환성 (표시용 시간 문자열)
+    createdAt: new Date().toISOString(), // 생성 시간 추가
     members: Array(4).fill(null), // 기본 4인
     maxSupports: 1, // 4인 1서폿 / 8인 2서폿
     size: 4, // 현재 파티 크기

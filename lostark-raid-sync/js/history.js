@@ -103,8 +103,25 @@ async function recordHistory(action, target, before, after, description) {
   try {
     const entry = createHistoryEntry(action, target, before, after, description);
 
-    if (!entry.before || !entry.after || JSON.stringify(entry.before) === JSON.stringify(entry.after)) {
-      return;
+    // 디버깅: 히스토리 기록 시도
+    console.log('📝 [HISTORY] 히스토리 기록 시도:', {
+      action,
+      description,
+      hasBefore: !!entry.before,
+      hasAfter: !!entry.after,
+      beforeType: typeof entry.before,
+      afterType: typeof entry.after
+    });
+
+    // 추가/삭제 작업은 before가 없어도 기록
+    if (action === 'add' || action === 'delete') {
+      console.log('📝 [HISTORY] 추가/삭제 작업: before 데이터 없어도 기록');
+    } else {
+      // 수정 작업은 before/after가 모두 있어야 함
+      if (!entry.before || !entry.after || JSON.stringify(entry.before) === JSON.stringify(entry.after)) {
+        console.log('📝 [HISTORY] 히스토리 기록 건너뜀: 데이터 동일 또는 없음');
+        return;
+      }
     }
 
     state.history.entries.push(entry);
@@ -128,6 +145,7 @@ async function recordHistory(action, target, before, after, description) {
 
       try {
         await historyRef.push(cleanEntry);
+        console.log('📝 [HISTORY] Firebase 히스토리 저장 성공:', description);
       } catch (error) {
         console.error('📝 [HISTORY] Firebase 저장 실패:', error);
         if (error.message.includes('undefined')) {
@@ -190,6 +208,9 @@ async function cleanupFirebaseHistory() {
       }
     }
     const uniqueToRemove = Array.from(uniqueMap.values());
+    
+    // 정리 전 개수 기록
+    const beforeCount = Object.keys(allHistory).length;
     
     if (uniqueToRemove.length > 0) {
       console.log(`🧹 [HISTORY] Firebase 히스토리 정리: ${uniqueToRemove.length}개 항목 삭제`);
