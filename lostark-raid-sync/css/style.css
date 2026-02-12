@@ -49,6 +49,120 @@ main {
     margin-left: 240px;
 }
 
+/* 스케줄러 관련 스타일 */
+.scheduler-container {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.schedule-by-order .schedule-item {
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.schedule-by-order .schedule-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-by-order .schedule-item.selected {
+  border-color: #007bff;
+  background-color: #f8f9ff;
+  transform: scale(1.02);
+}
+
+.schedule-by-weekday .weekday-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border-left: 4px solid #007bff;
+}
+
+.weekday-title {
+  color: #495057;
+  font-weight: 600;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.weekday-title i {
+  margin-right: 8px;
+  color: #007bff;
+}
+
+.party-detail-view {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.party-detail-view .card-header {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+  font-weight: 600;
+}
+
+.party-detail-view .card {
+  transition: all 0.3s ease;
+}
+
+.party-detail-view .card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+.schedule-item .card {
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.schedule-item .card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-item .badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+}
+
+.schedule-item .btn-group-sm .btn {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .schedule-by-order .schedule-item {
+    margin-bottom: 15px;
+  }
+  
+  .schedule-by-weekday .weekday-section {
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+  
+  .party-detail-view .row > .col-md-6 {
+    margin-bottom: 15px;
+  }
+}
+
+@media (max-width: 576px) {
+  .scheduler-container {
+    max-height: 50vh;
+  }
+  
+  .schedule-by-weekday .row > .col-md-6 {
+    margin-bottom: 10px;
+  }
+  
+  .party-detail-view .card-body {
+    padding: 15px;
+  }
+}
+
 @media (max-width: 767.98px) {
     .sidebar {
         position: relative;

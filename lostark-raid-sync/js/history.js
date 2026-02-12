@@ -167,6 +167,7 @@ async function recordHistory(action, target, before, after, description) {
 
 // Firebase 히스토리 정리
 async function cleanupFirebaseHistory() {
+  let beforeCount = state.history.entries.length;
   try {
     if (!window.realtimeSync || typeof window.realtimeSync.isSyncActive !== 'function' || !window.realtimeSync.isSyncActive()) {
       return;
@@ -181,7 +182,7 @@ async function cleanupFirebaseHistory() {
       .filter(entry => entry && entry.timestamp)
       .sort((a, b) => b.timestamp - a.timestamp);
     
-    // 🔥 **강화된 정리: 최대 개수 + 7일 이상 된 데이터 삭제**
+    // **강화된 정리: 최대 개수 + 7일 이상 된 데이터 삭제**
     const now = Date.now();
     const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000); // 7일 전
     const maxEntries = state.history.maxEntries;
@@ -210,14 +211,14 @@ async function cleanupFirebaseHistory() {
     const uniqueToRemove = Array.from(uniqueMap.values());
     
     // 정리 전 개수 기록
-    const beforeCount = Object.keys(allHistory).length;
+    const afterCount = Object.keys(allHistory).length;
     
     if (uniqueToRemove.length > 0) {
-      console.log(`🧹 [HISTORY] Firebase 히스토리 정리: ${uniqueToRemove.length}개 항목 삭제`);
+      console.log(` [HISTORY] Firebase 히스토리 정리: ${uniqueToRemove.length}개 항목 삭제`);
       
       // Firebase 키를 직접 사용하여 일괄 삭제
       const allFirebaseKeys = Object.keys(allHistory);
-      console.log(`🔍 [HISTORY] 전체 Firebase 키: ${allFirebaseKeys.length}개`);
+      console.log(` [HISTORY] 전체 Firebase 키: ${allFirebaseKeys.length}개`);
       
       // 삭제할 키 목록 생성
       const keysToDelete = [];
@@ -239,7 +240,7 @@ async function cleanupFirebaseHistory() {
         // 3. 그래도 못 찾으면 여러 방법 시도
         if (!matchingKey) {
           // 콘솔에 디버깅 정보 추가
-          console.warn(`⚠️ [HISTORY] 키를 찾을 수 없음:`, {
+          console.warn(` [HISTORY] 키를 찾을 수 없음:`, {
             entryId: entry.id,
             entryTimestamp: entry.timestamp,
             availableKeys: allFirebaseKeys.slice(0, 10) // 처음 10개만 표시
@@ -254,40 +255,49 @@ async function cleanupFirebaseHistory() {
       const uniqueKeysToDelete = Array.from(new Set(keysToDelete));
       
       if (uniqueKeysToDelete.length > 0) {
-        console.log(`🗑️ [HISTORY] 일괄 삭제 시작: ${uniqueKeysToDelete.length}개 키`);
+        console.log(` [HISTORY] 일괄 삭제 시작: ${uniqueKeysToDelete.length}개 키`);
         
         // 일괄 삭제 실행
         const deletePromises = uniqueKeysToDelete.map(key => 
           historyRef.child(key).remove()
-            .then(() => console.log(`✅ [HISTORY] 일괄 삭제 완료: ${key}`))
-            .catch(error => console.error(`❌ [HISTORY] 일괄 삭제 실패: ${key}`, error))
+            .then(() => console.log(` [HISTORY] 일괄 삭제 완료: ${key}`))
+            .catch(error => console.error(` [HISTORY] 일괄 삭제 실패: ${key}`, error))
         );
         
         await Promise.all(deletePromises);
-        console.log(`🧹 [HISTORY] 일괄 삭제 완료: ${uniqueKeysToDelete.length}개 항목`);
+        console.log(` [HISTORY] 일괄 삭제 완료: ${uniqueKeysToDelete.length}개 항목`);
         
         // 삭제 확인
         const afterSnapshot = await historyRef.once('value');
         const afterCount = Object.keys(afterSnapshot.val() || {}).length;
-        console.log(`🧹 [HISTORY] 정리 결과:`);
+        console.log(` [HISTORY] 정리 결과:`);
         console.log(`- 시도 삭제: ${uniqueToRemove.length}개`);
         console.log(`- 성공 삭제: ${uniqueKeysToDelete.length}개`);
         console.log(`- 정리 후 남은 항목: ${afterCount}개`);
         console.log(`- 실제 삭제된: ${Object.keys(allHistory).length - afterCount}개`);
       } else {
-        console.log('🧹 [HISTORY] 삭제할 항목 없음');
+        console.log(' [HISTORY] 삭제할 항목 없음');
       }
     }
     
   } catch (error) {
-    console.error('🧹 [HISTORY] Firebase 히스토리 정리 실패:', error);
+    console.error(' [HISTORY] Firebase 히스토리 정리 실패:', error);
   }
   
   const afterCount = state.history.entries.length;
   const removedCount = beforeCount - afterCount;
   
   if (removedCount > 0) {
-    console.log(`🧹 [HISTORY] 로컬 히스토리 정리: ${removedCount}개 항목 삭제`);
+    console.log(` [HISTORY] 로컬 히스토리 정리: ${removedCount}개 항목 삭제`);
+  }
+}
+
+// 로컬 히스토리 정리
+function cleanupLocalHistory() {
+  const maxEntries = state.history.maxEntries;
+  
+  while (state.history.entries.length > maxEntries) {
+    state.history.entries.shift();
   }
 }
 
