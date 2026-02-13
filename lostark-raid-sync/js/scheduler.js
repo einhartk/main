@@ -675,54 +675,59 @@ function loadScheduleDetail() {
           <hr class="my-3">
           
           <h6 class="mb-3"><i class="bi bi-people me-2"></i>파티 멤버 (${currentParty.members.filter(m => m !== null).length}/${currentParty.size}명)</h6>
-          <div class="row g-2">
+          <div class="row g-1">
             ${currentParty.members.map((member, index) => {
               // 원정대에서 캐릭터 상세 정보 가져오기
               const characterDetails = member ? getCharacterDetailsFromExpedition(member.name) : null;
               
+              // 파티 크기에 따른 그리드 클래스 동적 설정
+              const gridClass = currentParty.size <= 4 ? 'col-xl-3 col-lg-6 col-md-6 col-sm-6' : 'col-xl-3 col-lg-4 col-md-4 col-sm-6';
+              
               return `
-              <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+              <div class="${gridClass}">
                 <div class="card ${member ? 'border-primary' : 'bg-light'} h-100">
                   <div class="card-body p-2">
                     ${member ? `
-                      <div class="d-flex flex-column align-items-center text-center">
+                      <div class="d-flex align-items-center">
                         <!-- 캐릭터 이미지/아이콘 -->
-                        <div class="mb-2">
-                          ${characterDetails?.imageUrl ? `
-                            <img src="${characterDetails.imageUrl}" alt="${member.name}" class="rounded-circle" style="width: 60px; height: 60px; object-fit: cover;">
+                        <div class="me-3">
+                          ${characterDetails?.image ? `
+                            <img src="${characterDetails.image}" alt="${member.name}" class="rounded-circle" style="width: ${currentParty.size <= 4 ? '70px' : '55px'}; height: ${currentParty.size <= 4 ? '70px' : '55px'}; object-fit: cover; border: 1px solid #0d6efd;">
                           ` : `
-                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                              <i class="bi bi-person-fill text-white" style="font-size: 1.8rem;"></i>
+                            <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: ${currentParty.size <= 4 ? '70px' : '55px'}; height: ${currentParty.size <= 4 ? '70px' : '55px'}; border: 1px solid #0d6efd;">
+                              <i class="bi bi-person-fill text-white" style="font-size: ${currentParty.size <= 4 ? '2rem' : '1.5rem'};"></i>
                             </div>
                           `}
                         </div>
                         <!-- 캐릭터 정보 -->
-                        <div>
-                          <div class="fw-bold small">${member.name}</div>
-                          <div class="text-muted small">
+                        <div class="flex-grow-1">
+                          <div class="fw-bold ${currentParty.size <= 4 ? '' : 'small'} mb-1">${member.name}</div>
+                          <div class="${currentParty.size <= 4 ? '' : 'small'} text-muted">
                             <div class="mb-1">
-                              <i class="bi bi-shield me-1" style="font-size: 0.7rem;"></i>
+                              <i class="bi bi-shield me-2"></i>
                               <span>${characterDetails?.className || member.className || '직업'}</span>
                             </div>
                             <div class="mb-1">
-                              <i class="bi bi-star me-1" style="font-size: 0.7rem;"></i>
+                              <i class="bi bi-star me-2"></i>
                               <span>Lv.${characterDetails?.ilvl || member.ilvl || '0'}</span>
                             </div>
                             <div>
-                              <i class="bi bi-tag me-1" style="font-size: 0.7rem;"></i>
+                              <i class="bi bi-tag me-2"></i>
                               <span>${characterDetails?.role || member.role || '역할'}</span>
                             </div>
                           </div>
                         </div>
                       </div>
                     ` : `
-                      <div class="text-center py-2">
-                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto mb-1" style="width: 60px; height: 60px;">
-                          <i class="bi bi-person-plus text-muted" style="font-size: 1.8rem;"></i>
+                      <div class="d-flex align-items-center">
+                        <div class="me-3">
+                          <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: ${currentParty.size <= 4 ? '70px' : '55px'}; height: ${currentParty.size <= 4 ? '70px' : '55px'}; border: 1px dashed #ced4da;">
+                            <i class="bi bi-person-plus text-muted" style="font-size: ${currentParty.size <= 4 ? '2rem' : '1.5rem'};"></i>
+                          </div>
                         </div>
-                        <div class="text-muted small">
-                          <div class="fw-bold">슬롯 ${index + 1}</div>
-                          <div>비어있음</div>
+                        <div class="flex-grow-1">
+                          <div class="fw-bold ${currentParty.size <= 4 ? '' : 'small'} mb-1">슬롯 ${index + 1}</div>
+                          <div class="${currentParty.size <= 4 ? '' : 'small'} text-muted">비어있음</div>
                         </div>
                       </div>
                     `}
