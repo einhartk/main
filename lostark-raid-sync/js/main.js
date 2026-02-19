@@ -239,6 +239,65 @@ function reorderParties(raidId, difficultyId, fromIndex, toIndex) {
   scheduleAutoSave();
 }
 
+// 🔥 **새로 추가**: 파티 순번 직접 업데이트 함수
+async function updatePartyOrder(partyId, newOrder) {
+  try {
+    // 순번 유효성 검사
+    const order = parseInt(newOrder);
+    if (isNaN(order) || order < 1 || order > 99) {
+      console.warn('⚠️ [ORDER] 유효하지 않은 스케줄 순서:', newOrder);
+      return;
+    }
+    
+    // 파티 찾기
+    const parties = getCurrentTabParties();
+    const party = parties.find(p => p.id === partyId);
+    
+    if (!party) {
+      console.error('❌ [ORDER] 파티를 찾을 수 없음:', partyId);
+      return;
+    }
+    
+    const oldOrder = party.order || 0;
+    
+    // 순번이 동일하면 처리하지 않음
+    if (oldOrder === order) {
+      return;
+    }
+    
+    // 히스토리 기록
+    if (typeof recordHistory === 'function') {
+      await recordHistory(
+        'update',
+        {
+          type: 'party_schedule_order',
+          operation: 'update',
+          target: { 
+            raidId: party.raidId, 
+            difficultyId: party.difficultyId, 
+            partyId: party.id 
+          }
+        },
+        { scheduleOrder: oldOrder },
+        { scheduleOrder: order },
+        `${party.displayName} 스케줄 순서 변경: ${oldOrder}번 → ${order}번`
+      );
+    }
+    
+    // 스케줄 순서 업데이트
+    party.order = order;
+    
+    // UI 업데이트
+    renderRaidParties();
+    scheduleAutoSave();
+    
+    console.log(`✅ [ORDER] ${party.displayName} 스케줄 순서가 ${oldOrder}번에서 ${order}번으로 변경되었습니다.`);
+    
+  } catch (error) {
+    console.error('❌ [ORDER] 스케줄 순서 업데이트 오류:', error);
+  }
+}
+
 // 새로운 레이드 추가
 async function addNewRaid(skipHistory = false) {
   // 작업 잠금 확인 (안전한 확인)
@@ -399,6 +458,9 @@ async function updateRaidName(partyId, newName) {
     );
     
     party.name = newName;
+    
+    // 🔥 **중요 수정**: displayName도 함께 업데이트
+    party.displayName = newName;
     
     // UI 업데이트 - 즉시 렌더링 (파티 이름 변경은 즉시 피드백 필요)
     renderRaidParties();
@@ -2059,6 +2121,7 @@ async function loadFromDatabase() {
                   party.scheduledHour = null;
                 }
                 
+                // 🔥 **중요 수정**: 모든 파티에 대해 displayName 설정 로직 추가
                 // 기존 파티가 단일 문자 ID(A, B 등)인 경우 고유 ID로 변경
                 if (party.id && party.id.length === 1 && /^[A-Z]$/.test(party.id)) {
                   // 전역 고유 ID 생성
@@ -2069,8 +2132,30 @@ async function loadFromDatabase() {
                   // ID 업데이트
                   party.id = newGlobalId;
                   party.uniqueId = `${raidId}-${difficultyId}-${newGlobalId}`;
-                  party.displayName = party.name; // 기존 이름을 displayName로 저장
-                  party.name = `${party.raidName || raidId} ${party.difficultyName || difficultyId} ${oldId}`;
+                  
+                  // 🔥 **중요 수정**: displayName과 name 초기화 로직 개선
+                  // 사용자가 설정한 커스텀 이름이 있으면 유지, 없으면 기본 이름 사용
+                  const hasCustomName = party.name && 
+                    !party.name.includes(party.raidName || raidId) && 
+                    !party.name.includes(party.difficultyName || difficultyId) &&
+                    !party.name.includes(oldId);
+                  
+                  if (hasCustomName) {
+                    // 사용자 커스텀 이름이 있으면 그대로 사용
+                    party.displayName = party.name;
+                    party.name = party.name;
+                  } else {
+                    // 기본 이름 형식이면 displayName도 기본 이름으로 설정
+                    const defaultName = `${party.raidName || raidId} ${party.difficultyName || difficultyId} ${newGlobalId}`;
+                    party.displayName = defaultName;
+                    party.name = defaultName;
+                  }
+                } else {
+                  // 🔥 **중요 수정**: 이미 고유 ID를 가진 파티도 displayName 설정
+                  // displayName이 없거나 name과 다르면 동기화
+                  if (!party.displayName || party.displayName !== party.name) {
+                    party.displayName = party.name;
+                  }
                 }
                 
                 // uniqueId가 없을 때만 설정 (중복 방지)

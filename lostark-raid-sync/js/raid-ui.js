@@ -253,9 +253,24 @@ function renderRaidPartiesInternal(forceRender = false) {
                 ` : ''}
               </div>
             </div>
-            <div class="col-md-2">
-              <div class="d-flex align-items-center justify-content-end">
-                <button class="btn btn-sm btn-outline-danger" onclick="removeRaid('${party.id}')" style="padding: 6px 10px; font-size: 0.85rem;">
+            <div class="col-md-4">
+              <div class="d-flex align-items-center justify-content-end gap-1">
+                <!-- 스케줄 순서 입력 -->
+                <div class="d-flex align-items-center" style="width: 85px;">
+                  <span class="input-group-text input-group-text-sm" style="font-size: 0.65rem; padding: 2px 4px; border-radius: 4px 0 0 4px; border-right: none; background: #f8f9fa; display: flex; align-items: center; justify-content: center; height: 28px; min-width: 30px;">순서</span>
+                  <input type="number" 
+                         class="form-control form-control-sm text-center" 
+                         id="partyOrder-${party.id}-${index}"
+                         value="${party.order || index + 1}" 
+                         min="1" 
+                         max="99"
+                         style="font-size: 0.75rem; padding: 2px 3px; height: 28px; border-radius: 0 4px 4px 0; border-left: none; min-width: 35px;"
+                         onchange="updatePartyOrder('${party.id}', this.value)"
+                         onblur="updatePartyOrder('${party.id}', this.value)"
+                         title="스케줄 순서 설정 (1-99)">
+                </div>
+                <!-- 삭제 버튼 -->
+                <button class="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center" onclick="removeRaid('${party.id}')" style="width: 32px; height: 28px; padding: 0; font-size: 0.85rem;" title="파티 삭제">
                   <i class="bi bi-x-lg"></i>
                 </button>
               </div>

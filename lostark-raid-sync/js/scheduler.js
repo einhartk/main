@@ -90,6 +90,13 @@ async function updateRaidScheduledTime(partyId, weekday, hour) {
       return;
     }
     
+    // 🔥 **중요 수정**: 변경 전 데이터를 먼저 저장 (가장 중요!)
+    const beforeData = {
+      scheduledWeekday: party.scheduledWeekday || null,
+      scheduledHour: party.scheduledHour || null,
+      scheduledTimeDisplay: party.scheduledTimeDisplay || ''
+    };
+    
     // 요일/시간 업데이트
     party.scheduledWeekday = weekday || null;
     party.scheduledHour = hour || null;
@@ -140,6 +147,46 @@ async function updateRaidScheduledTime(partyId, weekday, hour) {
     
     // UI 업데이트
     renderRaidParties();
+    
+    // 🔥 **중요 수정**: 변경 후 데이터와 함께 히스토리 기록
+    if (typeof recordHistory === 'function') {
+      try {
+        const weekdayNames = {
+          'monday': '월요일',
+          'tuesday': '화요일',
+          'wednesday': '수요일',
+          'thursday': '목요일',
+          'friday': '금요일',
+          'saturday': '토요일',
+          'sunday': '일요일'
+        };
+        
+        const afterData = {
+          scheduledWeekday: weekday,
+          scheduledHour: hour,
+          scheduledTimeDisplay: weekday && hour ? `${weekdayNames[weekday]} ${hour}` : ''
+        };
+        
+        // 🔥 **중요 수정**: 실제 변경된 데이터로 히스토리 기록
+        await recordHistory(
+          'update',
+          {
+            type: 'schedule',
+            operation: 'update',
+            target: { 
+              raidId: party.raidId, 
+              difficultyId: party.difficultyId, 
+              partyId: party.id 
+            }
+          },
+          beforeData,
+          afterData,
+          `${party.displayName} 스케줄 설정: ${weekday && hour ? `${weekdayNames[weekday]} ${hour}` : '해제'}`
+        );
+      } catch (error) {
+        console.error('❌ [SCHEDULE] 히스토리 기록 오류:', error);
+      }
+    }
     
     // 동기화
     if (window.realtimeSync && window.realtimeSync.isSyncActive()) {
