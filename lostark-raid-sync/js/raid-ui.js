@@ -497,12 +497,20 @@ function truncateJobName(text, maxLength = 8) {
     return jobAbbreviations[text];
   }
   
-  // 사전에 없으면 단순 길이 제한
-  if (text.length > maxLength) {
-    return text.substring(0, maxLength) + '...';
+  // 사전에 없으면 길이별 처리
+  if (text.length <= 3) {
+    // 3글자 이하: 전체 표현
+    return text;
+  } else if (text.length === 4) {
+    // 4글자: 앞 2글자로 축소
+    return text.substring(0, 2);
+  } else {
+    // 4글자 이상: maxLength로 제한
+    if (text.length > maxLength) {
+      return text.substring(0, maxLength) + '...';
+    }
+    return text;
   }
-  
-  return text;
 }
 
 // 🔥 **기존 호환성을 위한 함수 (캐릭터명용)
@@ -688,7 +696,7 @@ function renderExpedition() {
               <div class="d-flex align-items-center">
                 <img src="${charDetails?.image || 'img/default-character.png'}" alt="${char.name}" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 6px; flex-shrink: 0;">
                 <div class="flex-grow-1">
-                  <div class="fw-bold" style="font-size: 0.7rem; line-height: 1.2; color: #2c3e50;" title="${char.name}">${truncateText(char.name, 7)}</div>
+                  <div class="fw-bold" style="font-size: 0.7rem; line-height: 1.2; color: #2c3e50;" title="${char.name}">${truncateCharacterName(char.name, 7)}</div>
                   <div class="small text-warning" style="font-size: 0.6rem; font-weight: 600;">Lv${charDetails?.ilvl || '0'}</div>
                   <div class="small text-primary" style="font-size: 0.55rem; font-weight: 500;">${(charDetails?.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
                 </div>
@@ -737,10 +745,10 @@ function renderExpeditionModal() {
             <div class="expedition-char ${char.role}" draggable="true" ondragstart="handleDragStart(event, '${char.id}', null, null, ${index}, ${charIndex})" ondragend="handleDragEnd(event)" ondrop="handleExpeditionCharacterDrop(event, ${index}, ${charIndex})" ondragover="handleDragOver" ondragleave="handleDragLeave" onclick="event.stopPropagation(); editCharacter(${index}, ${charIndex})" oncontextmenu="handleRightClick(event, '${char.id}', null, null, ${index}, ${charIndex})" style="cursor: pointer;" title="좌클릭: 수정, 우클릭: 삭제, 드래그: 공격대로 이동">
               <img src="${char.image || 'img/default-character.png'}" alt="${char.name}" style="width: 40px; height: 40px; border-radius: 50%; margin-bottom: 2px; display: block;">
               <div class="flex-grow-1" style="font-size: 0.7rem;">
-                <div class="fw-bold">${char.name}</div>
+                <div class="fw-bold">${truncateCharacterName(char.name, 8)}</div>
                 <div class="small text-muted">Lv ${char.ilvl || '0'}</div>
                 <div class="small text-info">CP ${(char.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
-                <div class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" style="font-size: 0.5rem;">${char.role === 'support' ? '서폿' : '딜러'} (${char.className || '알 수 없음'})</div>
+                <div class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" style="font-size: 0.5rem;">${char.role === 'support' ? '서폿' : '딜러'} (${truncateJobName(char.className || '알 수 없음', 6)})</div>
               </div>
               <div class="badge bg-secondary" style="font-size: 0.45rem; position: absolute; bottom: 4px; right: 4px; z-index: 10;">${Constraints.getCharacterUsageCount(char.name)}/3</div>
             </div>

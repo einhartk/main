@@ -1955,7 +1955,7 @@ function renderRaidListModal() {
                     return `
                       <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size: 0.75rem;">
                         <span class="text-truncate" style="max-width: 90px; font-weight: 500;" title="${member.name || '알 수 없음'}">
-                          ${truncateText(member.name || '알 수 없음', 12)}
+                          ${truncateCharacterName(member.name || '알 수 없음', 12)}
                         </span>
                         <span class="${roleColor}" style="font-size: 0.8rem;">${roleIcon}</span>
                         <small class="text-muted" style="font-size: 0.75rem;">${charDetails?.ilvl || '?'}</small>

@@ -783,7 +783,7 @@ function loadScheduleDetail() {
                           <div class="${currentParty.size <= 4 ? '' : 'small'} text-muted">
                             <div class="mb-1">
                               <i class="bi bi-shield me-2"></i>
-                              <span>${truncateText(characterDetails?.className || member.className || '직업', 6)}</span>
+                              <span>${truncateJobName(characterDetails?.className || member.className || '직업', 6)}</span>
                             </div>
                             <div class="mb-1">
                               <i class="bi bi-star me-2"></i>
