@@ -1457,9 +1457,9 @@ function exportRaidListToExcel() {
                 if (characterInfo) {
                   const ilvl = parseCompareNumber(characterInfo.ilvl || '0');
                   const combatPower = parseCompareNumber(characterInfo.combatPower || '0');
-                  memberInfo = `${member.name} ${characterInfo.className || '알 수 없음'} ${ilvl} ${combatPower.toLocaleString()}`;
+                  memberInfo = `${truncateText(member.name, 10)} ${truncateText(characterInfo.className || '알 수 없음', 6)} ${ilvl} ${combatPower.toLocaleString()}`;
                 } else {
-                  memberInfo = `${member.name} 정보없음`;
+                  memberInfo = `${truncateText(member.name, 10)} 정보없음`;
                 }
                 
                 memberInfos.push(memberInfo);
@@ -1954,8 +1954,8 @@ function renderRaidListModal() {
                     const roleColor = charDetails?.role === 'support' ? 'text-success' : 'text-danger';
                     return `
                       <div class="d-flex justify-content-between align-items-center py-1 border-bottom" style="font-size: 0.75rem;">
-                        <span class="text-truncate" style="max-width: 90px; font-weight: 500;">
-                          ${member.name || '알 수 없음'}
+                        <span class="text-truncate" style="max-width: 90px; font-weight: 500;" title="${member.name || '알 수 없음'}">
+                          ${truncateText(member.name || '알 수 없음', 12)}
                         </span>
                         <span class="${roleColor}" style="font-size: 0.8rem;">${roleIcon}</span>
                         <small class="text-muted" style="font-size: 0.75rem;">${charDetails?.ilvl || '?'}</small>

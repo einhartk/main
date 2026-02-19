@@ -403,10 +403,10 @@ function renderRaidPartiesInternal(forceRender = false) {
                   ${charDetails ? `
                     <div class="char-box ${charDetails.role} ${!meetsRequirements(charDetails, party) ? 'requirement-failed' : ''}" draggable="true" ondragstart="handleDragStart(event, '${charDetails.id}', '${party.id}', ${slotIndex})" ondragend="handleDragEnd(event)" onclick="event.stopPropagation(); openRaidCharacterSelector('${party.id}', ${slotIndex})" oncontextmenu="handleRightClick(event, '${charDetails.id}', '${party.id}', ${slotIndex}, null, null)" style="cursor: pointer;" title="좌클릭: 캐릭터 변경, 우클릭: 삭제">
                       <img src="${charDetails.image || 'img/default-character.png'}" alt="${charDetails.name}" style="width: 40px; height: 40px; border-radius: 50%; margin-bottom: 5px; display: block; margin-left: auto; margin-right: auto;">
-                      <div class="fw-bold small">${charDetails.name}</div>
+                      <div class="fw-bold small" title="${charDetails.name}">${truncateCharacterName(charDetails.name, 8)}</div>
                       <div class="small text-muted">Lv ${charDetails.ilvl || '0'}</div>
                       <div class="small text-muted">CP ${(charDetails.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
-                      <div class="badge ${charDetails.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'} mt-1" style="font-size: 0.7rem;">${charDetails.role === 'support' ? '서폿' : '딜러'} (${charDetails.className || '알 수 없음'})</div>
+                      <div class="badge ${charDetails.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'} mt-1" style="font-size: 0.7rem;" title="${charDetails.className || '알 수 없음'}">${charDetails.role === 'support' ? '서폿' : '딜러'} (${truncateJobName(charDetails.className || '알 수 없음', 6)})</div>
                       ${!meetsRequirements(charDetails, party) ? '<div class="badge bg-danger mt-1" style="font-size: 0.65rem;">조건미달</div>' : ''}
                     </div>
                   ` : ''}
@@ -455,6 +455,59 @@ function getWeekdayName(weekday) {
     'sunday': '일요일'
   };
   return weekdays[weekday] || weekday;
+}
+
+// 직업명 축약 사전 (전역 변수)
+let jobAbbreviations = {};
+
+// 직업명 축약 사전 로드 함수
+async function loadJobAbbreviations() {
+  try {
+    const response = await fetch('data/job-abbreviations.json');
+    const data = await response.json();
+    jobAbbreviations = data;
+  } catch (error) {
+    console.error('직업명 축약 사전 로드 실패:', error);
+    // 실패 시 빈 객체로 설정 (기본 축약 조건 사용)
+    jobAbbreviations = {};
+  }
+}
+
+// 페이지 로드 시 사전 로드
+loadJobAbbreviations();
+
+// 🔥 **새로 추가**: 캐릭터명 길이 제한 함수 (생략 처리)
+function truncateCharacterName(text, maxLength = 8) {
+  if (!text) return '';
+  
+  // 캐릭터명은 단순 길이 제한
+  if (text.length > maxLength) {
+    return text.substring(0, maxLength) + '...';
+  }
+  
+  return text;
+}
+
+// 🔥 **새로 추가**: 직업명 축약 함수 (사전 기반)
+function truncateJobName(text, maxLength = 8) {
+  if (!text) return '';
+  
+  // 직업명 축약 사전 적용
+  if (jobAbbreviations[text]) {
+    return jobAbbreviations[text];
+  }
+  
+  // 사전에 없으면 단순 길이 제한
+  if (text.length > maxLength) {
+    return text.substring(0, maxLength) + '...';
+  }
+  
+  return text;
+}
+
+// 🔥 **기존 호환성을 위한 함수 (캐릭터명용)
+function truncateText(text, maxLength = 8) {
+  return truncateCharacterName(text, maxLength);
 }
 
 // 원정대 이름 체크 함수 (이모지 포함)
@@ -635,7 +688,7 @@ function renderExpedition() {
               <div class="d-flex align-items-center">
                 <img src="${charDetails?.image || 'img/default-character.png'}" alt="${char.name}" style="width: 32px; height: 32px; border-radius: 50%; margin-right: 6px; flex-shrink: 0;">
                 <div class="flex-grow-1">
-                  <div class="fw-bold" style="font-size: 0.7rem; line-height: 1.2; color: #2c3e50;">${char.name.length > 7 ? char.name.substring(0, 7) + '..' : char.name}</div>
+                  <div class="fw-bold" style="font-size: 0.7rem; line-height: 1.2; color: #2c3e50;" title="${char.name}">${truncateText(char.name, 7)}</div>
                   <div class="small text-warning" style="font-size: 0.6rem; font-weight: 600;">Lv${charDetails?.ilvl || '0'}</div>
                   <div class="small text-primary" style="font-size: 0.55rem; font-weight: 500;">${(charDetails?.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
                 </div>
