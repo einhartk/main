@@ -283,10 +283,7 @@ async function addNewRaid(skipHistory = false) {
   }
   state.globalPartyCounter++;
   
-  const partyId = String.fromCharCode(65 + state.raidPartyCounter[raidId][difficultyId]);
-  state.raidPartyCounter[raidId][difficultyId]++;
-  
-  // 전역 고유 ID 생성
+  // 🔥 **중요 수정**: 단일 ID 생성 로직으로 통일
   const globalPartyId = `P${state.globalPartyCounter}`;
   const uniquePartyId = `${state.selectedRaid.id}-${state.selectedDifficulty.id}-${globalPartyId}`;
   
@@ -294,10 +291,10 @@ async function addNewRaid(skipHistory = false) {
   const maxOrder = parties.length > 0 ? Math.max(...parties.map(p => p.order || 0)) : 0;
   
   const newParty = {
-    id: globalPartyId, // 전역 고유 ID 사용
-    uniqueId: uniquePartyId,
-    displayName: `${state.selectedRaid.name} ${state.selectedDifficulty.name} ${partyId}`, // 표시용 이름
-    name: `${state.selectedRaid.name} ${state.selectedDifficulty.name} ${partyId}`,
+    id: globalPartyId, // 🔥 **단일 ID 사용**
+    uniqueId: uniquePartyId, // 전체 경로용
+    displayName: `${state.selectedRaid.name} ${state.selectedDifficulty.name} ${state.globalPartyCounter}`, // 🔥 **번호로 표시**
+    name: `${state.selectedRaid.name} ${state.selectedDifficulty.name} ${state.globalPartyCounter}`,
     raidId: state.selectedRaid.id,
     difficultyId: state.selectedDifficulty.id,
     raidName: state.selectedRaid.name,
@@ -681,16 +678,48 @@ async function removeRaid(partyId) {
   
   if (!acquired) return;
   
+  // 🔥 **중요 수정**: ID 유효성 강화 검증
+  console.log(`🔍 [REMOVE] 삭제 요청 파티 ID: "${partyId}"`);
+  
   // 충돌 감지
   if (!window.realtimeSync || !window.realtimeSync.isSyncActive()) {
     // 일반 모드에서는 바로 실행
     const raidId = state.selectedRaid?.id;
     const difficultyId = state.selectedDifficulty?.id;
     const parties = getCurrentTabParties();
-    const index = parties.findIndex(p => p.id === partyId);
-
+    
+    // 🔥 **중요 수정**: 다양한 ID 매칭 시도
+    let index = -1;
+    let foundParty = null;
+    
+    // 1. 정확한 ID 매칭
+    index = parties.findIndex(p => p.id === partyId);
     if (index !== -1) {
-      const removedParty = parties[index];
+      foundParty = parties[index];
+      console.log(`✅ [REMOVE] 정확한 ID 매칭 성공: index=${index}`);
+    }
+    
+    // 2. uniqueId 매칭 (fallback)
+    if (index === -1) {
+      index = parties.findIndex(p => p.uniqueId === partyId);
+      if (index !== -1) {
+        foundParty = parties[index];
+        console.log(`✅ [REMOVE] uniqueId 매칭 성공: index=${index}`);
+      }
+    }
+    
+    // 3. displayName 부분 매칭 (최후의 수단)
+    if (index === -1 && partyId.includes('P')) {
+      const partyNumber = partyId.replace('P', '');
+      index = parties.findIndex(p => p.displayName && p.displayName.includes(partyNumber));
+      if (index !== -1) {
+        foundParty = parties[index];
+        console.log(`✅ [REMOVE] displayName 부분 매칭 성공: index=${index}`);
+      }
+    }
+
+    if (index !== -1 && foundParty) {
+      const removedParty = foundParty;
 
       // 히스토리 기록
       if (typeof recordHistory === 'function') {
@@ -698,12 +727,12 @@ async function removeRaid(partyId) {
           'delete',
           {
             type: 'party',
-            id: partyId,
+            id: foundParty.id, // 실제 파티 ID 사용
             path: `parties[${index}]`
           },
           removedParty,
           null,
-          `${partyId} 파티 삭제`
+          `${foundParty.displayName} 파티 삭제`
         );
       }
       
@@ -732,8 +761,8 @@ async function removeRaid(partyId) {
           historyData: {
             type: 'party',
             operation: 'delete',
-            target: { raidId, difficultyId, partyId },
-            description: `파티 삭제: ${removedParty.name}`
+            target: { raidId, difficultyId, partyId: foundParty.id },
+            description: `파티 삭제: ${removedParty.displayName}`
           }
         });
 
@@ -746,6 +775,21 @@ async function removeRaid(partyId) {
         }
       }
     } else {
+      // 🔥 **중요 수정**: 상세한 오류 정보 출력
+      console.error(`❌ [REMOVE] 파티 찾기 실패:`, {
+        requestedId: partyId,
+        availableParties: parties.map(p => ({
+          id: p.id,
+          uniqueId: p.uniqueId,
+          displayName: p.displayName
+        }))
+      });
+      
+      window.modalManager.showAlert({
+        title: '오류',
+        message: `파티 ID "${partyId}"를 찾을 수 없습니다.`
+      });
+      
       try {
         if (window.operationLock && typeof window.operationLock.release === 'function') {
           window.operationLock.release('파티 삭제');

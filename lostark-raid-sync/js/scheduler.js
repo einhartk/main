@@ -20,7 +20,38 @@ function initializeClockPicker(partyId) {
       donetext: '완료',
       autoclose: true,
       twelvehour: false,
-      vibrate: true
+      vibrate: true,
+      // 시간 변경 시 이벤트 처리 추가
+      afterDone: function() {
+        try {
+          // timeInput 변수를 직접 사용 (클로저 활용)
+          const inputId = timeInput.id;
+          
+          if (!inputId) {
+            console.error('❌ [SCHEDULE] input ID를 찾을 수 없음:', timeInput);
+            return;
+          }
+          
+          // input ID에서 partyId와 index 추출 (scheduledHour-partyId-index 형식)
+          const idMatch = inputId.match(/^scheduledHour-(.+)-(\d+)$/);
+          if (!idMatch) {
+            console.error('❌ [SCHEDULE] ID 형식이 올바르지 않음:', inputId);
+            return;
+          }
+          
+          const extractedPartyId = idMatch[1];
+          const index = idMatch[2];
+          
+          const weekdaySelect = document.getElementById(`scheduledWeekday-${extractedPartyId}-${index}`);
+          const weekday = weekdaySelect ? weekdaySelect.value : null;
+          const hour = $(timeInput).val();
+          
+          // 시간 업데이트 함수 호출
+          updateRaidScheduledTime(extractedPartyId, weekday, hour);
+        } catch (error) {
+          console.error('❌ [SCHEDULE] 시간 업데이트 오류:', error);
+        }
+      }
     });
     
     // 인스턴스 저장

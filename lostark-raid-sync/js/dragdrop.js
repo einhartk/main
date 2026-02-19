@@ -219,24 +219,58 @@ async function handleDrop(event, partyId, slotIndex) {
 async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex, parties) {
   const { partyId: sourcePartyId, slotIndex: sourceSlotIndex } = draggedData;
 
-  // 소스 파티 찾기
-  const sourceParty = parties.find(p => p.id === sourcePartyId);
+  // 🔥 **중요 수정**: 상세한 디버깅 정보 출력
+  console.log(`🔍 [RAID TO RAID] 드롭 요청:`, {
+    sourcePartyId,
+    targetPartyId,
+    sourceSlotIndex,
+    targetSlotIndex,
+    availableParties: parties.map(p => ({ id: p.id, displayName: p.displayName }))
+  });
+
+  // 🔥 **중요 수정**: 다양한 ID 매칭 시도
+  let sourceParty = null;
+  let targetParty = null;
+  
+  // 1. 정확한 ID 매칭
+  sourceParty = parties.find(p => p.id === sourcePartyId);
+  targetParty = parties.find(p => p.id === targetPartyId);
+  
+  // 2. uniqueId 매칭 (fallback)
   if (!sourceParty) {
-    console.error(`❌ [RAID TO RAID] 소스 파티 찾기 실패:`, { sourcePartyId });
+    sourceParty = parties.find(p => p.uniqueId === sourcePartyId);
+    if (sourceParty) {
+      console.log(`✅ [RAID TO RAID] 소스 uniqueId 매칭 성공`);
+    }
+  }
+  
+  if (!targetParty) {
+    targetParty = parties.find(p => p.uniqueId === targetPartyId);
+    if (targetParty) {
+      console.log(`✅ [RAID TO RAID] 타겟 uniqueId 매칭 성공`);
+    }
+  }
+  
+  if (!sourceParty) {
+    console.error(`❌ [RAID TO RAID] 소스 파티 찾기 실패:`, { 
+      sourcePartyId, 
+      availableIds: parties.map(p => p.id) 
+    });
     window.modalManager.showAlert({
       title: '오류',
-      message: `소스 파티 ${sourcePartyId}를 찾을 수 없습니다.`
+      message: `소스 파티를 찾을 수 없습니다. (ID: ${sourcePartyId})`
     });
     return;
   }
   
-  // 타겟 파티 찾기
-  const targetParty = parties.find(p => p.id === targetPartyId);
   if (!targetParty) {
-    console.error(`❌ [RAID TO RAID] 타겟 파티 찾기 실패:`, { targetPartyId });
+    console.error(`❌ [RAID TO RAID] 타겟 파티 찾기 실패:`, { 
+      targetPartyId, 
+      availableIds: parties.map(p => p.id) 
+    });
     window.modalManager.showAlert({
       title: '오류',
-      message: `타겟 파티 ${targetPartyId}를 찾을 수 없습니다.`
+      message: `타겟 파티를 찾을 수 없습니다. (ID: ${targetPartyId})`
     });
     return;
   }
@@ -285,7 +319,7 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
     }
   };
   
-  console.log('� [RAID TO RAID] 백업 데이터:', {
+  console.log('🔄 [RAID TO RAID] 백업 데이터:', {
     sourceBackup: {
       partyId: backupData.sourceParty.id,
       slotIndex: backupData.sourceParty.slotIndex,
