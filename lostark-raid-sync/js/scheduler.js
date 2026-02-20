@@ -300,20 +300,26 @@ function openSchedulerModal() {
                 </div>
                 
                 <div id="schedulerContent" class="scheduler-container">
-                  <!-- 스케줄 내용이 여기에 표시됨 -->
+                  <!-- -->
                 </div>
               </div>
               
-              <!-- 상세 보기 탭 -->
+              <!-- -->
               <div class="tab-pane fade" id="scheduleDetail" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                  <h6 class="mb-0"> </h6>
+                  <button class="btn btn-sm btn-primary" onclick="capturePartyDetail()" title=" ">
+                    <i class="bi bi-camera me-1"></i> 
+                  </button>
+                </div>
                 <div id="scheduleDetailContent">
-                  <!-- 상세 내용이 여기에 표시됨 -->
+                  <!-- -->
                 </div>
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"> </button>
           </div>
         </div>
       </div>
@@ -770,7 +776,7 @@ function loadScheduleDetail() {
                         <!-- 캐릭터 이미지/아이콘 -->
                         <div class="me-3">
                           ${characterDetails?.image ? `
-                            <img src="${characterDetails.image}" alt="${member.name}" class="rounded-circle" style="width: ${currentParty.size <= 4 ? '70px' : '55px'}; height: ${currentParty.size <= 4 ? '70px' : '55px'}; object-fit: cover; border: 1px solid #0d6efd;">
+                            <img src="${characterDetails.image}" alt="${member.name}" class="rounded-circle character-image" style="width: ${currentParty.size <= 4 ? '70px' : '55px'}; height: ${currentParty.size <= 4 ? '70px' : '55px'}; object-fit: cover; border: 1px solid #0d6efd;">
                           ` : `
                             <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: ${currentParty.size <= 4 ? '70px' : '55px'}; height: ${currentParty.size <= 4 ? '70px' : '55px'}; border: 1px solid #0d6efd;">
                               <i class="bi bi-person-fill text-white" style="font-size: ${currentParty.size <= 4 ? '2rem' : '1.5rem'};"></i>
@@ -906,6 +912,146 @@ async function togglePartyClearInScheduler(partyId) {
     if (window.operationLock && typeof window.operationLock.release === 'function') {
       window.operationLock.release('클리어 상태 변경');
     }
+  }
+}
+
+// 파티 상세 보기 스크린샷 기능
+async function capturePartyDetail() {
+  try {
+    const detailContent = document.getElementById('scheduleDetailContent');
+    if (!detailContent) {
+      showNotification('상세 보기 내용을 찾을 수 없습니다.', 'error');
+      return;
+    }
+
+    // html2canvas 라이브러리 로드 확인
+    if (typeof html2canvas === 'undefined') {
+      // 동적으로 라이브러리 로드
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      script.onload = async () => {
+        await performCapture(detailContent);
+      };
+      script.onerror = () => {
+        showNotification('스크린샷 라이브러리를 로드할 수 없습니다.', 'error');
+      };
+      document.head.appendChild(script);
+    } else {
+      await performCapture(detailContent);
+    }
+  } catch (error) {
+    console.error('❌ [SCHEDULE] 스크린샷 오류:', error);
+    showNotification('스크린샷 생성 중 오류가 발생했습니다.', 'error');
+  }
+}
+
+// 실제 스크린샷 수행
+async function performCapture(element) {
+  try {
+    // 임시로 스타일 조정하여 깔끔한 캡처
+    const originalStyle = element.style.cssText;
+    
+    // 스크린샷 전용 스타일 적용
+    element.style.cssText = `
+      background: white !important;
+      padding: 20px !important;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    `;
+
+    // 스크린샷을 위해 로스트아크 이미지를 직업 아이콘으로 임시 교체
+    const characterImages = element.querySelectorAll('.character-image');
+    const originalImages = [];
+    
+    characterImages.forEach((img, index) => {
+      // 원본 이미지 저장
+      originalImages.push({
+        src: img.src,
+        alt: img.alt,
+        style: img.style.cssText,
+        className: img.className
+      });
+      
+      // 직업 아이콘으로 교체
+      const characterCard = img.closest('.card-body');
+      const memberName = characterCard?.querySelector('.fw-bold')?.textContent;
+      const characterDetails = memberName ? getCharacterDetailsFromExpedition(memberName) : null;
+      const jobIconName = characterDetails ? getJobIconName(characterDetails.className || '') : '';
+      
+      if (jobIconName) {
+        img.src = `img/${jobIconName}.png`;
+        img.alt = characterDetails?.className || '직업';
+        img.style.objectFit = 'cover';
+      } else {
+        // 직업 아이콘이 없으면 기본 아이콘으로
+        const parentDiv = img.parentElement;
+        parentDiv.innerHTML = `
+          <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center" style="width: ${img.style.width}; height: ${img.style.height}; border: 1px solid #0d6efd;">
+            <i class="bi bi-person-fill text-white" style="font-size: 1.5rem;"></i>
+          </div>
+        `;
+      }
+    });
+
+    // 캡처 옵션
+    const canvas = await html2canvas(element, {
+      backgroundColor: '#ffffff',
+      scale: 2, // 고화질
+      logging: false,
+      useCORS: false, // CORS 비활성화
+      allowTaint: true // 오염된 이미지 허용
+    });
+
+    // 원래 이미지 복원
+    characterImages.forEach((img, index) => {
+      const original = originalImages[index];
+      if (original) {
+        img.src = original.src;
+        img.alt = original.alt;
+        img.style.cssText = original.style;
+        img.className = original.className;
+      }
+    });
+
+    // 원래 스타일 복원
+    element.style.cssText = originalStyle;
+
+    // 캔버스를 Blob으로 변환
+    canvas.toBlob(async (blob) => {
+      try {
+        // 클립보드에 복사
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'image/png': blob
+          })
+        ]);
+
+        showNotification('스크린샷이 클립보드에 복사되었습니다!', 'success');
+
+        // 다운로드 옵션도 제공
+        const link = document.createElement('a');
+        link.download = `party-detail-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+      } catch (clipboardError) {
+        console.error('❌ [SCHEDULE] 클립보드 복사 실패:', clipboardError);
+        
+        // 클립보드 복사 실패 시 다운로드만 제공
+        const link = document.createElement('a');
+        link.download = `party-detail-${new Date().toISOString().slice(0, 10)}.png`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+        showNotification('스크린샷이 다운로드되었습니다. (클립보드 복사는 지원되지 않습니다)', 'info');
+      }
+    }, 'image/png');
+
+  } catch (error) {
+    console.error('❌ [SCHEDULE] 캡처 실패:', error);
+    showNotification('스크린샷 생성에 실패했습니다.', 'error');
   }
 }
 
@@ -1163,5 +1309,9 @@ window.showPartyDetailInScheduler = showPartyDetailInScheduler;
 window.editPartyOrder = editPartyOrder;
 window.closeScheduleDetail = closeScheduleDetail;
 window.findPartyById = findPartyById;
+window.capturePartyDetail = capturePartyDetail;
+window.performCapture = performCapture;
+window.navigatePartyDetail = navigatePartyDetail;
+window.clearCurrentPartyAndNext = clearCurrentPartyAndNext;
 window.navigatePartyDetail = navigatePartyDetail;
 window.clearCurrentPartyAndNext = clearCurrentPartyAndNext;

@@ -501,8 +501,7 @@ Firebase Realtime Database (데이터 저장)
 ```
 
 ---
-
-**개발자**: Cascade AI Assistant  
+ 
 **버전**: 2.0.0 (동시성 제어, 시크릿 커맨드, 히스토리 관리 추가)  
 **기술 스택**: HTML5, CSS3, JavaScript, Bootstrap 5, Firebase Realtime Database
 

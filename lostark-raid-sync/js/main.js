@@ -3215,7 +3215,12 @@ function toggleDarkMode() {
 }
 
 function updateDarkModeIcon(isDarkMode) {
-  const icon = document.querySelector('#darkModeToggle').closest('.nav-link').querySelector('i');
+  const darkModeToggle = document.querySelector('#darkModeToggle');
+  if (!darkModeToggle) return;
+  
+  const icon = darkModeToggle.closest('.nav-link')?.querySelector('i');
+  if (!icon) return;
+  
   if (isDarkMode) {
     icon.classList.remove('bi-moon-stars');
     icon.classList.add('bi-sun');
@@ -3227,7 +3232,10 @@ function updateDarkModeIcon(isDarkMode) {
 
 function loadDarkModeSetting() {
   const isDarkMode = localStorage.getItem('darkMode') === 'true';
-  document.getElementById('darkModeToggle').checked = isDarkMode;
+  const darkModeToggle = document.getElementById('darkModeToggle');
+  if (darkModeToggle) {
+    darkModeToggle.checked = isDarkMode;
+  }
   document.body.classList.toggle('dark-mode', isDarkMode);
   updateDarkModeIcon(isDarkMode);
 }

@@ -3,15 +3,15 @@
     position: fixed;
     bottom: 20px;
     right: 20px;
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 24px;
+    font-size: 20px;
     cursor: pointer;
     box-shadow: 0 4px 20px rgba(0, 123, 255, 0.4);
     z-index: 1000;
@@ -78,8 +78,9 @@
 
 .floating-menu-item i {
     margin-right: 10px;
-    font-size: 18px;
-    width: 20px;
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
 }
 
 /* 토글 버튼 - 사이드바에 최대한 붙여서 ] 모양 */
