@@ -18,75 +18,79 @@
 </head>
 <body>
     <div class="container-fluid">
-        <!-- 플로팅 메뉴 버튼 -->
-        <div class="floating-menu-btn" onclick="toggleFloatingMenu()">
-            <i class="bi bi-list"></i>
-        </div>
-        
-        <!-- 플로팅 메뉴 -->
-        <div class="floating-menu" id="floatingMenu">
-            <div class="floating-menu-header">
-                <h6 class="mb-0">메뉴</h6>
-                <button class="btn-close btn-close-white" onclick="toggleFloatingMenu()"></button>
-            </div>
-            <div class="floating-menu-body">
-                <a class="floating-menu-item" href="#" onclick="showRaidListModal(); toggleFloatingMenu();">
-                    <i class="bi bi-list-ul"></i> 공대 리스트
-                </a>
-                <a class="floating-menu-item" href="#" onclick="showExpeditionModal(); toggleFloatingMenu();">
-                    <i class="bi bi-people"></i> 원정대 관리
-                </a>
-                <a class="floating-menu-item" href="#" onclick="showStatisticsModal(); toggleFloatingMenu();">
-                    <i class="bi bi-bar-chart"></i> 통계
-                </a>
-                <a class="floating-menu-item" href="#" onclick="showHistoryModal(); toggleFloatingMenu();">
-                    <i class="bi bi-clock-history"></i> 히스토리
-                </a>
-                <a class="floating-menu-item" href="#" onclick="openSchedulerModal(); toggleFloatingMenu();">
-                    <i class="bi bi-calendar-week"></i> 스케줄러
-                </a>
-                <div class="floating-menu-item d-flex align-items-center justify-content-between">
-                    <span>
-                        <i class="bi bi-moon-stars"></i> 다크모드
-                    </span>
-                    <div class="form-check form-switch mb-0">
-                        <input class="form-check-input" type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
-                    </div>
-                </div>
-                
-                <!-- 동기화 상태 표시 -->
-                <div id="syncStatus" class="alert alert-success mt-2" style="display: none;">
-                    <i class="bi bi-wifi"></i>
-                    <strong>실시간 동기화 중</strong><br>
-                    코드: <span id="syncCodeDisplay"></span><br>
-                    <small id="connectedUsers"></small>
-                </div>
-            </div>
-        </div>
-
         <div class="row">
-            <!-- 좌측 원정대 패널 -->
-            <div class="expedition-left-panel">
-                <div class="expedition-grid-container">
-                    <div class="expedition-grid-header">
-                        <h6 class="mb-0">
-                            <i class="bi bi-people-fill me-1"></i>원정대
-                            <small class="text-muted">(드래그하여 공격대로 이동)</small>
-                        </h6>
-                    </div>
-                    <div class="expedition-grid-body" id="expeditionPanelBody">
-                        <div id="expeditionPanel" class="expedition-grid"></div>
+            <!-- 사이드바 -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+                <div class="position-sticky pt-3">
+                    <h4 class="sidebar-heading">공대 관리</h4>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" onclick="showRaidListModal()">
+                                <i class="bi bi-list-ul"></i> 공대 리스트
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showExpeditionModal()">
+                                <i class="bi bi-people"></i> 원정대 관리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showStatisticsModal()">
+                                <i class="bi bi-bar-chart"></i> 통계
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="showHistoryModal()">
+                                <i class="bi bi-clock-history"></i> 히스토리
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="openSchedulerModal()">
+                                <i class="bi bi-calendar-week"></i> 스케줄러
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <div class="nav-link d-flex align-items-center justify-content-between">
+                                <span>
+                                    <i class="bi bi-moon-stars"></i> 다크모드
+                                </span>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                    
+                    <!-- 동기화 상태 표시 -->
+                    <div id="syncStatus" class="alert alert-success mt-3" style="display: none;">
+                        <i class="bi bi-wifi"></i>
+                        <strong>실시간 동기화 중</strong><br>
+                        코드: <span id="syncCodeDisplay"></span><br>
+                        <small id="connectedUsers"></small>
                     </div>
                 </div>
-            </div>
-
-            <!-- 토글 버튼은 패널 밖에 독립적으로 배치 -->
-            <button class="btn btn-sm btn-outline-secondary py-0 expedition-toggle-btn" onclick="toggleExpeditionPanel()">
-                <i class="bi bi-chevron-right" id="expeditionToggleIcon"></i>
-            </button>
+            </nav>
 
             <!-- 메인 콘텐츠 -->
-            <main class="main-content">
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                <!-- 원정대 사이드 패널 -->
+                <div class="expedition-side-panel mb-4">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center py-2">
+                            <h6 class="mb-0">
+                                <i class="bi bi-people-fill me-1"></i>공격대 제작용 원정대
+                                <small class="text-muted">(드래그하여 공격대로 이동)</small>
+                            </h6>
+                            <button class="btn btn-sm btn-outline-secondary py-0" onclick="toggleExpeditionPanel()">
+                                <i class="bi bi-chevron-up" id="expeditionToggleIcon"></i>
+                            </button>
+                        </div>
+                        <div class="card-body" id="expeditionPanelBody">
+                            <div id="expeditionPanel" class="row g-2"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">공대 관리</h1>
                     <div class="btn-toolbar mb-2 mb-md-0">

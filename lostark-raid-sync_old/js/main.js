@@ -2514,20 +2514,15 @@ const EXPEDITION_PANEL_STORAGE_KEY = 'lostarkRaidExpeditionPanelOpen';
 function toggleExpeditionPanel() {
   const panelBody = document.getElementById('expeditionPanelBody');
   const toggleIcon = document.getElementById('expeditionToggleIcon');
-  const leftPanel = document.querySelector('.expedition-left-panel');
-  if (!panelBody || !toggleIcon || !leftPanel) return;
+  if (!panelBody || !toggleIcon) return;
 
   const isOpen = panelBody.style.display === 'none';
   if (isOpen) {
-    // 패널 열기
     panelBody.style.display = 'block';
-    toggleIcon.className = 'bi bi-chevron-right'; // 우측 화살표 (닫기)
-    leftPanel.classList.remove('collapsed'); // collapsed 클래스 제거
+    toggleIcon.className = 'bi bi-chevron-up';
   } else {
-    // 패널 닫기
     panelBody.style.display = 'none';
-    toggleIcon.className = 'bi bi-chevron-left'; // 좌측 화살표 (열기)
-    leftPanel.classList.add('collapsed'); // collapsed 클래스 추가
+    toggleIcon.className = 'bi bi-chevron-down';
   }
   try {
     localStorage.setItem(EXPEDITION_PANEL_STORAGE_KEY, String(isOpen));
@@ -2538,22 +2533,20 @@ function toggleExpeditionPanel() {
 function applyExpeditionPanelState() {
   const panelBody = document.getElementById('expeditionPanelBody');
   const toggleIcon = document.getElementById('expeditionToggleIcon');
-  const leftPanel = document.querySelector('.expedition-left-panel');
-  if (!panelBody || !toggleIcon || !leftPanel) return;
+  if (!panelBody || !toggleIcon) return;
   try {
     const saved = localStorage.getItem(EXPEDITION_PANEL_STORAGE_KEY);
     const open = saved !== 'false'; // 없거나 'true'면 열림, 'false'면 닫힘
-    if (open) {
-      panelBody.style.display = 'block';
-      toggleIcon.className = 'bi bi-chevron-right'; // 우측 화살표 (닫기)
-      leftPanel.classList.remove('collapsed');
-    } else {
+    if (!open) {
       panelBody.style.display = 'none';
-      toggleIcon.className = 'bi bi-chevron-left'; // 좌측 화살표 (열기)
-      leftPanel.classList.add('collapsed');
+      toggleIcon.className = 'bi bi-chevron-down';
+    } else {
+      panelBody.style.display = 'block';
+      toggleIcon.className = 'bi bi-chevron-up';
     }
   } catch (_) {}
 }
+
 
 
 // 자동 추천 기능
@@ -3193,14 +3186,6 @@ setInterval(checkWeeklyReset, 60 * 60 * 1000);
 // 페이지 로드시 즉시 체크
 checkWeeklyReset();
 
-
-// 플로팅 메뉴 토글
-function toggleFloatingMenu() {
-  const menu = document.getElementById('floatingMenu');
-  if (menu) {
-    menu.classList.toggle('show');
-  }
-}
 
 // 다크모드 관련 함수
 function toggleDarkMode() {

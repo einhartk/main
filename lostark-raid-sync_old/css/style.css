@@ -1,294 +1,3 @@
-/* 플로팅 메뉴 스타일 */
-.floating-menu-btn {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 60px;
-    height: 60px;
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 24px;
-    cursor: pointer;
-    box-shadow: 0 4px 20px rgba(0, 123, 255, 0.4);
-    z-index: 1000;
-    transition: all 0.3s ease;
-}
-
-.floating-menu-btn:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 25px rgba(0, 123, 255, 0.6);
-}
-
-.floating-menu {
-    position: fixed;
-    bottom: 90px;
-    right: 20px;
-    width: 280px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    z-index: 999;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateY(20px);
-    transition: all 0.3s ease;
-    max-height: 80vh;
-    overflow-y: auto;
-}
-
-.floating-menu.show {
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
-}
-
-.floating-menu-header {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: white;
-    padding: 15px 20px;
-    border-radius: 12px 12px 0 0;
-    display: flex;
-    justify-content: between;
-    align-items: center;
-}
-
-.floating-menu-body {
-    padding: 10px 0;
-}
-
-.floating-menu-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
-    color: #333;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.floating-menu-item:hover {
-    background: #f8f9fa;
-    color: #007bff;
-    text-decoration: none;
-}
-
-.floating-menu-item i {
-    margin-right: 10px;
-    font-size: 18px;
-    width: 20px;
-}
-
-/* 토글 버튼 - 사이드바에 최대한 붙여서 ] 모양 */
-.expedition-toggle-btn {
-    width: 25px;
-    height: 25px;
-    border-radius: 4px;
-    background: white !important;
-    border: 1px solid #dee2e6 !important;
-    color: #6c757d !important;
-    font-size: 12px;
-    padding: 0;
-    display: flex !important; /* 항상 표시 */
-    align-items: center;
-    justify-content: center;
-    z-index: 1002; /* 높은 z-index */
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-    transition: all 0.3s ease;
-    flex-shrink: 0; /* 축소 방지 */
-    visibility: visible !important; /* 항상 보이도록 */
-    opacity: 1 !important; /* 항상 불투명 */
-    position: sticky; /* 스크롤 따라오게 */
-    top: 15px; /* 상단에서 15px */
-    left: 335px; /* 패널에 최대한 붙여 */
-}
-
-.expedition-toggle-btn:hover {
-    background: #f8f9fa !important;
-    border-color: #007bff !important;
-    color: #007bff !important;
-}
-
-/* 닫힌 상태에서는 패널에 붙여 */
-.expedition-left-panel.collapsed + .expedition-toggle-btn {
-    left: 95px; /* 80px 패널에 최대한 붙여 */
-    top: 15px; /* 상단에서 동일한 위치 */
-    z-index: 1002; /* 동일한 z-index */
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* 메인 레이아웃 */
-.row {
-    display: flex;
-    width: 100%;
-}
-
-.expedition-left-panel {
-    padding: 15px;
-    background: #f8f9fa;
-    border-right: 1px solid #dee2e6;
-    min-height: 100vh;
-    max-width: 360px; /* 고정 너비 */
-    flex-shrink: 0; /* 축소 방지 */
-    overflow: hidden; /* 스크롤 완전 제거 */
-    transition: width 0.3s ease; /* 너비 변경 애니메이션 */
-    position: sticky; /* 스크롤 따라오게 */
-    top: 0; /* 상단에 고정 */
-    align-self: flex-start; /* 상단 정렬 */
-}
-
-.main-content {
-    flex: 1; /* 남은 공간 모두 차지 */
-    padding: 20px;
-    width: calc(100% - 320px); /* 좌측 패널 너비 제외 */
-}
-
-/* 패널이 닫혔을 때의 스타일 - 완전히 숨김 */
-.expedition-left-panel.collapsed {
-    width: 0px; /* 완전히 닫힘 */
-    padding: 0; /* 패딩 제거 */
-    overflow: hidden; /* 내용물 숨김 */
-    border: none; /* 테두리 제거 */
-}
-
-.expedition-left-panel.collapsed + .main-content {
-    width: 100%; /* 메인 콘텐츠가 전체 너비 차지 */
-}
-
-.expedition-left-panel.collapsed .expedition-grid-container {
-    display: none; /* 그리드 컨테이너 숨김 */
-}
-
-/* 닫힌 상태에서는 패널에 붙여 */
-.expedition-left-panel.collapsed + .expedition-toggle-btn {
-    left: 15px; /* 완전히 닫혔을 때는 화면 왼쪽에 */
-    top: 15px; /* 상단에서 동일한 위치 */
-    z-index: 1002; /* 동일한 z-index */
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-.expedition-grid-container {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    overflow: hidden;
-}
-
-.expedition-grid-header {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    padding: 5px;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.expedition-grid-body {
-    padding: 5px;
-    overflow: hidden; /* 스크롤 제거 */
-}
-
-.expedition-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 5px; /* 간격 줄임 */
-    width: 100%;
-    box-sizing: border-box;
-    overflow: hidden; /* 오버플로우 방지 */
-}
-
-.expedition-grid .expedition-slot {
-    border: 2px dashed #dee2e6;
-    border-radius: 8px;
-    padding: 8px;
-    min-height: 70px; /* 적당한 높이 */
-    display: flex;
-    flex-direction: column;
-    align-items: stretch; /* 좌우 꽉 채우기 */
-    justify-content: flex-start; /* 위쪽부터 정렬 */
-    background: #f8f9fa;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    overflow: hidden; /* 스크롤 제거 */
-    box-sizing: border-box; /* 패딩 포함 크기 계산 */
-    width: 100%; /* 너비 100% */
-    max-width: none; /* 최대 너비 제한 해제 */
-    min-width: 0; /* 최소 너비 제한 해제 */
-}
-
-.expedition-grid .expedition-slot:hover {
-    border-color: #007bff;
-    background: #e3f2fd;
-}
-
-.expedition-grid .expedition-slot-filled {
-    border: 2px solid #28a745;
-    background: #d4edda;
-}
-
-.expedition-grid .expedition-slot-filled:hover {
-    border-color: #1e7e34;
-    background: #c3e6cb;
-}
-
-.expedition-grid .expedition-char {
-    text-align: left;
-    padding: 4px 6px;
-    border-radius: 3px;
-    background: white;
-    border: 1px solid #dee2e6;
-    cursor: move;
-    transition: all 0.2s ease;
-    width: 100%;
-    display: block; /* 블록 요소로 변경 */
-    box-sizing: border-box; /* 패딩 포함 크기 계산 */
-    font-size: 13px; /* 폰트 크기 증가 */
-    line-height: 1.1;
-    margin-bottom: 3px;
-    overflow: hidden; /* 넘치는 내용 숨김 */
-    white-space: nowrap; /* 한줄로 표시 */
-    text-overflow: ellipsis; /* 말줄임표 */
-    font-weight: 500; /* 폰트 굵게 */
-    max-width: none; /* 최대 너비 제한 해제 */
-    min-width: 0; /* 최소 너비 제한 해제 */
-}
-
-.expedition-grid .expedition-char:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.expedition-grid .expedition-char.dragging {
-    opacity: 0.5;
-}
-
-.expedition-grid .expedition-char img {
-    display: none; /* 이미지 숨김 */
-}
-
-.expedition-grid .expedition-char img.job-icon {
-    display: block; /* 직업 아이콘만 표시 */
-}
-
-.expedition-grid .expedition-char.support {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-    border-color: #ffc107;
-}
-
-.expedition-grid .expedition-char.dps {
-    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-    border-color: #2196f3;
-}
-
-/* 메인 콘텐츠 조정 - 중복 제거 */
-
-/* 반응형 디자인 - 원정대 패널 고정 너비 유지 */
-
 /* Custom Styles for Lost Ark Raid Manager */
 
 /* 악마 이모지 툴팁 스타일 */
@@ -305,11 +14,39 @@
   transform: scale(1.2);
 }
 
-/* 기존 사이드바 스타일 제거 - 플로팅 메뉴로 대체 */
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    padding: 48px 0 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+.sidebar-heading {
+    font-size: .875rem;
+    text-transform: uppercase;
+}
+
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #333;
+    padding: 0.5rem 1rem;
+}
+
+.sidebar .nav-link:hover {
+    color: #007bff;
+}
+
+.sidebar .nav-link.active {
+    color: #007bff;
+}
 
 /* Main content */
 main {
-    margin-left: 0;
+    margin-left: 240px;
 }
 
 /* 스케줄러 관련 스타일 */
@@ -426,14 +163,120 @@ main {
   }
 }
 
-/* 반응형 디자인 - 기존 사이드바 관련 제거 */
 @media (max-width: 767.98px) {
+    .sidebar {
+        position: relative;
+        height: auto;
+        padding: 0;
+    }
+    
     main {
         margin-left: 0;
     }
 }
 
-/* 기존 원정대 사이드 패널 스타일 제거 - 새로운 좌측 패널로 대체 */
+/* 원정대 사이드 패널 */
+.expedition-side-panel {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.expedition-side-panel .card {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid #e9ecef;
+}
+
+.expedition-side-panel .card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+}
+
+.expedition-side-panel .expedition-slot {
+    border: 1px dashed #dee2e6;
+    border-radius: 6px;
+    padding: 4px;
+    transition: all 0.2s ease;
+    background: #f8f9fa;
+    min-height: 110px; /* 아이템레벨/전투력 추가로 높이 증가 */
+    height: 100%; /* 외부 컨테이너 높이만큼 차지 */
+    display: flex;
+    flex-direction: column;
+}
+
+.expedition-side-panel .expedition-slots {
+    flex-grow: 1; /* 남은 공간 모두 차지 */
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 가로 3개 */
+    gap: 2px;
+    max-height: 130px; /* 6개 카드 높이 제한 (2행 * 55px + 간격) */
+    overflow-y: auto; /* 세로 스크롤 */
+    align-content: start; /* 위쪽부터 정렬 */
+}
+
+/* 사이드 패널 스크롤바 숨기기 (기능 유지) */
+.expedition-side-panel .expedition-slots::-webkit-scrollbar {
+  display: none; /* 스크롤바 완전히 숨기기 */
+}
+
+.expedition-side-panel .expedition-slots {
+  -ms-overflow-style: none; /* IE, Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.expedition-side-panel .expedition-slot:hover {
+    border-color: #007bff;
+    background: #e3f2fd;
+}
+
+.expedition-side-panel .expedition-slot-filled {
+    border-style: solid;
+    border-color: #28a745;
+    background: #f8fff9;
+}
+
+.expedition-side-panel .expedition-slot-filled:hover {
+    border-color: #218838;
+    background: #e8f5e8;
+}
+
+.expedition-side-panel .expedition-char {
+    position: relative;
+    padding: 2px;
+    margin: 1px 0;
+    border-radius: 4px;
+    background: white;
+    border: 1px solid #e9ecef;
+    cursor: grab;
+    transition: all 0.2s ease;
+    text-align: left;
+    min-height: 45px;
+    max-height: 55px; /* 외부 레이블 크기 제한 */
+    overflow: hidden;
+}
+
+.expedition-side-panel .expedition-char:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.expedition-side-panel .expedition-char.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+    transform: translateZ(0);
+    will-change: transform, opacity;
+    transition: opacity 0.1s ease-out;
+}
+
+.expedition-side-panel .expedition-char.support {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-color: #ffc107;
+}
+
+.expedition-side-panel .expedition-char.dps {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-color: #2196f3;
+}
 
 /* Raid slots */
 .raid-slots-grid {
@@ -535,7 +378,7 @@ main {
     margin-bottom: 5px;
 }
 
-/* Expedition slots - 고정 레이아웃 */
+/* Expedition slots */
 .expedition-slots {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -863,7 +706,7 @@ body.modal-open {
     }
 }
 
-/* Responsive adjustments - expedition-slots 고정 */
+/* Responsive adjustments */
 @media (max-width: 992px) {
     .raid-slots-grid {
         grid-template-columns: 1fr;
@@ -874,20 +717,28 @@ body.modal-open {
         grid-template-columns: repeat(2, 1fr);
         gap: 8px;
     }
+    
+    .expedition-slots {
+        grid-template-columns: repeat(2, 1fr);
+        max-height: 240px; /* 스크롤 높이 유지 */
+    }
 }
 
 @media (max-width: 768px) {
-  .schedule-by-order .schedule-item {
-    margin-bottom: 15px;
-  }
-
-  .schedule-by-order .schedule-header {
-    font-size: 14px;
-  }
-
-  .schedule-by-order .schedule-time {
-    font-size: 12px;
-  }
+    .raid-slots-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .raid-slots-grid-8 {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    .expedition-slots {
+        grid-template-columns: repeat(2, 1fr);
+        max-height: 240px; /* 스크롤 높이 유지 */
+    }
 }
 
 @media (max-width: 576px) {
@@ -901,7 +752,10 @@ body.modal-open {
         gap: 6px;
     }
     
-    /* expedition-slots는 반응형에서 제외 - 항상 2열 유지 */
+    .expedition-slots {
+        grid-template-columns: 1fr;
+        max-height: 240px; /* 스크롤 높이 유지 */
+    }
 }
 
 /* Custom scrollbar */
@@ -1420,72 +1274,6 @@ body.modal-open {
     }
 }
 
-/* 다크모드 - 플로팅 메뉴 */
-.dark-mode .floating-menu {
-    background: linear-gradient(145deg, #2d2d44 0%, #3a3a5c 100%);
-    border: 1px solid #4a4a6c;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-}
-
-.dark-mode .floating-menu-header {
-    background: linear-gradient(135deg, #4a69bd 0%, #5f7cdb 100%);
-    border-bottom: 1px solid #5a5a7c;
-}
-
-.dark-mode .floating-menu-item {
-    color: #e1e8ed;
-    border-bottom: 1px solid #4a4a6c;
-}
-
-.dark-mode .floating-menu-item:hover {
-    background: linear-gradient(90deg, #3a3a5c 0%, #4a4a6c 100%);
-    color: #ffffff;
-}
-
-/* 다크모드 - 좌측 원정대 패널 */
-.dark-mode .expedition-left-panel {
-    background: linear-gradient(180deg, #1e1e2e 0%, #2d2d44 100%);
-    border-right: 1px solid #3a3a5c;
-}
-
-.dark-mode .expedition-grid-container {
-    background: linear-gradient(145deg, #2d2d44 0%, #3a3a5c 100%);
-    border: 1px solid #4a4a6c;
-}
-
-.dark-mode .expedition-grid-header {
-    background: linear-gradient(135deg, #3a3a5c 0%, #4a4a6c 100%);
-    border-bottom: 1px solid #5a5a7c;
-    color: #ffffff;
-}
-
-.dark-mode .expedition-grid .expedition-slot {
-    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
-    border-color: #5a5a7c;
-    color: #e1e8ed;
-}
-
-.dark-mode .expedition-grid .expedition-slot:hover {
-    background: linear-gradient(145deg, #4a4a6c 0%, #5a5a7c 100%);
-    border-color: #4a69bd;
-}
-
-.dark-mode .expedition-grid .expedition-slot-filled {
-    background: linear-gradient(145deg, #1e3a28 0%, #2d5a3d 100%);
-    border-color: #38a169;
-}
-
-.dark-mode .expedition-grid .expedition-char {
-    background: linear-gradient(145deg, #3a3a5c 0%, #4a4a6c 100%);
-    border-color: #5a5a7c;
-    color: #e1e8ed;
-    font-size: 12px; /* 다크모드에서도 폰트 크기 명시 */
-}
-
-.dark-mode .expedition-grid .expedition-char:hover {
-    background: linear-gradient(145deg, #4a4a6c 0%, #5a5a7c 100%);
-}
-
 /* 다크모드 스타일 - 완전히 재설계 */
 .dark-mode {
     background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
@@ -1498,7 +1286,38 @@ body.modal-open {
     color: #e1e8ed;
 }
 
-/* 기존 사이드바 다크모드 스타일 제거 - 플로팅 메뉴로 대체 */
+.dark-mode .sidebar {
+    background: linear-gradient(180deg, #1e1e2e 0%, #2d2d44 100%);
+    border-right: 1px solid #3a3a5c;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .sidebar-heading {
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    font-weight: 600;
+}
+
+.dark-mode .nav-link {
+    color: #b8c5d6;
+    border-radius: 8px;
+    margin: 2px 0;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.dark-mode .nav-link:hover {
+    background: linear-gradient(90deg, #3a3a5c 0%, #4a4a6c 100%);
+    color: #ffffff;
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .nav-link.active {
+    background: linear-gradient(90deg, #4a69bd 0%, #5f7cdb 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(74, 105, 189, 0.3);
+}
 
 .dark-mode .card {
     background: linear-gradient(145deg, #2d2d44 0%, #3a3a5c 100%);
@@ -1696,7 +1515,15 @@ body.modal-open {
     border: 2px dashed #5a5a7c;
 }
 
-/* 기존 원정대 사이드 패널 다크모드 스타일 제거 - 새로운 좌측 패널로 대체 */
+.dark-mode .expedition-side-panel .card {
+    background: linear-gradient(145deg, #2d2d44 0%, #3a3a5c 100%);
+    border: 1px solid #4a4a6c;
+}
+
+.dark-mode .expedition-side-panel .card-header {
+    background: linear-gradient(90deg, #3a3a5c 0%, #4a4a6c 100%);
+    color: #ffffff;
+}
 
 .dark-mode .party-card .badge.bg-gradient {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;

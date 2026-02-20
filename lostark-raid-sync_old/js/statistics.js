@@ -394,7 +394,7 @@ function displayExpeditionGold(stats) {
   for (let expIndex = 0; expIndex < 8; expIndex++) {
     
     const expeditionDiv = document.createElement('div');
-    expeditionDiv.className = 'mb-4'; /* Bootstrap 반응형 클래스 제거 */
+    expeditionDiv.className = 'col-12 col-md-6 col-lg-3 mb-4';
     expeditionDiv.style.setProperty('--index', expIndex);
     
     // 이 원정대에 속한 캐릭터들
