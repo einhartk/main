@@ -2521,12 +2521,12 @@ function toggleExpeditionPanel() {
   if (isOpen) {
     // 패널 열기
     panelBody.style.display = 'block';
-    toggleIcon.className = 'bi bi-chevron-right'; // 우측 화살표 (닫기)
+    toggleIcon.className = 'bi bi-chevron-left'; // 좌측 화살표 (닫기)
     leftPanel.classList.remove('collapsed'); // collapsed 클래스 제거
   } else {
     // 패널 닫기
     panelBody.style.display = 'none';
-    toggleIcon.className = 'bi bi-chevron-left'; // 좌측 화살표 (열기)
+    toggleIcon.className = 'bi bi-chevron-right'; // 우측 화살표 (열기)
     leftPanel.classList.add('collapsed'); // collapsed 클래스 추가
   }
   try {
@@ -2545,11 +2545,11 @@ function applyExpeditionPanelState() {
     const open = saved !== 'false'; // 없거나 'true'면 열림, 'false'면 닫힘
     if (open) {
       panelBody.style.display = 'block';
-      toggleIcon.className = 'bi bi-chevron-right'; // 우측 화살표 (닫기)
+      toggleIcon.className = 'bi bi-chevron-left'; // 좌측 화살표 (닫기)
       leftPanel.classList.remove('collapsed');
     } else {
       panelBody.style.display = 'none';
-      toggleIcon.className = 'bi bi-chevron-left'; // 좌측 화살표 (열기)
+      toggleIcon.className = 'bi bi-chevron-right'; // 우측 화살표 (열기)
       leftPanel.classList.add('collapsed');
     }
   } catch (_) {}
