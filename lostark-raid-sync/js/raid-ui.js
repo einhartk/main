@@ -780,7 +780,8 @@ function renderRaidPartiesInternal(forceRender = false) {
 
           <div class="raid-slots-grid ${party.size === 8 ? 'raid-slots-grid-8' : ''}">
 
-            ${party.members.map((char, slotIndex) => {
+            ${Array.from({ length: party.size || 4 }, (_, slotIndex) => {
+              const char = party.members?.[slotIndex]; // 🔥 size 기반으로 슬롯 생성, members에서 가져오기
 
               const partyNumber = party.size === 8 ? Math.floor(slotIndex / 4) + 1 : 1;
 

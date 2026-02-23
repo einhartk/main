@@ -11,7 +11,9 @@
           "minIlvl": 1740,
           "minCombatPower": 1,
           "clearGold": 54000,
-          "cleared": false
+          "defaultSize": 4,
+          "maxSupports": 1,
+          "partyCount": 1
         },
         {
           "id": "hard",
@@ -19,7 +21,9 @@
           "minIlvl": 1730,
           "minCombatPower": 1,
           "clearGold": 44000,
-          "cleared": false
+          "defaultSize": 4,
+          "maxSupports": 1,
+          "partyCount": 1
         },
         {
           "id": "normal",
@@ -27,7 +31,9 @@
           "minIlvl": 1710,
           "minCombatPower": 1,
           "clearGold": 35000,
-          "cleared": false
+          "defaultSize": 4,
+          "maxSupports": 1,
+          "partyCount": 1
         }
       ]
     },
@@ -42,7 +48,9 @@
           "minIlvl": 1730,
           "minCombatPower": 1,
           "clearGold": 52000,
-          "cleared": false
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
         },
         {
           "id": "normal",
@@ -50,7 +58,9 @@
           "minIlvl": 1710,
           "minCombatPower": 1,
           "clearGold": 40000,
-          "cleared": false
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
         }
       ]
     },
@@ -65,7 +75,9 @@
           "minIlvl": 1720,
           "minCombatPower": 1,
           "clearGold": 42000,
-          "cleared": false
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
         },
         {
           "id": "normal",
@@ -73,7 +85,9 @@
           "minIlvl": 1700,
           "minCombatPower": 1,
           "clearGold": 33000,
-          "cleared": false
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
         }
       ]
     },
@@ -88,7 +102,9 @@
           "minIlvl": 1700,
           "minCombatPower": 1,
           "clearGold": 27000,
-          "cleared": false
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
         },
         {
           "id": "normal",
@@ -96,7 +112,9 @@
           "minIlvl": 1680,
           "minCombatPower": 1,
           "clearGold": 21000,
-          "cleared": false
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
         }
       ]
     }

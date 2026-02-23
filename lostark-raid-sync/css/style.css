@@ -104,7 +104,7 @@
     opacity: 1 !important; /* 항상 불투명 */
     position: sticky; /* 스크롤 따라오게 */
     top: 15px; /* 상단에서 15px */
-    left: 335px; /* 패널에 최대한 붙여 */
+    left: calc(clamp(360px, 20vw, 800px) - 25px); /* 🔥 20vw 비율 기반으로 토글 위치 */
 }
 
 .expedition-toggle-btn:hover {
@@ -115,7 +115,7 @@
 
 /* 닫힌 상태에서는 패널에 붙여 */
 .expedition-left-panel.collapsed + .expedition-toggle-btn {
-    left: 95px; /* 80px 패널에 최대한 붙여 */
+    left: 30px; /* 🔥 패널이 닫혔을 때 30px 위치 */
     top: 15px; /* 상단에서 동일한 위치 */
     z-index: 1002; /* 동일한 z-index */
     visibility: visible !important;
@@ -132,8 +132,9 @@
     padding: 15px;
     background: #f8f9fa;
     border-right: 1px solid #dee2e6;
+    border-radius: 0 8px 8px 0; /* 🔥 오른쪽 라운드 처리 */
     min-height: 100vh;
-    max-width: 360px; /* 고정 너비 */
+    width: clamp(360px, 20vw, 800px); /* 🔥 최소 360px, 20vw 비율, 최대 800px */
     flex-shrink: 0; /* 축소 방지 */
     overflow: hidden; /* 스크롤 완전 제거 */
     transition: width 0.3s ease; /* 너비 변경 애니메이션 */
@@ -145,32 +146,28 @@
 .main-content {
     flex: 1; /* 남은 공간 모두 차지 */
     padding: 20px;
-    width: calc(100% - 320px); /* 좌측 패널 너비 제외 */
+    width: calc(100% - clamp(360px, 20vw, 800px)); /* 🔥 20vw 비율 기반으로 계산 */
 }
 
-/* 패널이 닫혔을 때의 스타일 - 완전히 숨김 */
+/* 패널이 닫혔을 때의 스타일 - 패널 느낌나게 */
 .expedition-left-panel.collapsed {
-    width: 0px; /* 완전히 닫힘 */
+    width: 30px; /* 🔥 적당한 패널 너비 */
     padding: 0; /* 패딩 제거 */
+    background: #f8f9fa; /* 배경 표시 */
     overflow: hidden; /* 내용물 숨김 */
     border: none; /* 테두리 제거 */
+    border-radius: 0 8px 8px 0; /* 🔥 오른쪽 라운드 처리 */
+    flex-shrink: 1; /* 축소 가능하게 변경 */
+    min-width: 0px; /* 최소 너비 제거 */
+    box-shadow: 2px 0 8px rgba(0,0,0,0.1); /* 🔥 그림자 효과 */
 }
 
 .expedition-left-panel.collapsed + .main-content {
-    width: 100%; /* 메인 콘텐츠가 전체 너비 차지 */
+    width: calc(100% - 30px); /* 🔥 패널이 닫혔을 때 30px 제외 */
 }
 
 .expedition-left-panel.collapsed .expedition-grid-container {
     display: none; /* 그리드 컨테이너 숨김 */
-}
-
-/* 닫힌 상태에서는 패널에 붙여 */
-.expedition-left-panel.collapsed + .expedition-toggle-btn {
-    left: 15px; /* 완전히 닫혔을 때는 화면 왼쪽에 */
-    top: 15px; /* 상단에서 동일한 위치 */
-    z-index: 1002; /* 동일한 z-index */
-    visibility: visible !important;
-    opacity: 1 !important;
 }
 
 .expedition-grid-container {
@@ -191,23 +188,28 @@
 
 .expedition-grid-body {
     padding: 5px;
+    height: calc(100vh - 50px); /* 🔥 여유 공간 50px로 조정 */
+    max-height: calc(100vh - 50px); /* 🔥 최대 높이도 동일하게 */
     overflow: hidden; /* 스크롤 제거 */
+    box-sizing: border-box; /* 🔥 패딩 포함 크기 계산 */
 }
 
 .expedition-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(4, 1fr); /* 🔥 세로 4등분 */
     gap: 5px; /* 간격 줄임 */
     width: 100%;
-    box-sizing: border-box;
+    height: 100%; /* 🔥 높이 100% */
+    box-sizing: border-box; /* 🔥 패딩 포함 크기 계산 */
     overflow: hidden; /* 오버플로우 방지 */
 }
 
 .expedition-grid .expedition-slot {
     border: 2px dashed #dee2e6;
     border-radius: 8px;
-    padding: 8px;
-    min-height: 70px; /* 적당한 높이 */
+    padding: 5px;
+    height: 100%; /* 🔥 높이 100% */
     display: flex;
     flex-direction: column;
     align-items: stretch; /* 좌우 꽉 채우기 */
@@ -216,10 +218,11 @@
     transition: all 0.3s ease;
     cursor: pointer;
     overflow: hidden; /* 스크롤 제거 */
-    box-sizing: border-box; /* 패딩 포함 크기 계산 */
+    box-sizing: border-box; /* 🔥 패딩+테두리 포함 크기 계산 */
     width: 100%; /* 너비 100% */
     max-width: none; /* 최대 너비 제한 해제 */
     min-width: 0; /* 최소 너비 제한 해제 */
+    min-height: 0; /* 🔥 최소 높이 제한 해제 */
 }
 
 .expedition-grid .expedition-slot:hover {
@@ -246,9 +249,12 @@
     cursor: move;
     transition: all 0.2s ease;
     width: 100%;
-    display: block; /* 블록 요소로 변경 */
+    height: 100%; /* 🔥 슬롯 높이에 맞춰서 꽉 채움 */
+    display: flex; /* 🔥 flex로 중앙 정렬 */
+    align-items: center; /* 🔥 세로 중앙 정렬 */
+    justify-content: flex-start; /* 가로 왼쪽 정렬 */
     box-sizing: border-box; /* 패딩 포함 크기 계산 */
-    font-size: 13px; /* 폰트 크기 증가 */
+    font-size: clamp(11px, 1.5vw, 16px); /* 🔥 화면 비율에 따라 폰트 크기 조정 */
     line-height: 1.1;
     margin-bottom: 3px;
     overflow: hidden; /* 넘치는 내용 숨김 */
@@ -1935,4 +1941,28 @@ body {
 
 .card, .modal-content, .form-control {
     transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* 🔥 모바일 환경에서는 패널 느낌나게 유지 */
+@media (max-width: 768px) {
+    .expedition-left-panel {
+        width: 30px !important; /* 🔥 적당한 패널 너비 */
+        padding: 0 !important;
+        background: #f8f9fa !important; /* 배경 표시 */
+        border: none !important;
+        overflow: hidden !important;
+        border-radius: 0 8px 8px 0 !important; /* 🔥 오른쪽 라운드 처리 */
+        flex-shrink: 1 !important; /* 축소 가능하게 변경 */
+        min-width: 0px !important; /* 최소 너비 제거 */
+        box-shadow: 2px 0 8px rgba(0,0,0,0.1) !important; /* 🔥 그림자 효과 */
+    }
+    
+    .main-content {
+        width: calc(100% - 30px) !important; /* 🔥 30px 제외 */
+        padding: 15px;
+    }
+    
+    .expedition-toggle-btn {
+        left: 30px !important; /* 🔥 토글 버튼 30px 위치 */
+    }
 }

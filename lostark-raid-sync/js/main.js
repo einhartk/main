@@ -324,7 +324,17 @@ async function addNewRaid(skipHistory = false) {
     return;
   }
   
-  const parties = getCurrentTabParties();
+  // 🔥 **중요 수정**: 전체 레이드, 전체 난이도의 모든 파티들 가져오기
+  const allParties = [];
+  if (state.raidTabs) {
+    Object.keys(state.raidTabs).forEach(raidId => {
+      Object.keys(state.raidTabs[raidId]).forEach(difficultyId => {
+        const parties = state.raidTabs[raidId][difficultyId] || [];
+        allParties.push(...parties);
+      });
+    });
+  }
+  
   const raidId = state.selectedRaid.id;
   const difficultyId = state.selectedDifficulty.id;
   
@@ -340,14 +350,44 @@ async function addNewRaid(skipHistory = false) {
   if (!state.globalPartyCounter) {
     state.globalPartyCounter = 0;
   }
-  state.globalPartyCounter++;
   
-  // 🔥 **중요 수정**: 단일 ID 생성 로직으로 통일
-  const globalPartyId = `P${state.globalPartyCounter}`;
-  const uniquePartyId = `${state.selectedRaid.id}-${state.selectedDifficulty.id}-${globalPartyId}`;
+  // 🔥 **중복 ID 확인 로직 추가**
+  let globalPartyId;
+  let uniquePartyId;
+  let attempts = 0;
+  const maxAttempts = 1000; // 무한 루프 방지
   
-  // 순번 결정 (기존 파티들 중 가장 큰 순번 + 1)
-  const maxOrder = parties.length > 0 ? Math.max(...parties.map(p => p.order || 0)) : 0;
+  do {
+    state.globalPartyCounter++;
+    globalPartyId = `P${state.globalPartyCounter}`;
+    uniquePartyId = `${state.selectedRaid.id}-${state.selectedDifficulty.id}-${globalPartyId}`;
+    
+    // 기존 모든 파티에서 ID 중복 확인
+    const isDuplicate = allParties.some(party => 
+      party.id === globalPartyId || party.uniqueId === uniquePartyId
+    );
+    
+    if (!isDuplicate) {
+      break; // 중복이 없으면 탈출
+    }
+    
+    attempts++;
+  } while (attempts < maxAttempts);
+  
+  if (attempts >= maxAttempts) {
+    window.modalManager.showAlert({
+      title: '오류',
+      message: '파티 ID 생성에 실패했습니다. 관리자에게 문의해주세요.'
+    });
+    return;
+  }
+  
+  // 🔥 **중요 수정**: 전체 파티 중 마지막 순번 + 1
+  const maxOrder = allParties.length > 0 ? Math.max(...allParties.map(p => p.order || 0)) : 0;
+  
+  // 🔥 **중요 수정**: 레이드/난이도별 크기 설정 사용
+  const defaultSize = state.selectedDifficulty.defaultSize || 4;
+  const maxSupports = state.selectedDifficulty.maxSupports || 1;
   
   const newParty = {
     id: globalPartyId, // 🔥 **단일 ID 사용**
@@ -358,16 +398,16 @@ async function addNewRaid(skipHistory = false) {
     difficultyId: state.selectedDifficulty.id,
     raidName: state.selectedRaid.name,
     difficultyName: state.selectedDifficulty.name,
-    order: maxOrder + 1, // 순번 추가
+    order: maxOrder + 1, // 🔥 **전체 파티 중 마지막 순번 + 1**
     cleared: false, // 클리어 상태 기본값
     scheduledWeekday: null, // 약속 요일
     scheduledHour: null, // 약속 시간
     scheduledTime: null, // 기존 호환성 (ISO 문자열)
     scheduledTimeDisplay: '', // 기존 호환성 (표시용 시간 문자열)
     createdAt: new Date().toISOString(), // 생성 시간 추가
-    members: Array(4).fill(null), // 기본 4인
-    maxSupports: 1, // 4인 1서폿 / 8인 2서폿
-    size: 4, // 현재 파티 크기
+    members: Array(defaultSize).fill(null), // 🔥 **레이드별 크기 사용**
+    maxSupports: maxSupports, // 🔥 **레이드별 서폿 수 사용**
+    size: defaultSize, // 🔥 **레이드별 크기 사용**
     minIlvl: state.selectedDifficulty.minIlvl,
     minCombatPower: state.selectedDifficulty.minCombatPower || 0
   };
@@ -384,7 +424,7 @@ async function addNewRaid(skipHistory = false) {
   }
   
   // 히스토리 기록 (데이터 로드 시 제외)
-  if (!skipHistory && typeof recordHistory === 'function') {
+  if (!skipHistory && typeof recordHistory === 'function') {;
     await recordHistory(
       'add',
       {
@@ -1296,6 +1336,162 @@ function exportRaidList() {
     console.error('exportRaidList 오류:', error);
     window.modalManager?.showAlert?.({ title: '오류', message: '내보내기 중 오류가 발생했습니다: ' + (error.message || error) });
   }
+}
+
+// 🔥 **다른 동기화 코드로 데이터 저장 함수**
+async function copyCurrentDataToAlternative() {
+    try {
+        // 현재 상태 데이터 수집
+        const currentData = {
+            raidTabs: state.raidTabs || {},
+            expeditionSlots: state.expeditionSlots || [],
+            expeditionSlotNames: state.expeditionSlotNames || [],
+            selectedRaid: state.selectedRaid || null,
+            selectedDifficulty: state.selectedDifficulty || null,
+            raidsData: state.raidsData || [],
+            globalPartyCounter: state.globalPartyCounter || 0,
+            raidPartyCounter: state.raidPartyCounter || {},
+            lastModifiedTimes: state.lastModifiedTimes || { expedition: {}, raid: {} },
+            history: state.history || { entries: [], maxEntries: 50 },
+            timestamp: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        // 다른 동기화 코드 입력 받기
+        const targetSyncCode = prompt('데이터를 저장할 다른 동기화 코드를 입력하세요:', '');
+        if (!targetSyncCode || targetSyncCode.trim() === '') {
+            showNotification('동기화 코드가 입력되지 않았습니다.', 'warning');
+            return;
+        }
+        
+        // 다른 동기화 코드로 데이터 저장
+        const targetPath = `syncSessions/${targetSyncCode}/d`;
+        
+        // 기존 Firebase 형식에 맞춰서 압축된 데이터로 저장
+        const compressedData = {
+            rt: JSON.stringify(currentData.raidTabs),
+            es: JSON.stringify(currentData.expeditionSlots),
+            esn: JSON.stringify(currentData.expeditionSlotNames), // 🔥 원정대 이름 추가
+            // realtime-sync.js의 compressed 포맷과 동일: t(타임스탬프), u(작성자)
+            t: Date.now(),
+            u: window.realtimeSync?.currentUser || 'manual_copy_to_alternative'
+        };
+        
+        await realtimeDB.ref(targetPath).set(compressedData);
+        
+        showNotification(`데이터를 동기화 코드 "${targetSyncCode}"로 저장했습니다!`, 'success');
+        
+    } catch (error) {
+        console.error('❌ [DATA COPY ERROR]:', error);
+        showNotification('데이터 저장에 실패했습니다.', 'error');
+    }
+}
+
+// 🔥 **새로운 형식으로 데이터 저장 함수 - 컬럼 단위 분리 저장**
+async function copyCurrentDataToNewFormat() {
+    try {
+        // 새로운 형식으로 다른 동기화 코드로 저장
+        const targetSyncCode = prompt('데이터를 저장할 다른 동기화 코드를 입력하세요:', '');
+        if (!targetSyncCode || targetSyncCode.trim() === '') {
+            showNotification('동기화 코드가 입력되지 않았습니다.', 'warning');
+            return;
+        }
+        
+        const basePath = `syncSessions/${targetSyncCode}/v2`;
+        const now = Date.now();
+        
+        // 기존 v2 데이터 초기화 (복사/마이그레이션 성격)
+        await realtimeDB.ref(basePath).set(null);
+        
+        const updates = {};
+        
+        // expedition (원정대)
+        const expeditionSlots = Array.isArray(state.expeditionSlots) ? state.expeditionSlots : [];
+        const expeditionSlotNames = Array.isArray(state.expeditionSlotNames) ? state.expeditionSlotNames : [];
+        
+        updates[`${basePath}/expedition/meta/slotCount`] = 8;
+        updates[`${basePath}/expedition/meta/updatedAt`] = now;
+        
+        for (let slotIndex = 0; slotIndex < 8; slotIndex++) {
+            const name = expeditionSlotNames[slotIndex] ?? `원정대 ${slotIndex + 1}`;
+            updates[`${basePath}/expedition/names/${slotIndex}`] = name;
+            
+            const members = Array.isArray(expeditionSlots[slotIndex]) ? expeditionSlots[slotIndex] : [];
+            updates[`${basePath}/expedition/slots/${slotIndex}/meta/updatedAt`] = now;
+            updates[`${basePath}/expedition/slots/${slotIndex}/meta/size`] = members.length;
+            
+            for (let memberIndex = 0; memberIndex < members.length; memberIndex++) {
+                const member = members[memberIndex];
+                const memberPath = `${basePath}/expedition/slots/${slotIndex}/members/${memberIndex}`;
+                if (member === null || member === undefined) {
+                    updates[memberPath] = null;
+                } else {
+                    updates[memberPath] = member;
+                }
+            }
+        }
+        
+        // raids (공격대)
+        const raidTabs = state.raidTabs || {};
+        const raidIds = Object.keys(raidTabs);
+        updates[`${basePath}/raids/meta/updatedAt`] = now;
+        updates[`${basePath}/raids/meta/raidCount`] = raidIds.length;
+        
+        raidIds.forEach((raidId) => {
+            const difficulties = raidTabs[raidId] || {};
+            const difficultyIds = Object.keys(difficulties);
+            updates[`${basePath}/raids/${raidId}/meta/updatedAt`] = now;
+            updates[`${basePath}/raids/${raidId}/meta/difficultyCount`] = difficultyIds.length;
+            
+            difficultyIds.forEach((difficultyId) => {
+                const parties = Array.isArray(difficulties[difficultyId]) ? difficulties[difficultyId] : [];
+                updates[`${basePath}/raids/${raidId}/${difficultyId}/meta/updatedAt`] = now;
+                updates[`${basePath}/raids/${raidId}/${difficultyId}/meta/partyCount`] = parties.length;
+                
+                parties.forEach((party) => {
+                    if (!party) return;
+                    const partyId = party.id || party.uniqueId || `${raidId}-${difficultyId}-${Math.random().toString(36).slice(2)}`;
+                    const partyBase = `${basePath}/raids/${raidId}/${difficultyId}/parties/${partyId}`;
+                    
+                    const members = Array.isArray(party.members) ? party.members : [];
+                    const partyMeta = { ...party };
+                    delete partyMeta.members;
+                    
+                    updates[`${partyBase}/meta`] = {
+                        ...partyMeta,
+                        raidId: party.raidId || raidId,
+                        difficultyId: party.difficultyId || difficultyId,
+                        updatedAt: now,
+                        memberCount: members.filter(m => m !== null && m !== undefined).length
+                    };
+                    
+                    for (let i = 0; i < members.length; i++) {
+                        const m = members[i];
+                        const memberPath = `${partyBase}/members/${i}`;
+                        if (m === null || m === undefined) {
+                            updates[memberPath] = null;
+                        } else {
+                            updates[memberPath] = m;
+                        }
+                    }
+                });
+            });
+        });
+        
+        // metadata
+        updates[`${basePath}/metadata/version`] = '2.0';
+        updates[`${basePath}/metadata/migratedAt`] = now;
+        updates[`${basePath}/metadata/source`] = 'manual_copy_to_new_format';
+        updates[`${basePath}/metadata/user`] = window.realtimeSync?.currentUser || null;
+        
+        await realtimeDB.ref().update(updates);
+        
+        showNotification(`데이터를 분해 저장(v2)하여 동기화 코드 "${targetSyncCode}"에 저장했습니다!`, 'success');
+        
+    } catch (error) {
+        console.error('❌ [DATA COPY ERROR]:', error);
+        showNotification('데이터 저장에 실패했습니다.', 'error');
+    }
 }
 
 // 파티 통계 계산 함수

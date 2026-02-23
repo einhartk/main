@@ -61,6 +61,16 @@
                     코드: <span id="syncCodeDisplay"></span><br>
                     <small id="connectedUsers"></small>
                 </div>
+                
+                <!-- 데이터 복사 저장 버튼 -->
+                <div class="mt-2">
+                    <a class="floating-menu-item" href="#" onclick="copyCurrentDataToAlternative(); toggleFloatingMenu();">
+                        <i class="bi bi-cloud-arrow-down"></i> 데이터 복사 저장
+                    </a>
+                    <a class="floating-menu-item" href="#" onclick="copyCurrentDataToNewFormat(); toggleFloatingMenu();">
+                        <i class="bi bi-cloud-upload"></i> 새로운 형식으로 저장
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -583,6 +593,10 @@
     <script src="js/modal-manager.js"></script>
     <script src="js/id-manager.js"></script>
     <script src="js/realtime-sync.js"></script>
+    <!-- <script src="js/partial-sync.js"></script> -->
+    <!-- <script src="js/migration-manager.js"></script> -->
+    <!-- <script src="js/data-migration.js"></script> -->
+    <!-- <script src="js/partial-sync-controls.js"></script> -->
     <script src="js/constraints.js"></script>
     <script src="js/raid-ui.js"></script>
     <script src="js/dragdrop.js"></script>
