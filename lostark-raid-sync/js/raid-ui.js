@@ -446,6 +446,8 @@ function renderRaidPartiesInternal(forceRender = false) {
 
       : 0;
 
+    const avgDPS = calculateRaidPartyAverageDPS(party);
+
     // 서폿 수: 원정대 상세에서 role 확인 (이름으로 조회한 원정대 데이터 기준)
 
     const supportCount = validMembersWithDetails.filter(m => m && String(m.role || '').toLowerCase() === 'support').length;
@@ -558,33 +560,33 @@ function renderRaidPartiesInternal(forceRender = false) {
 
           <div class="row align-items-center mt-2">
 
-            <!-- 왼쪽: 전투력 정보 -->
+            <!-- 왼쪽: 전투력 및 서폿 정보 -->
 
-            <div class="col-md-3">
+            <div class="col-md-6">
 
-              <div class="d-flex align-items-center">
+              <div class="d-flex align-items-center gap-1">
 
-                <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #000000; font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; font-weight: 700;">
+                <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: #000000; font-size: 0.65rem; padding: 4px 8px; border-radius: 15px; font-weight: 600; white-space: nowrap;">
 
                   <i class="bi bi-lightning-fill me-1"></i>
 
-                  <span class="fw-bold">평균 CP</span> ${avgCombatPower.toLocaleString()}
+                  <span class="fw-bold">CP</span> ${avgCombatPower.toLocaleString()}
 
                 </span>
 
-              </div>
+                ${avgDPS > 0 ? `
+                
+                <span class="badge bg-success text-white" style="font-size: 0.6rem; padding: 3px 6px; border-radius: 12px; font-weight: 600; white-space: nowrap;">
 
-            </div>
+                  <i class="bi bi-graph-up me-1"></i>
 
-            
+                  <span class="fw-bold">DPS</span> ${avgDPS.toFixed(1)}억
 
-            <!-- 중앙: 서폿 정보 -->
+                </span>
 
-            <div class="col-md-3">
+                ` : ''}
 
-              <div class="d-flex align-items-center justify-content-center">
-
-                <span id="support-${party.id}-${index}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.75rem; padding: 6px 12px; border-radius: 20px; font-weight: 600;">
+                <span id="support-${party.id}-${index}" class="badge ${supportBadge === 'bg-success' ? 'bg-success' : 'bg-warning'} text-white" style="font-size: 0.65rem; padding: 4px 8px; border-radius: 15px; font-weight: 600; white-space: nowrap;">
 
                   <i class="bi bi-shield-fill me-1"></i>
 
@@ -814,6 +816,8 @@ function renderRaidPartiesInternal(forceRender = false) {
                       <div class="small text-muted">Lv ${charDetails.ilvl || '0'}</div>
 
                       <div class="small text-muted">CP ${(charDetails.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+
+                      ${charDetails.role !== 'support' ? `<div class="small text-success" style="font-size: 0.65rem;">(${calculateDPS(charDetails.combatPower || '0', charDetails.className || '')?.toFixed(1)}억)</div>` : ''}
 
                       <div class="badge ${charDetails.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'} mt-1" style="font-size: 0.7rem;" title="${charDetails.className || '알 수 없음'}">${charDetails.role === 'support' ? '서폿' : '딜러'} (${truncateJobName(charDetails.className || '알 수 없음', 6)})</div>
 
@@ -1393,7 +1397,7 @@ function renderExpedition() {
 
             return `
 
-            <div class="expedition-char ${role}" draggable="true" ondragstart="handleDragStart(event, '${char.id}', null, null, ${index}, ${charIndex})" ondragend="handleDragEnd(event)" style="cursor: grab; font-size: 0.8rem; position: relative;" title="드래그하여 공격대로 이동">
+            <div class="expedition-char ${role}" draggable="true" ondragstart="handleDragStart(event, '${char.id}', null, null, ${index}, ${charIndex})" ondragend="handleDragEnd(event)" style="cursor: grab; font-size: clamp(9px, 1.8vw, 20px); position: relative;" title="드래그하여 공격대로 이동">
 
               <div class="d-flex align-items-center">
 
@@ -1401,17 +1405,19 @@ function renderExpedition() {
 
                 <div class="flex-grow-1">
 
-                  <div class="fw-bold" style="font-size: 0.7rem; line-height: 1.2; color: #2c3e50;" title="${char.name}">${truncateCharacterName(char.name, 7)}</div>
+                  <div class="fw-bold" style="font-size: clamp(8px, 1.5vw, 16px); line-height: 1.2; color: #2c3e50;" title="${char.name}">${truncateCharacterName(char.name, 7)}</div>
 
-                  <div class="small text-warning" style="font-size: 0.6rem; font-weight: 600;">Lv${charDetails?.ilvl || '0'}</div>
+                  <div class="small text-warning" style="font-size: clamp(7px, 1.3vw, 14px); font-weight: 600;">Lv${charDetails?.ilvl || '0'}</div>
 
-                  <div class="small text-primary" style="font-size: 0.55rem; font-weight: 500;">${(charDetails?.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+                  <div class="small text-primary" style="font-size: clamp(6px, 1.1vw, 12px); font-weight: 500;">${(charDetails?.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+
+                  ${charDetails?.role !== 'support' ? `<div class="small text-success" style="font-size: clamp(5px, 0.9vw, 10px); font-weight: 400;">(${calculateDPS(charDetails?.combatPower || '0', charDetails?.className || '')?.toFixed(1)}억)</div>` : ''}
 
                 </div>
 
               </div>
 
-              <div class="badge bg-secondary" style="font-size: 0.35rem; position: absolute; top: 2px; right: 2px; z-index: 10; padding: 2px 4px;">${Constraints.getCharacterUsageCount(char.name)}/3</div>
+              <div class="badge bg-secondary" style="font-size: clamp(5px, 0.8vw, 10px); position: absolute; top: 2px; right: 2px; z-index: 10; padding: 2px 4px;">${Constraints.getCharacterUsageCount(char.name)}/3</div>
 
               <img src="img/${getJobIconName(charDetails?.className || '')}.png" alt="${charDetails?.className || ''}" class="job-icon" style="position: absolute; bottom: 2px; right: 2px; width: 16px; height: 16px; border-radius: 2px; z-index: 5;" title="${charDetails?.className || ''}">
 
@@ -1506,6 +1512,8 @@ function renderExpeditionModal() {
                 <div class="small text-muted">Lv ${char.ilvl || '0'}</div>
 
                 <div class="small text-info">CP ${(char.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+
+                ${char.role !== 'support' ? `<div class="small text-success" style="font-size: 0.6rem;">(${calculateDPS(char.combatPower || '0', char.className || '')?.toFixed(1)}억)</div>` : ''}
 
                 <div class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" style="font-size: 0.5rem;">${char.role === 'support' ? '서폿' : '딜러'} (${truncateJobName(char.className || '알 수 없음', 6)})</div>
 

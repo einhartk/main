@@ -17,7 +17,8 @@ const state = {
   raidsData: [],
   selectedRaid: null,
   selectedDifficulty: null,
-  raidTabs: {}
+  raidTabs: {},
+  jobAbbreviations: {}
 };
 
 
@@ -49,6 +50,171 @@ async function loadRaidsData() {
     state.selectedRaid = state.raidsData[0];
     state.selectedDifficulty = state.raidsData[0].difficulties[0];
   }
+}
+
+// 직업 약어 데이터 로드
+async function loadJobAbbreviations() {
+  try {
+    const response = await fetch('data/job-abbreviations.json');
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    const data = await response.json();
+    state.jobAbbreviations = data;
+  } catch (error) {
+    console.error('❌ [JOB ABBREVIATIONS ERROR]:', error);
+    state.jobAbbreviations = {};
+  }
+}
+
+// DPS 계산 함수
+function calculateDPS(combatPower, className) {
+  const cp = parseCompareNumber(combatPower || '0');
+  const jobData = state.jobAbbreviations[className];
+  const dpsMultiplier = jobData?.dps || 1.0;
+  
+  // 전투력 * DPS 배율 / 1000 = 억 단위
+  const dps = (cp * dpsMultiplier) / 1000;
+  
+  return dps;
+}
+
+// 원정대 슬롯 평균 DPS 계산 함수
+function calculateAverageDPS(slotIndex) {
+  const slot = state.expeditionSlots[slotIndex];
+  if (!Array.isArray(slot) || slot.length === 0) return 0;
+  
+  let totalDPS = 0;
+  let dpsCount = 0;
+  
+  slot.forEach(char => {
+    if (char && char.name) {
+      const charDetails = getCharacterDetailsFromExpedition(char.name);
+      if (charDetails && charDetails.role !== 'support') {
+        const dps = calculateDPS(charDetails.combatPower || '0', charDetails.className || '');
+        totalDPS += dps;
+        dpsCount++;
+      }
+    }
+  });
+  
+  return dpsCount > 0 ? totalDPS / dpsCount : 0;
+}
+
+// DPS 배율표 모달 표시 함수
+function showDPSModal() {
+  const modalId = generateUniqueId('dpsModal_');
+  
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true" style="z-index: 9999;">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="${modalId}Label">
+              <i class="bi bi-graph-up me-2"></i>DPS 배율표
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle me-2"></i>
+              아래는 각 직업별 DPS 배율입니다. 전투력에 이 배율을 곱하여 DPS를 계산합니다.
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                  <tr>
+                    <th>직업</th>
+                    <th>약어</th>
+                    <th>DPS 배율</th>
+                    <th>측정 데이터</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${Object.entries(state.jobAbbreviations)
+                    .sort((a, b) => a[0].localeCompare(b[0], 'ko'))
+                    .map(([jobName, data]) => `
+                      <tr>
+                        <td><strong>${jobName}</strong></td>
+                        <td>${data.abbr}</td>
+                        <td>
+                          <span class="badge bg-primary">${data.dps}</span>
+                        </td>
+                        <td>
+                          ${data.url ? `
+                            <button class="btn btn-sm btn-outline-info" onclick="window.open('${data.url}', '_blank')" title="${jobName} DPS 측정 데이터 보기">
+                              <i class="bi bi-link-45deg"></i>
+                            </button>
+                          ` : `
+                            <span class="text-muted small">등록된 데이터 없음</span>
+                          `}
+                        </td>
+                      </tr>
+                    `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // 기존 모달이 있으면 제거
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // 새 모달 추가
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  const modalElement = document.getElementById(modalId);
+  const modal = new bootstrap.Modal(modalElement);
+  
+  // modalManager에 등록
+  if (window.modalManager) {
+    modalElement.addEventListener('hide.bs.modal', () => {
+      if (window.modalManager._moveFocusOutOfModal) {
+        window.modalManager._moveFocusOutOfModal(modalElement);
+      }
+    }, { once: true });
+    
+    // 모달이 닫힐 때 정리
+    modalElement.addEventListener('hidden.bs.modal', () => {
+      if (window.modalManager && window.modalManager.cleanupModal) {
+        window.modalManager.cleanupModal(modalId);
+      }
+    });
+    
+    window.modalManager.activeModals.set(modalId, modal);
+  }
+  
+  modal.show();
+}
+
+// 공격대 파티 평균 DPS 계산 함수
+function calculateRaidPartyAverageDPS(party) {
+  if (!party.members || !Array.isArray(party.members)) return 0;
+  
+  let totalDPS = 0;
+  let dpsCount = 0;
+  
+  party.members.forEach(member => {
+    if (member && member.name) {
+      const charDetails = getCharacterDetailsFromExpedition(member.name);
+      if (charDetails && charDetails.role !== 'support') {
+        const dps = calculateDPS(charDetails.combatPower || '0', charDetails.className || '');
+        totalDPS += dps;
+        dpsCount++;
+      }
+    }
+  });
+  
+  return dpsCount > 0 ? totalDPS / dpsCount : 0;
 }
 
 // 레이드 선택
@@ -2605,12 +2771,14 @@ window.secretCommand = handleSecretCommand;
 
 window.addEventListener('load', function() {
   loadRaidsData().then(() => {
-    loadPersonalSettings();
-    renderRaidTabs();
-    renderRaidParties();
-    renderExpedition();
-    applyExpeditionPanelState();
-    loadFromDatabase();
+    loadJobAbbreviations().then(() => {
+      loadPersonalSettings();
+      renderRaidTabs();
+      renderRaidParties();
+      renderExpedition();
+      applyExpeditionPanelState();
+      loadFromDatabase();
+    });
   });
 
   const syncCode = window.realtimeSync.getSyncCode();
