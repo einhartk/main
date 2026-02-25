@@ -817,7 +817,7 @@ function renderRaidPartiesInternal(forceRender = false) {
 
                       <div class="small text-muted">CP ${(charDetails.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
 
-                      ${charDetails.role !== 'support' ? `<div class="small text-success" style="font-size: 0.65rem;">(${calculateDPS(charDetails.combatPower || '0', charDetails.className || '')?.toFixed(1)}억)</div>` : ''}
+                      ${charDetails.role !== 'support' ? `<div class="small text-success" style="font-size: 0.65rem;">(${calculateDPS(charDetails.combatPower || '0', charDetails.className || '', charDetails.engraving || '')?.toFixed(1)}억)</div>` : ''}
 
                       <div class="badge ${charDetails.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'} mt-1" style="font-size: 0.7rem;" title="${charDetails.className || '알 수 없음'}">${charDetails.role === 'support' ? '서폿' : '딜러'} (${truncateJobName(charDetails.className || '알 수 없음', 6)})</div>
 
@@ -1411,7 +1411,7 @@ function renderExpedition() {
 
                   <div class="small text-primary" style="font-size: clamp(6px, 1.1vw, 12px); font-weight: 500;">${(charDetails?.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
 
-                  ${charDetails?.role !== 'support' ? `<div class="small text-success" style="font-size: clamp(5px, 0.9vw, 10px); font-weight: 400;">(${calculateDPS(charDetails?.combatPower || '0', charDetails?.className || '')?.toFixed(1)}억)</div>` : ''}
+                  ${charDetails?.role !== 'support' ? `<div class="small text-success" style="font-size: clamp(5px, 0.9vw, 10px); font-weight: 400;">(${calculateDPS(charDetails?.combatPower || '0', charDetails?.className || '', charDetails?.engraving || '')?.toFixed(1)}억)</div>` : ''}
 
                 </div>
 
@@ -1512,8 +1512,6 @@ function renderExpeditionModal() {
                 <div class="small text-muted">Lv ${char.ilvl || '0'}</div>
 
                 <div class="small text-info">CP ${(char.combatPower || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
-
-                ${char.role !== 'support' ? `<div class="small text-success" style="font-size: 0.6rem;">(${calculateDPS(char.combatPower || '0', char.className || '')?.toFixed(1)}억)</div>` : ''}
 
                 <div class="badge ${char.role === 'support' ? 'bg-warning text-dark' : 'bg-primary'}" style="font-size: 0.5rem;">${char.role === 'support' ? '서폿' : '딜러'} (${truncateJobName(char.className || '알 수 없음', 6)})</div>
 

@@ -67,10 +67,30 @@ async function loadJobAbbreviations() {
 }
 
 // DPS 계산 함수
-function calculateDPS(combatPower, className) {
+function calculateDPS(combatPower, className, engraving = null) {
   const cp = parseCompareNumber(combatPower || '0');
   const jobData = state.jobAbbreviations[className];
-  const dpsMultiplier = jobData?.dps || 1.0;
+  
+  let dpsMultiplier = 1.0;
+  
+  if (jobData && engraving) {
+    // 각인 이름으로 avatar1, avatar2와 비교하여 일치하는 DPS 배율 찾기
+    // avatar1, avatar2의 name과 engraving 비교
+    if (jobData.avatar1 && jobData.avatar1.name === engraving) {
+      dpsMultiplier = jobData.avatar1.dps;
+    } else if (jobData.avatar2 && jobData.avatar2.name === engraving) {
+      dpsMultiplier = jobData.avatar2.dps;
+    } else {
+      // 일치하는 각인이 없으면 avatar1 값 사용
+      dpsMultiplier = jobData.avatar1?.dps || 1.0;
+    }
+  } else if (jobData) {
+    // 데이터 조회가 안되거나 각인이 없으면 avatar1 값 사용
+    dpsMultiplier = jobData.avatar1?.dps || 1.0;
+  } else {
+    // jobData가 없으면 기본값
+    dpsMultiplier = 1.0;
+  }
   
   // 전투력 * DPS 배율 / 1000 = 억 단위
   const dps = (cp * dpsMultiplier) / 1000;
@@ -90,7 +110,7 @@ function calculateAverageDPS(slotIndex) {
     if (char && char.name) {
       const charDetails = getCharacterDetailsFromExpedition(char.name);
       if (charDetails && charDetails.role !== 'support') {
-        const dps = calculateDPS(charDetails.combatPower || '0', charDetails.className || '');
+        const dps = calculateDPS(charDetails.combatPower || '0', charDetails.className || '', charDetails.engraving || '');
         totalDPS += dps;
         dpsCount++;
       }
@@ -117,7 +137,7 @@ function showDPSModal() {
           <div class="modal-body">
             <div class="alert alert-info">
               <i class="bi bi-info-circle me-2"></i>
-              아래는 각 직업별 DPS 배율입니다. 전투력에 이 배율을 곱하여 DPS를 계산합니다.
+              아래는 각 직업별 각인에 따른 DPS 배율입니다. 전투력에 이 배율을 곱하여 DPS를 계산합니다.
             </div>
             
             <div class="table-responsive">
@@ -126,7 +146,7 @@ function showDPSModal() {
                   <tr>
                     <th>직업</th>
                     <th>약어</th>
-                    <th>DPS 배율</th>
+                    <th>각인별 DPS 배율</th>
                     <th>측정 데이터</th>
                   </tr>
                 </thead>
@@ -138,16 +158,27 @@ function showDPSModal() {
                         <td><strong>${jobName}</strong></td>
                         <td>${data.abbr}</td>
                         <td>
-                          <span class="badge bg-primary">${data.dps}</span>
+                          <div class="d-flex flex-column gap-1">
+                            <span class="badge bg-primary">${data.avatar1.name}: ${data.avatar1.dps}</span>
+                            <span class="badge bg-success">${data.avatar2.name}: ${data.avatar2.dps}</span>
+                          </div>
                         </td>
                         <td>
-                          ${data.url ? `
-                            <button class="btn btn-sm btn-outline-info" onclick="window.open('${data.url}', '_blank')" title="${jobName} DPS 측정 데이터 보기">
-                              <i class="bi bi-link-45deg"></i>
-                            </button>
-                          ` : `
-                            <span class="text-muted small">등록된 데이터 없음</span>
-                          `}
+                          <div class="btn-group" role="group">
+                            ${data.avatar1.url ? `
+                              <button class="btn btn-sm btn-outline-info me-1" onclick="window.open('${data.avatar1.url}', '_blank')" title="${jobName} ${data.avatar1.name} DPS 측정 데이터 보기">
+                                <i class="bi bi-link-45deg"></i> ${data.avatar1.name}
+                              </button>
+                            ` : ''}
+                            ${data.avatar2.url ? `
+                              <button class="btn btn-sm btn-outline-success" onclick="window.open('${data.avatar2.url}', '_blank')" title="${jobName} ${data.avatar2.name} DPS 측정 데이터 보기">
+                                <i class="bi bi-link-45deg"></i> ${data.avatar2.name}
+                              </button>
+                            ` : ''}
+                            ${!data.avatar1.url && !data.avatar2.url ? `
+                              <span class="text-muted small">등록된 데이터 없음</span>
+                            ` : ''}
+                          </div>
                         </td>
                       </tr>
                     `).join('')}
@@ -207,7 +238,7 @@ function calculateRaidPartyAverageDPS(party) {
     if (member && member.name) {
       const charDetails = getCharacterDetailsFromExpedition(member.name);
       if (charDetails && charDetails.role !== 'support') {
-        const dps = calculateDPS(charDetails.combatPower || '0', charDetails.className || '');
+        const dps = calculateDPS(charDetails.combatPower || '0', charDetails.className || '', charDetails.engraving || '');
         totalDPS += dps;
         dpsCount++;
       }
@@ -1215,11 +1246,13 @@ async function saveCharacterEdit() {
     const newCombatPower = document.getElementById('editCombatPower').value || '0';
     const newIlvl = document.getElementById('editIlvl').value || '0';
     const newRole = document.querySelector('input[name="editRole"]:checked').value;
+    const newAvatar = document.querySelector('input[name="editAvatar"]:checked')?.value || '';
     
     // 콤마 포맷 적용하여 저장
     character.combatPower = newCombatPower.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     character.ilvl = newIlvl.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     character.role = newRole;
+    character.avatar = newAvatar;
 
     // 히스토리 기록
     if (typeof recordHistory === 'function') {

@@ -18,6 +18,122 @@
     transition: all 0.3s ease;
 }
 
+/* 캐릭터 수정 모달 라디오 버튼 스타일 개선 */
+#characterEditForm .btn-check + .btn {
+    background-color: transparent !important;
+    border: 2px solid var(--bs-btn-border-color) !important;
+    color: var(--bs-btn-color) !important;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+#characterEditForm .btn-check:checked + .btn,
+#characterEditForm .btn-check + .btn:hover {
+    background-color: var(--bs-btn-bg) !important;
+    border-color: var(--bs-btn-border-color) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    transform: scale(1.02);
+    z-index: 1;
+}
+
+/* 수정탭 active 클래스에 직접 배경색 채우기 - 최고 우선순위 선택자 */
+body #characterEditForm .btn.active,
+body #characterEditForm .btn.btn-outline-primary.active,
+body #characterEditForm .btn.btn-outline-warning.active,
+body #characterEditForm .btn.btn-outline-info.active,
+body #characterEditForm .btn.btn-outline-success.active {
+    background-color: var(--bs-btn-bg) !important;
+    border-color: var(--bs-btn-border-color) !important;
+    color: white !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    transform: scale(1.02) !important;
+}
+
+body #characterEditForm .btn-outline-primary.active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+    color: white !important;
+}
+
+body #characterEditForm .btn-outline-warning.active {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: white !important;
+}
+
+body #characterEditForm .btn-outline-info.active {
+    background-color: #0dcaf0 !important;
+    border-color: #0dcaf0 !important;
+    color: white !important;
+}
+
+body #characterEditForm .btn-outline-success.active {
+    background-color: #198754 !important;
+    border-color: #198754 !important;
+    color: white !important;
+}
+
+/* 라디오 버튼 그룹 내에서 선택된 버튼의 인접 버튼 효과 */
+#characterEditForm .btn-group .btn-check:checked + .btn {
+    border-left: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+#characterEditForm .btn-group .btn-check:checked ~ .btn-check:not(:checked) + .btn {
+    border-left: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 선택/해제 전환 애니메이션 */
+#characterEditForm .btn-group {
+    transition: all 0.2s ease;
+}
+
+#characterEditForm .btn-check + .btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: left 0.3s ease;
+}
+
+#characterEditForm .btn-check:checked + .btn::before {
+    left: 100%;
+}
+
+/* 역할별 색상 강화 */
+#characterEditForm .btn-outline-primary {
+    --bs-btn-bg: #0d6efd;
+    --bs-btn-border-color: #0d6efd;
+    --bs-btn-color: #0d6efd;
+    --bs-btn-bg-rgb: 13, 110, 253;
+}
+
+#characterEditForm .btn-outline-warning {
+    --bs-btn-bg: #ffc107;
+    --bs-btn-border-color: #ffc107;
+    --bs-btn-color: #ffc107;
+    --bs-btn-bg-rgb: 255, 193, 7;
+}
+
+#characterEditForm .btn-outline-info {
+    --bs-btn-bg: #0dcaf0;
+    --bs-btn-border-color: #0dcaf0;
+    --bs-btn-color: #0dcaf0;
+    --bs-btn-bg-rgb: 13, 202, 240;
+}
+
+#characterEditForm .btn-outline-success {
+    --bs-btn-bg: #198754;
+    --bs-btn-border-color: #198754;
+    --bs-btn-color: #198754;
+    --bs-btn-bg-rgb: 25, 135, 84;
+}
+
 .floating-menu-btn:hover {
     transform: scale(1.1);
     box-shadow: 0 6px 25px rgba(0, 123, 255, 0.6);
@@ -981,126 +1097,126 @@ body.modal-open {
     background-color: transparent !important;
 }
 
-/* Outline 버튼 스타일 강제 복원 */
-.btn.btn-outline-primary {
-    color: #007bff !important;
-    border-color: #007bff !important;
-    background-color: transparent !important;
+/* Outline 버튼 스타일 강제 복원 - 수정탭 제외 */
+.btn:not(#editCharacterModal .btn).btn-outline-primary {
+    color: #007bff;
+    border-color: #007bff;
+    background-color: transparent;
 }
 
-.btn.btn-outline-primary:hover {
-    color: #fff !important;
-    background-color: #007bff !important;
-    border-color: #007bff !important;
+.btn:not(#editCharacterModal .btn).btn-outline-primary:hover {
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
 }
 
-.btn.btn-outline-primary:focus, .btn.btn-outline-primary.focus {
-    color: #fff !important;
-    background-color: #007bff !important;
-    border-color: #007bff !important;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+.btn:not(#editCharacterModal .btn).btn-outline-primary:focus, .btn:not(#editCharacterModal .btn).btn-outline-primary.focus {
+    color: #fff;
+    background-color: #007bff;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-.btn.btn-outline-primary:disabled, .btn.btn-outline-primary.disabled {
-    color: #007bff !important;
-    background-color: transparent !important;
+.btn:not(#editCharacterModal .btn).btn-outline-primary:disabled, .btn:not(#editCharacterModal .btn).btn-outline-primary.disabled {
+    color: #007bff;
+    background-color: transparent;
 }
 
-/* 다른 아웃라인 버튼 스타일 강제 복원 */
-.btn.btn-outline-secondary {
-    color: #6c757d !important;
-    border-color: #6c757d !important;
-    background-color: transparent !important;
+/* 다른 아웃라인 버튼 스타일 강제 복원 - 수정탭 제외 */
+.btn:not(#editCharacterModal .btn).btn-outline-secondary {
+    color: #6c757d;
+    border-color: #6c757d;
+    background-color: transparent;
 }
 
-.btn.btn-outline-secondary:hover {
-    color: #fff !important;
-    background-color: #6c757d !important;
-    border-color: #6c757d !important;
+.btn:not(#editCharacterModal .btn).btn-outline-secondary:hover {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
 }
 
-.btn.btn-outline-secondary:focus, .btn.btn-outline-secondary.focus {
-    color: #fff !important;
-    background-color: #6c757d !important;
-    border-color: #6c757d !important;
-    box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25) !important;
+.btn:not(#editCharacterModal .btn).btn-outline-secondary:focus, .btn:not(#editCharacterModal .btn).btn-outline-secondary.focus {
+    color: #fff;
+    background-color: #6c757d;
+    border-color: #6c757d;
+    box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
 }
 
-.btn.btn-outline-secondary:disabled, .btn.btn-outline-secondary.disabled {
-    color: #6c757d !important;
-    background-color: transparent !important;
+.btn:not(#editCharacterModal .btn).btn-outline-secondary:disabled, .btn:not(#editCharacterModal .btn).btn-outline-secondary.disabled {
+    color: #6c757d;
+    background-color: transparent;
 }
 
-.btn.btn-outline-success {
-    color: #28a745 !important;
-    border-color: #28a745 !important;
-    background-color: transparent !important;
+.btn:not(#editCharacterModal .btn).btn-outline-success {
+    color: #28a745;
+    border-color: #28a745;
+    background-color: transparent;
 }
 
-.btn.btn-outline-success:hover {
-    color: #fff !important;
-    background-color: #28a745 !important;
-    border-color: #28a745 !important;
+.btn:not(#editCharacterModal .btn).btn-outline-success:hover {
+    color: #fff;
+    background-color: #28a745;
+    border-color: #28a745;
 }
 
-.btn.btn-outline-success:focus, .btn.btn-outline-success.focus {
-    color: #fff !important;
-    background-color: #28a745 !important;
-    border-color: #28a745 !important;
-    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+.btn:not(#editCharacterModal .btn).btn-outline-success:focus, .btn:not(#editCharacterModal .btn).btn-outline-success.focus {
+    color: #fff;
+    background-color: #28a745;
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
 }
 
-.btn.btn-outline-success:disabled, .btn.btn-outline-success.disabled {
-    color: #28a745 !important;
-    background-color: transparent !important;
+.btn:not(#editCharacterModal .btn).btn-outline-success:disabled, .btn:not(#editCharacterModal .btn).btn-outline-success.disabled {
+    color: #28a745;
+    background-color: transparent;
 }
 
-.btn.btn-outline-warning {
-    color: #ffc107 !important;
-    border-color: #ffc107 !important;
-    background-color: transparent !important;
+.btn:not(#editCharacterModal .btn).btn-outline-warning {
+    color: #ffc107;
+    border-color: #ffc107;
+    background-color: transparent;
 }
 
-.btn.btn-outline-warning:hover {
-    color: #212529 !important;
-    background-color: #ffc107 !important;
-    border-color: #ffc107 !important;
+.btn:not(#editCharacterModal .btn).btn-outline-warning:hover {
+    color: #212529;
+    background-color: #ffc107;
+    border-color: #ffc107;
 }
 
-.btn.btn-outline-warning:focus, .btn.btn-outline-warning.focus {
-    color: #212529 !important;
-    background-color: #ffc107 !important;
-    border-color: #ffc107 !important;
-    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25) !important;
+.btn:not(#editCharacterModal .btn).btn-outline-warning:focus, .btn:not(#editCharacterModal .btn).btn-outline-warning.focus {
+    color: #212529;
+    background-color: #ffc107;
+    border-color: #ffc107;
+    box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
 }
 
-.btn.btn-outline-warning:disabled, .btn.btn-outline-warning.disabled {
-    color: #ffc107 !important;
-    background-color: transparent !important;
+.btn:not(#editCharacterModal .btn).btn-outline-warning:disabled, .btn:not(#editCharacterModal .btn).btn-outline-warning.disabled {
+    color: #ffc107;
+    background-color: transparent;
 }
 
-.btn.btn-outline-info {
-    color: #17a2b8 !important;
-    border-color: #17a2b8 !important;
-    background-color: transparent !important;
+.btn:not(#editCharacterModal .btn).btn-outline-info {
+    color: #17a2b8;
+    border-color: #17a2b8;
+    background-color: transparent;
 }
 
-.btn.btn-outline-info:hover {
-    color: #fff !important;
-    background-color: #17a2b8 !important;
-    border-color: #17a2b8 !important;
+.btn:not(#editCharacterModal .btn).btn-outline-info:hover {
+    color: #fff;
+    background-color: #17a2b8;
+    border-color: #17a2b8;
 }
 
-.btn.btn-outline-info:focus, .btn.btn-outline-info.focus {
-    color: #fff !important;
-    background-color: #17a2b8 !important;
-    border-color: #17a2b8 !important;
-    box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.25) !important;
+.btn:not(#editCharacterModal .btn).btn-outline-info:focus, .btn:not(#editCharacterModal .btn).btn-outline-info.focus {
+    color: #fff;
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+    box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.25);
 }
 
-.btn.btn-outline-info:disabled, .btn.btn-outline-info.disabled {
-    color: #17a2b8 !important;
-    background-color: transparent !important;
+.btn:not(#editCharacterModal .btn).btn-outline-info:disabled, .btn:not(#editCharacterModal .btn).btn-outline-info.disabled {
+    color: #17a2b8;
+    background-color: transparent;
 }
 
 /* Form Switch 스타일 강제 복원 - ClockPicker CSS 덮어쓰기 방지 */

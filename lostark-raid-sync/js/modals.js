@@ -455,7 +455,8 @@ async function fetchCharacterData(characterName) {
           role: guessRole(char.CharacterClassName, arkpassive),
           image: profile?.CharacterImage || 'img/default-character.png',
           className: char.CharacterClassName,
-          level: char.CharacterLevel
+          level: char.CharacterLevel,
+          engraving: arkpassive?.Title || ''  // 아크패시브 Title에 있는 각인 이름 저장
         };
       } catch (error) {
         console.error(`캐릭터 ${char.CharacterName} 상세 정보 조회 실패:`, error);
@@ -491,7 +492,10 @@ function guessRole(className, arkpassive) {
   }
   
   // 기존 직업명 기준 구분 (백업)
-  return ["바드","홀리나이트","도화가"].includes(className) ? "support" : "dps";
+  const isSupportByClass = ["바드","홀리나이트","도화가"].includes(className);
+  const finalRole = isSupportByClass ? "support" : "dps";
+  
+  return finalRole;
 }
 
 // 공격대 캐릭터 선택 모달 열기
@@ -734,6 +738,43 @@ function clearCharacterSearch() {
   filterCharacterList();
 }
 
+// 수정 모달 라디오 버튼 클릭 이벤트 리스너 설정
+function setupEditModalRadioListeners() {
+  // 역할 라디오 버튼
+  const roleRadios = document.querySelectorAll('input[name="editRole"]');
+  roleRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+      // 모든 역할 라벨의 active 클래스 제거
+      document.querySelectorAll('label[for^="editRole"]').forEach(label => {
+        label.classList.remove('active');
+      });
+      // 선택된 라벨에 active 클래스 추가
+      const selectedLabel = document.querySelector(`label[for="${this.id}"]`);
+      if (selectedLabel) {
+        selectedLabel.classList.add('active');
+      }
+      console.log('🔧 [Edit Modal] Role radio changed to:', this.value);
+    });
+  });
+
+  // 각인 라디오 버튼
+  const avatarRadios = document.querySelectorAll('input[name="editAvatar"]');
+  avatarRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+      // 모든 각인 라벨의 active 클래스 제거
+      document.querySelectorAll('label[for^="editAvatar"]').forEach(label => {
+        label.classList.remove('active');
+      });
+      // 선택된 라벨에 active 클래스 추가
+      const selectedLabel = document.querySelector(`label[for="${this.id}"]`);
+      if (selectedLabel) {
+        selectedLabel.classList.add('active');
+      }
+      console.log('🔧 [Edit Modal] Avatar radio changed to:', this.value);
+    });
+  });
+}
+
 // 공격대 캐릭터 선택 처리
 async function selectRaidCharacter(characterName, partyId, slotIndex) {
   try {
@@ -879,8 +920,22 @@ async function displaySearchResults(characters, successCount, failCount, failedN
     role: char.role,
     image: char.image || 'img/default-character.png',
     className: char.className,
-    level: char.level
+    level: char.level,
+    engraving: char.engraving || ''  // 각인 정보 추가
   }));
+  
+  // 원정대 데이터 저장 로깅 (API에서 조회한 캐릭터들)
+  console.log('💾 [Expedition Save] Characters added from API to expedition:');
+  console.log('  - Target:', `원정대 슬롯 ${currentTargetSlot + 1}`);
+  console.log('  - Characters:', flattenedCharacters.map(char => ({
+    name: char.name,
+    class: char.className,
+    engraving: char.engraving || '없음',
+    combatPower: char.combatPower,
+    role: char.role,
+    ilvl: char.ilvl
+  })));
+  console.log('  - Total Count:', flattenedCharacters.length);
   
   // 히스토리 기록 (최적화: 대량 변경 시 간단히 기록)
   const oldSlot = state.expeditionSlots[currentTargetSlot] || [];
@@ -988,11 +1043,82 @@ async function editCharacter(expeditionIndex, characterIndex, partyId = null, sl
     document.getElementById('originalIlvl').textContent = (character.ilvl || '0').replace(/\B(?=(\d{3})+(?!\d))/g, ','); // 원본은 콤마 포맷
     
     // 역할 라디오 버튼 설정
+    console.log('🔧 [Edit Modal] Setting role radio for:', character.role);
     const roleRadio = document.querySelector(`input[name="editRole"][value="${character.role}"]`);
-    if (roleRadio) roleRadio.checked = true;
+    console.log('🔧 [Edit Modal] Role radio element:', roleRadio);
+    if (roleRadio) {
+      roleRadio.checked = true;
+      console.log('🔧 [Edit Modal] Role radio checked:', roleRadio.checked);
+      // active 클래스로 호버 효과 강제 적용
+      const roleLabel = document.querySelector(`label[for="editRole${character.role === 'dps' ? 'Dps' : 'Support'}"]`);
+      console.log('🔧 [Edit Modal] Role label element:', roleLabel);
+      if (roleLabel) {
+        // 다른 라벨들의 active 클래스 제거
+        document.querySelectorAll('label[for^="editRole"]').forEach(label => {
+          label.classList.remove('active');
+        });
+        // 선택된 라벨에 active 클래스 추가
+        roleLabel.classList.add('active');
+        console.log('🔧 [Edit Modal] Role active class added');
+      }
+    }
+    
+    // 각인 라디오 버튼 설정
+    const jobData = state.jobAbbreviations[character.className];
+    if (jobData) {
+      // 각인 라벨 동적 설정
+      document.getElementById('editAvatar1Label').textContent = jobData.avatar1.name;
+      document.getElementById('editAvatar2Label').textContent = jobData.avatar2.name;
+      
+      // 각인 라디오 버튼 선택 - engraving 필드와 각인 이름으로 비교
+      let selectedAvatar = '';
+      if (character.engraving) {
+        if (jobData.avatar1.name === character.engraving) {
+          selectedAvatar = '1';
+        } else if (jobData.avatar2.name === character.engraving) {
+          selectedAvatar = '2';
+        }
+      } else if (character.avatar) {
+        // 이전 avatar 필드 호환
+        selectedAvatar = character.avatar;
+      }
+      
+      const avatarRadio = document.querySelector(`input[name="editAvatar"][value="${selectedAvatar}"]`);
+      console.log('🔧 [Edit Modal] Avatar radio element:', avatarRadio, 'for value:', selectedAvatar);
+      if (avatarRadio) {
+        avatarRadio.checked = true;
+        console.log('🔧 [Edit Modal] Avatar radio checked:', avatarRadio.checked);
+        // active 클래스로 호버 효과 강제 적용
+        const avatarLabel = document.querySelector(`label[for="editAvatar${selectedAvatar}"]`);
+        console.log('🔧 [Edit Modal] Avatar label element:', avatarLabel);
+        if (avatarLabel) {
+          // 다른 라벨들의 active 클래스 제거
+          document.querySelectorAll('label[for^="editAvatar"]').forEach(label => {
+            label.classList.remove('active');
+          });
+          // 선택된 라벨에 active 클래스 추가
+          avatarLabel.classList.add('active');
+          console.log('🔧 [Edit Modal] Avatar active class added');
+        }
+      } else {
+        console.log('🔧 [Edit Modal] No avatar radio found for value:', selectedAvatar);
+      }
+      
+      console.log('🔧 [Edit Modal] Character data:', {
+        name: character.name,
+        className: character.className,
+        role: character.role,
+        engraving: character.engraving,
+        avatar: character.avatar,
+        selectedAvatar: selectedAvatar
+      });
+    }
     
     // 저장 함수에 현재 위치 정보 저장
     window.currentEditPosition = { expeditionIndex, characterIndex, partyId, slotIndex };
+
+    // 라디오 버튼 클릭 이벤트 리스너 추가
+    setupEditModalRadioListeners();
 
     // API 조회 버튼 이벤트 리스너
     const refreshButton = document.getElementById('refreshCharacterData');
