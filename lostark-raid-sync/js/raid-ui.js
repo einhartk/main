@@ -1405,7 +1405,7 @@ function renderExpedition() {
 
                 <div class="flex-grow-1">
 
-                  <div class="fw-bold" style="font-size: clamp(8px, 1.5vw, 16px); line-height: 1.2; color: #2c3e50;" title="${char.name}">${truncateCharacterName(char.name, 7)}</div>
+                  <div class="fw-bold" style="font-size: clamp(8px, 1.1vw, 16px); line-height: 1.2; color: #2c3e50;" title="${char.name}">${truncateCharacterName(char.name, 7)}</div>
 
                   <div class="small text-warning" style="font-size: clamp(7px, 1.3vw, 14px); font-weight: 600;">Lv${charDetails?.ilvl || '0'}</div>
 

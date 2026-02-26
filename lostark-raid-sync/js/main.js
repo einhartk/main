@@ -74,11 +74,14 @@ function calculateDPS(combatPower, className, engraving = null) {
   let dpsMultiplier = 1.0;
   
   if (jobData && engraving) {
+    // 각인 이름에서 공백 제거 후 비교
+    const cleanEngraving = engraving.replace(/\s+/g, '');
+    
     // 각인 이름으로 avatar1, avatar2와 비교하여 일치하는 DPS 배율 찾기
-    // avatar1, avatar2의 name과 engraving 비교
-    if (jobData.avatar1 && jobData.avatar1.name === engraving) {
+    // avatar1, avatar2의 name과 engraving 비교 (공백 제거)
+    if (jobData.avatar1 && jobData.avatar1.name.replace(/\s+/g, '') === cleanEngraving) {
       dpsMultiplier = jobData.avatar1.dps;
-    } else if (jobData.avatar2 && jobData.avatar2.name === engraving) {
+    } else if (jobData.avatar2 && jobData.avatar2.name.replace(/\s+/g, '') === cleanEngraving) {
       dpsMultiplier = jobData.avatar2.dps;
     } else {
       // 일치하는 각인이 없으면 avatar1 값 사용
