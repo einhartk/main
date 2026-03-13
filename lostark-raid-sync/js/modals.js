@@ -917,11 +917,11 @@ async function displaySearchResults(characters, successCount, failCount, failedN
     name: char.name,
     ilvl: char.ilvl || '0',
     combatPower: char.combatPower || '0',
-    role: char.role,
+    role: char.role || '',
     image: char.image || 'img/default-character.png',
-    className: char.className,
-    level: char.level,
-    engraving: char.engraving || ''  // 각인 정보 추가
+    className: char.className || '',
+    level: char.level || '',
+    engraving: char.engraving || ''  // 각인 정보 추가 (설정값 없을 때 공란)
   }));
   
   // 원정대 데이터 저장 로깅 (API에서 조회한 캐릭터들)

@@ -1,6 +1,43 @@
 {
   "raids": [
     {
+      "id": "arseno",
+      "name": "아르세노",
+      "size": 4,
+      "difficulties": [
+        {
+          "id": "nightmare",
+          "name": "나이트메어",
+          "minIlvl": 1750,
+          "minCombatPower": 1,
+          "clearGold": 50000,
+          "defaultSize": 4,
+          "maxSupports": 1,
+          "partyCount": 1
+        },
+        {
+          "id": "hard",
+          "name": "하드",
+          "minIlvl": 1720,
+          "minCombatPower": 1,
+          "clearGold": 40000,
+          "defaultSize": 4,
+          "maxSupports": 1,
+          "partyCount": 1
+        },
+        {
+          "id": "normal",
+          "name": "노말",
+          "minIlvl": 1700,
+          "minCombatPower": 1,
+          "clearGold": 30000,
+          "defaultSize": 4,
+          "maxSupports": 1,
+          "partyCount": 1
+        }
+      ]
+    },
+    {
       "id": "serkaris",
       "name": "세르카",
       "size": 4,
