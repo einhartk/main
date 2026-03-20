@@ -1842,6 +1842,37 @@ function sendNoticeWithOptions(message) {
     console.log('ℹ️ [NOTIFICATION] 윈도우 알람 권한이 없어 알람을 전송하지 않음');
   }
   
+  // TTS로 공지 내용 읽어주기
+  try {
+    if ('speechSynthesis' in window) {
+      // 기존 음성 중지
+      window.speechSynthesis.cancel();
+      
+      // TTS 메시지 생성 (레이드 이름과 캐릭터 ID만 읽기)
+      const ttsMessage = message.replace(/\[.*?\]\s*캐릭터 ID:\s*/, '공격대 공지: ');
+      
+      const utterance = new SpeechSynthesisUtterance(ttsMessage);
+      utterance.lang = 'ko-KR';
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      // 한국어 음성 선택
+      const voices = window.speechSynthesis.getVoices();
+      const koreanVoice = voices.find(voice => voice.lang.includes('ko')) || voices[0];
+      if (koreanVoice) {
+        utterance.voice = koreanVoice;
+      }
+      
+      window.speechSynthesis.speak(utterance);
+      console.log('🔊 [TTS] 공지 내용을 음성으로 재생합니다:', ttsMessage);
+    } else {
+      console.log('ℹ️ [TTS] 이 브라우저는 음성 합성을 지원하지 않습니다.');
+    }
+  } catch (error) {
+    console.error('❌ [TTS] 음성 재생 실패:', error);
+  }
+  
   // 결과 알림
   if (successCount > 0) {
     window.modalManager.showAlert({
