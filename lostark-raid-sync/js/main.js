@@ -534,6 +534,26 @@ async function addNewRaid(skipHistory = false) {
       });
     });
   }
+
+  // 🔥 **중요 수정**: 기존 파티들의 P번호 최대값으로 globalPartyCounter 보정
+  // 실시간 동기화/로드 타이밍 이슈로 낮은 번호(P1 등)가 재사용되는 것을 방지
+  const maxExistingPartyNumber = (() => {
+    let max = 0;
+    for (const party of allParties) {
+      const id = party && party.id;
+      if (!id) continue;
+      const match = /^P(\d+)$/.exec(String(id));
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (Number.isFinite(n) && n > max) max = n;
+      }
+    }
+    return max;
+  })();
+  if (!state.globalPartyCounter) state.globalPartyCounter = 0;
+  if (maxExistingPartyNumber > state.globalPartyCounter) {
+    state.globalPartyCounter = maxExistingPartyNumber;
+  }
   
   const raidId = state.selectedRaid.id;
   const difficultyId = state.selectedDifficulty.id;
@@ -547,9 +567,7 @@ async function addNewRaid(skipHistory = false) {
   }
   
   // 전역 파티 카운터로 고유한 ID 생성
-  if (!state.globalPartyCounter) {
-    state.globalPartyCounter = 0;
-  }
+  if (!state.globalPartyCounter) state.globalPartyCounter = 0;
   
   // 🔥 **중복 ID 확인 로직 추가**
   let globalPartyId;
@@ -2476,6 +2494,32 @@ async function loadFromDatabase() {
       if (raidTabsData) {
         try {
           state.raidTabs = JSON.parse(raidTabsData);
+
+          // 🔥 **중요 수정**: 로드된 데이터 기준으로 globalPartyCounter 보정
+          // (실시간 동기화/재접속/부분 로드 등으로 카운터가 초기화되어 P1이 재사용되는 문제 방지)
+          try {
+            let maxPartyNumber = 0;
+            Object.keys(state.raidTabs || {}).forEach(raidId => {
+              Object.keys(state.raidTabs[raidId] || {}).forEach(difficultyId => {
+                const parties = state.raidTabs[raidId][difficultyId] || [];
+                parties.forEach(party => {
+                  const id = party && party.id;
+                  if (!id) return;
+                  const match = /^P(\d+)$/.exec(String(id));
+                  if (!match) return;
+                  const n = parseInt(match[1], 10);
+                  if (Number.isFinite(n) && n > maxPartyNumber) maxPartyNumber = n;
+                });
+              });
+            });
+
+            if (!state.globalPartyCounter) state.globalPartyCounter = 0;
+            if (maxPartyNumber > state.globalPartyCounter) {
+              state.globalPartyCounter = maxPartyNumber;
+            }
+          } catch (e) {
+            console.warn('⚠️ [LOAD] globalPartyCounter 보정 실패:', e);
+          }
 
           // 복원된 파티 객체에 raidId와 difficultyId 설정
           Object.keys(state.raidTabs).forEach(raidId => {

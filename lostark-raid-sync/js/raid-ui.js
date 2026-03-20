@@ -516,7 +516,7 @@ function renderRaidPartiesInternal(forceRender = false) {
 
                 <!-- 스케줄 순서 입력 -->
 
-                <div class="d-flex align-items-center" style="width: 85px;">
+                <div class="d-flex align-items-center gap-1" style="width: 120px;">
 
                   <span class="input-group-text input-group-text-sm" style="font-size: 0.65rem; padding: 2px 4px; border-radius: 4px 0 0 4px; border-right: none; background: #f8f9fa; display: flex; align-items: center; justify-content: center; height: 28px; min-width: 30px;">순서</span>
 
@@ -541,6 +541,20 @@ function renderRaidPartiesInternal(forceRender = false) {
                          title="스케줄 순서 설정 (1-99)">
 
                 </div>
+
+                <!-- 공지 버튼 -->
+
+                <button class="btn btn-sm btn-info d-flex align-items-center justify-content-center" 
+
+                        onclick="sendPartyNotice('${party.id}')" 
+
+                        style="width: 32px; height: 28px; padding: 0; font-size: 0.85rem;" 
+
+                        title="파티 공지 보내기">
+
+                  <i class="bi bi-mic-fill"></i>
+
+                </button>
 
                 <!-- 삭제 버튼 -->
 
@@ -878,19 +892,17 @@ function renderRaidPartiesInternal(forceRender = false) {
     });
 
   }, 100);
-
 }
 
-
-
 // 🔥 **핵심 수정: 전역 함수로 노출**
-
 window.renderRaidParties = renderRaidParties;
-
 window.getCharacterDetailsFromExpedition = getCharacterDetailsFromExpedition;
-
 window.getWeekdayName = getWeekdayName;
-
+window.sendPartyNotice = sendPartyNotice;
+window.requestNotificationPermission = requestNotificationPermission;
+window.showNoticeOptionsModal = showNoticeOptionsModal;
+window.requestNotificationPermissionAndReload = requestNotificationPermissionAndReload;
+window.sendNoticeWithOptions = sendNoticeWithOptions;
 
 
 // 요일 이름 반환 함수
@@ -1589,5 +1601,260 @@ function updateSupportCount() {
 
   });
 
+}
+
+// 파티 공지 보내기 함수
+function sendPartyNotice(partyId) {
+  // 파티 정보 찾기
+  const parties = getCurrentTabParties();
+  const party = parties.find(p => p.id === partyId);
+  
+  if (!party) {
+    console.error('❌ [NOTICE] 파티를 찾을 수 없음:', partyId);
+    return;
+  }
+  
+  // 파티에 있는 캐릭터들 수집
+  const validMembers = party.members.filter(m => m !== null);
+  
+  if (validMembers.length === 0) {
+    window.modalManager.showAlert({
+      title: '알림',
+      message: '이 파티에는 캐릭터가 없습니다.',
+      confirmText: '확인'
+    });
+    return;
+  }
+  
+  // 캐릭터 ID들 수집 (name 또는 id 사용)
+  const characterIds = validMembers.map(member => {
+    const charDetails = getCharacterDetailsFromExpedition(member.name);
+    return charDetails?.id || member.name || member.id;
+  }).filter(id => id); // null/undefined 제거
+  
+  if (characterIds.length === 0) {
+    window.modalManager.showAlert({
+      title: '알림',
+      message: '유효한 캐릭터 ID를 찾을 수 없습니다.',
+      confirmText: '확인'
+    });
+    return;
+  }
+  
+  // 공지 메시지 생성
+  const partyName = party.name || `${party.raidName} ${party.difficultyName} ${party.displayName || party.id}`;
+  const noticeMessage = `[${partyName}] 캐릭터 ID: ${characterIds.join(', ')}`;
+  
+  // 윈도우 알람 권한 확인 및 요청
+  requestNotificationPermission().then(permissionGranted => {
+    // 공지 전송 옵션 모달 표시
+    showNoticeOptionsModal(noticeMessage, permissionGranted);
+  });
+}
+
+// 알람 권한 요청 함수
+function requestNotificationPermission() {
+  return new Promise((resolve) => {
+    // 브라우저가 알람을 지원하는지 확인
+    if (!('Notification' in window)) {
+      console.log('❌ [NOTIFICATION] 이 브라우저는 알람을 지원하지 않습니다.');
+      resolve(false);
+      return;
+    }
+    
+    // 이미 권한이 부여된 경우
+    if (Notification.permission === 'granted') {
+      resolve(true);
+      return;
+    }
+    
+    // 권한이 거부된 경우
+    if (Notification.permission === 'denied') {
+      console.log('❌ [NOTIFICATION] 알람 권한이 거부되었습니다.');
+      resolve(false);
+      return;
+    }
+    
+    // 권한 요청
+    Notification.requestPermission().then(permission => {
+      const granted = permission === 'granted';
+      if (granted) {
+        console.log('✅ [NOTIFICATION] 알람 권한이 승인되었습니다.');
+      } else {
+        console.log('❌ [NOTIFICATION] 알람 권한이 거부되었습니다.');
+      }
+      resolve(granted);
+    }).catch(error => {
+      console.error('❌ [NOTIFICATION] 권한 요청 중 오류 발생:', error);
+      resolve(false);
+    });
+  });
+}
+
+// 공지 옵션 모달 표시 함수
+function showNoticeOptionsModal(message, hasNotificationPermission) {
+  const modalId = 'noticeOptionsModal';
+  
+  // 기존 모달이 있으면 제거
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-megaphone-fill me-2"></i>
+              공지 전송 확인
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label fw-bold">공지 내용:</label>
+              <textarea class="form-control" rows="3" readonly>${message}</textarea>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label fw-bold">전송될 알림:</label>
+              <div class="alert alert-info" role="alert">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <strong>게임 내 공지</strong>와 <strong>윈도우 알람</strong>이 모두 전송됩니다.
+              </div>
+              ${!hasNotificationPermission ? `
+              <div class="alert alert-warning" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                윈도우 알람을 사용하려면 브라우저 권한 승인이 필요합니다.
+                <button type="button" class="btn btn-sm btn-warning ms-2" onclick="requestNotificationPermissionAndReload()">
+                  권한 요청하기
+                </button>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+            <button type="button" class="btn btn-primary" onclick="sendNoticeWithOptions('${message.replace(/'/g, "\\'")}')">
+              <i class="bi bi-send-fill me-1"></i>공지 전송
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  const modalElement = document.getElementById(modalId);
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+  
+  // 모달 닫힐 때 정리
+  modalElement.addEventListener('hidden.bs.modal', () => {
+    modalElement.remove();
+  }, { once: true });
+}
+
+// 권한 요청 후 모달 새로고침
+function requestNotificationPermissionAndReload() {
+  requestNotificationPermission().then(granted => {
+    if (granted) {
+      // 모달 닫고 다시 열기
+      const modal = bootstrap.Modal.getInstance(document.getElementById('noticeOptionsModal'));
+      if (modal) modal.hide();
+      
+      setTimeout(() => {
+        showNoticeOptionsModal(document.querySelector('#noticeOptionsModal textarea').value, true);
+      }, 300);
+    } else {
+      window.modalManager.showAlert({
+        title: '권한 거부',
+        message: '알람 권한이 거부되었습니다. 브라우저 설정에서 권한을 변경해주세요.',
+        confirmText: '확인'
+      });
+    }
+  });
+}
+
+// 선택된 옵션으로 공지 전송
+function sendNoticeWithOptions(message) {
+  // 모달 닫기
+  const modal = bootstrap.Modal.getInstance(document.getElementById('noticeOptionsModal'));
+  if (modal) modal.hide();
+  
+  let successCount = 0;
+  let totalCount = 0;
+  
+  // 무조건 게임 내 공지 전송
+  totalCount++;
+  if (typeof window.공지 === 'function') {
+    window.공지(message);
+    successCount++;
+  } else if (typeof handleSecretCommand === 'function') {
+    handleSecretCommand(`/공지 ${message}`);
+    successCount++;
+  } else {
+    console.error('❌ [NOTICE] 게임 내 공지 기능을 찾을 수 없음');
+  }
+  
+  // 윈도우 알람 전송 (권한이 있으면)
+  totalCount++;
+  if (!('Notification' in window)) {
+    console.log('ℹ️ [NOTIFICATION] 이 브라우저는 알람을 지원하지 않습니다.');
+  } else if (Notification.permission === 'granted') {
+    try {
+      // 커스텀 알림음 재생 (브라우저 정책상 사용자 클릭 이벤트 내에서만 재생이 잘 됨)
+      try {
+        const audio = new Audio('sound/notification.mp3');
+        audio.volume = 1.0;
+        audio.play().catch(() => {});
+      } catch (_) {}
+
+      const notification = new Notification('공격대 공지', {
+        body: message,
+        icon: 'img/logo.png', // 로고 경로가 있다면 사용
+        badge: 'img/logo.png',
+        tag: 'raid-notice', // 중복 알람 방지
+        requireInteraction: false, // 자동 닫기 허용
+        silent: false // 소리 알람
+      });
+      
+      // 알람 클릭 시 처리
+      notification.onclick = function() {
+        window.focus();
+        notification.close();
+      };
+      
+      // 자동 닫기 (15초 후)
+      setTimeout(() => {
+        notification.close();
+      }, 15000);
+      
+      successCount++;
+    } catch (error) {
+      console.error('❌ [NOTIFICATION] 윈도우 알람 전송 실패:', error);
+    }
+  } else {
+    // 권한이 없어도 실패로 처리하지 않고 로지만 남김
+    console.log('ℹ️ [NOTIFICATION] 윈도우 알람 권한이 없어 알람을 전송하지 않음');
+  }
+  
+  // 결과 알림
+  if (successCount > 0) {
+    window.modalManager.showAlert({
+      title: '전송 완료',
+      message: `${successCount}/${totalCount}개의 공지가 성공적으로 전송되었습니다.${Notification.permission === 'granted' ? ' (게임 내 공지 + 윈도우 알람)' : ' (게임 내 공지만)'}`,
+      confirmText: '확인'
+    });
+  } else {
+    window.modalManager.showAlert({
+      title: '전송 실패',
+      message: '공지 전송에 실패했습니다.',
+      confirmText: '확인'
+    });
+  }
 }
 

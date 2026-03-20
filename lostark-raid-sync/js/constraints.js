@@ -1,6 +1,6 @@
 // 제약 조건 유효성 검사 함수들
 const Constraints = {
-  // 캐릭터 중복 확인 (최대 3개까지 허용)
+  // 캐릭터 중복 확인 (최대 4개까지 허용)
   isCharacterDuplicate: function(characterName, parties = null) {
     const targetParties = parties || getCurrentTabParties();
     let count = 0;
@@ -11,7 +11,7 @@ const Constraints = {
         }
       });
     });
-    return count >= 3; // 3개 이상이면 중복으로 간주
+    return count >= 4; // 4개 이상이면 중복으로 간주
   },
 
   // 캐릭터 사용 횟수 확인
@@ -147,8 +147,8 @@ const Constraints = {
   canAddCharacterToParty: function(party, character, currentParties = null) {
     const currentCount = this.getCharacterUsageCount(character.name, currentParties);
 
-    if (currentCount >= 3) {
-      const message = `${character.name} 캐릭터는 최대 3개의 공격대에만 배치할 수 있습니다. (현재: ${currentCount}/3)`;
+    if (currentCount >= 4) {
+      const message = `${character.name} 캐릭터는 최대 4개의 공격대에만 배치할 수 있습니다. (현재: ${currentCount}/4)`;
       return { valid: false, reason: 'duplicate_limit', message };
     }
 
@@ -256,7 +256,7 @@ const Constraints = {
       party.members.forEach(member => {
         if (member) {
           characterCounts[member.name] = (characterCounts[member.name] || 0) + 1;
-          if (characterCounts[member.name] > 3) {
+          if (characterCounts[member.name] > 4) {
             if (!duplicates.includes(member.name)) {
               duplicates.push(member.name);
             }
@@ -298,8 +298,8 @@ const Constraints = {
     state.expeditionSlots.forEach((slot, slotIndex) => {
       slot.forEach(char => {
         if (char) {
-          // 3개 제한 확인 (전체 공격대)
-          if (this.getCharacterUsageCount(char.name) >= 3) return;
+          // 4개 제한 확인 (전체 공격대)
+          if (this.getCharacterUsageCount(char.name) >= 4) return;
 
           // 같은 레이드 탭, 같은 캐릭터명 제한 확인
           if (this.exceedsSameRaidSameCharacter(char.name, currentRaidName)) return;
@@ -334,7 +334,7 @@ const Constraints = {
   // 제약 조건 위반 메시지 생성
   getViolationMessage: function(violation, characterName = '', partyName = '') {
     const messages = {
-      duplicate_limit: `${characterName} 캐릭터는 최대 3개의 공격대에만 배치할 수 있습니다.`,
+      duplicate_limit: `${characterName} 캐릭터는 최대 4개의 공격대에만 배치할 수 있습니다.`,
       same_raid_same_character: `${characterName} 캐릭터는 ${state.selectedRaid?.name || '이 레이드'}에서 1곳에만 배치할 수 있습니다.`,
       one_raid_one_expedition: '1원정대 슬롯당 1캐릭터만 사용할 수 있습니다.',
       ilvl_requirement: `${characterName} 캐릭터의 아이템 레벨이 부족합니다.`,

@@ -416,8 +416,11 @@ function displayExpeditionGold(stats) {
       let raidInfo = [];
       
       if (assignedRaids && assignedRaids.length > 0) {
-        // 여러 공격대의 골드 합산
-        assignedRaids.forEach(raid => {
+        // 높은 골드 순으로 정렬 후 상위 3개만 계산
+        const sortedRaids = assignedRaids.sort((a, b) => b.clearGold - a.clearGold);
+        const topRaids = sortedRaids.slice(0, 3);
+        
+        topRaids.forEach(raid => {
           charGold += raid.clearGold;
           // 나이트메어를 나메로 줄여서 표시
           const difficultyName = raid.difficultyName === '나이트메어' ? '나메' : raid.difficultyName;
@@ -457,8 +460,8 @@ function displayExpeditionGold(stats) {
                         </span>
                         ${(() => {
                           const usageCount = Constraints.getCharacterUsageCount(char.name);
-                          const badgeColor = usageCount >= 3 ? 'bg-danger' : usageCount >= 2 ? 'bg-warning' : 'bg-success';
-                          return `<span class="badge ${badgeColor} ms-2" style="font-size: 0.65rem;">${usageCount}/3</span>`;
+                          const badgeColor = usageCount >= 4 ? 'bg-danger' : usageCount >= 3 ? 'bg-warning' : 'bg-success';
+                          return `<span class="badge ${badgeColor} ms-2" style="font-size: 0.65rem;">${usageCount}/4</span>`;
                         })()}
                       </div>
                     </div>
