@@ -1837,35 +1837,53 @@ function sendNoticeWithOptions(message) {
     } catch (error) {
       console.error('❌ [NOTIFICATION] 윈도우 알람 전송 실패:', error);
     }
+  } else if (Notification.permission === 'default') {
+    // 권한 요청 모달 표시
+    showNotificationPermissionModal();
   } else {
-    // 권한이 없어도 실패로 처리하지 않고 로지만 남김
-    console.log('ℹ️ [NOTIFICATION] 윈도우 알람 권한이 없어 알람을 전송하지 않음');
+    // 권한이 거부된 경우
+    console.log('ℹ️ [NOTIFICATION] 윈도우 알람 권한이 거부되어 알람을 전송하지 않음.');
   }
   
   // TTS로 공지 내용 읽어주기
   try {
     if ('speechSynthesis' in window) {
-      // 기존 음성 중지
-      window.speechSynthesis.cancel();
+      // 음성 권한 확인 (대부분의 브라우저에서는 별도 권한이 필요 없지만, 일부 환경에서는 필요)
+      const testUtterance = new SpeechSynthesisUtterance('');
+      testUtterance.onstart = () => {
+        // 음성 재생 가능
+        window.speechSynthesis.cancel();
+        
+        // 기존 음성 중지
+        window.speechSynthesis.cancel();
+        
+        // TTS 메시지 생성 (레이드 이름과 캐릭터 ID만 읽기)
+        const ttsMessage = message.replace(/\[.*?\]\s*캐릭터 ID:\s*/, '공격대 공지: ');
+        
+        const utterance = new SpeechSynthesisUtterance(ttsMessage);
+        utterance.lang = 'ko-KR';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        // 한국어 음성 선택
+        const voices = window.speechSynthesis.getVoices();
+        const koreanVoice = voices.find(voice => voice.lang.includes('ko')) || voices[0];
+        if (koreanVoice) {
+          utterance.voice = koreanVoice;
+        }
+        
+        window.speechSynthesis.speak(utterance);
+        console.log('🔊 [TTS] 공지 내용을 음성으로 재생합니다:', ttsMessage);
+      };
       
-      // TTS 메시지 생성 (레이드 이름과 캐릭터 ID만 읽기)
-      const ttsMessage = message.replace(/\[.*?\]\s*캐릭터 ID:\s*/, '공격대 공지: ');
+      testUtterance.onerror = () => {
+        // 음성 권한이 필요한 경우
+        showTTSPermissionModal();
+      };
       
-      const utterance = new SpeechSynthesisUtterance(ttsMessage);
-      utterance.lang = 'ko-KR';
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      
-      // 한국어 음성 선택
-      const voices = window.speechSynthesis.getVoices();
-      const koreanVoice = voices.find(voice => voice.lang.includes('ko')) || voices[0];
-      if (koreanVoice) {
-        utterance.voice = koreanVoice;
-      }
-      
-      window.speechSynthesis.speak(utterance);
-      console.log('🔊 [TTS] 공지 내용을 음성으로 재생합니다:', ttsMessage);
+      // 테스트용 음성 재생 시도
+      window.speechSynthesis.speak(testUtterance);
     } else {
       console.log('ℹ️ [TTS] 이 브라우저는 음성 합성을 지원하지 않습니다.');
     }
@@ -1886,6 +1904,181 @@ function sendNoticeWithOptions(message) {
       message: '공지 전송에 실패했습니다.',
       confirmText: '확인'
     });
+  }
+}
+
+// 알림 권한 요청 모달
+function showNotificationPermissionModal() {
+  const modalId = 'notificationPermissionModal';
+  
+  // 기존 모달이 있으면 제거
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-bell-fill me-2"></i>
+              알림 권한 필요
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info" role="alert">
+              <i class="bi bi-info-circle-fill me-2"></i>
+              공격대 공지를 받으려면 브라우저 알림 권한이 필요합니다.
+            </div>
+            <p>권한을 허용하면 공지가 도착했을 때 윈도우 알림으로 확인할 수 있습니다.</p>
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">나중에</button>
+              <button type="button" class="btn btn-primary" onclick="requestNotificationPermissionFromModal()">
+                <i class="bi bi-shield-check me-1"></i>권한 허용
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  const modalElement = document.getElementById(modalId);
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+  
+  // 모달 닫힐 때 정리
+  modalElement.addEventListener('hidden.bs.modal', () => {
+    modalElement.remove();
+  }, { once: true });
+}
+
+// 모달에서 알림 권한 요청
+function requestNotificationPermissionFromModal() {
+  requestNotificationPermission().then(granted => {
+    // 모달 닫기
+    const modal = bootstrap.Modal.getInstance(document.getElementById('notificationPermissionModal'));
+    if (modal) modal.hide();
+    
+    if (granted) {
+      window.modalManager.showAlert({
+        title: '권한 허용',
+        message: '알림 권한이 허용되었습니다. 이제 공지를 받을 때 윈도우 알림으로 확인할 수 있습니다.',
+        confirmText: '확인'
+      });
+    } else {
+      window.modalManager.showAlert({
+        title: '권한 거부',
+        message: '알림 권한이 거부되었습니다. 브라우저 설정에서 권한을 변경할 수 있습니다.',
+        confirmText: '확인'
+      });
+    }
+  });
+}
+
+// TTS 권한 요청 모달
+function showTTSPermissionModal() {
+  const modalId = 'ttsPermissionModal';
+  
+  // 기존 모달이 있으면 제거
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-volume-up-fill me-2"></i>
+              음성 안내 권한 필요
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info" role="alert">
+              <i class="bi bi-info-circle-fill me-2"></i>
+              공격대 공지를 음성으로 듣기 위해서는 음성 권한이 필요합니다.
+            </div>
+            <p>권한을 허용하면 공지가 도착했을 때 자동으로 음성으로 내용을 읽어줍니다.</p>
+            <div class="d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">나중에</button>
+              <button type="button" class="btn btn-primary" onclick="requestTTSPermissionFromModal()">
+                <i class="bi bi-mic-fill me-1"></i>권한 허용
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  const modalElement = document.getElementById(modalId);
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+  
+  // 모달 닫힐 때 정리
+  modalElement.addEventListener('hidden.bs.modal', () => {
+    modalElement.remove();
+  }, { once: true });
+}
+
+// 모달에서 TTS 권한 요청
+function requestTTSPermissionFromModal() {
+  // TTS는 대부분 별도 권한이 필요 없지만, 일부 환경에서는 필요할 수 있음
+  try {
+    if ('speechSynthesis' in window) {
+      // 테스트용 음성으로 권한 확인
+      const testUtterance = new SpeechSynthesisUtterance('테스트');
+      testUtterance.onstart = () => {
+        window.speechSynthesis.cancel();
+        
+        // 모달 닫기
+        const modal = bootstrap.Modal.getInstance(document.getElementById('ttsPermissionModal'));
+        if (modal) modal.hide();
+        
+        window.modalManager.showAlert({
+          title: '권한 허용',
+          message: '음성 안내 권한이 허용되었습니다. 이제 공지를 음성으로 들을 수 있습니다.',
+          confirmText: '확인'
+        });
+      };
+      
+      testUtterance.onerror = () => {
+        // 모달 닫기
+        const modal = bootstrap.Modal.getInstance(document.getElementById('ttsPermissionModal'));
+        if (modal) modal.hide();
+        
+        window.modalManager.showAlert({
+          title: '권한 필요',
+          message: '음성 안내를 사용하려면 브라우저 설정에서 음성 권한을 허용해주세요.',
+          confirmText: '확인'
+        });
+      };
+      
+      window.speechSynthesis.speak(testUtterance);
+    } else {
+      // 모달 닫기
+      const modal = bootstrap.Modal.getInstance(document.getElementById('ttsPermissionModal'));
+      if (modal) modal.hide();
+      
+      window.modalManager.showAlert({
+        title: '지원 안됨',
+        message: '이 브라우저는 음성 안내를 지원하지 않습니다.',
+        confirmText: '확인'
+      });
+    }
+  } catch (error) {
+    console.error('❌ [TTS] 권한 요청 실패:', error);
   }
 }
 
