@@ -1584,9 +1584,17 @@ async function copyCurrentDataToAlternative() {
             return;
         }
         
-        // 다른 동기화 코드로 데이터 저장
+        // 🔥 **중요 수정**: 기존 데이터 존재 여부 확인
         const targetPath = `syncSessions/${targetSyncCode}/d`;
+        const existingDataSnapshot = await realtimeDB.ref(targetPath).once('value');
         
+        if (existingDataSnapshot.exists()) {
+            // 기존 데이터가 있는 경우 저장 중단
+            showNotification(`동기화 코드 "${targetSyncCode}"에 이미 데이터가 존재하여 저장할 수 없습니다.`, 'warning');
+            return;
+        }
+        
+        // 다른 동기화 코드로 데이터 저장
         // 기존 Firebase 형식에 맞춰서 압축된 데이터로 저장
         const compressedData = {
             rt: JSON.stringify(currentData.raidTabs),
@@ -1619,6 +1627,15 @@ async function copyCurrentDataToNewFormat() {
         
         const basePath = `syncSessions/${targetSyncCode}/v2`;
         const now = Date.now();
+        
+        // 🔥 **중요 수정**: 기존 데이터 존재 여부 확인
+        const existingDataSnapshot = await realtimeDB.ref(basePath).once('value');
+        
+        if (existingDataSnapshot.exists()) {
+            // 기존 데이터가 있는 경우 저장 중단
+            showNotification(`동기화 코드 "${targetSyncCode}"에 이미 데이터가 존재하여 저장할 수 없습니다.`, 'warning');
+            return;
+        }
         
         // 기존 v2 데이터 초기화 (복사/마이그레이션 성격)
         await realtimeDB.ref(basePath).set(null);
