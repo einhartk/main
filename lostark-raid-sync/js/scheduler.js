@@ -245,24 +245,16 @@ function openExpeditionScheduleModal() {
   const modalHtml = `
     <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-fullscreen">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">
+        <div class="modal-content h-100">
+          <div class="modal-header py-1">
+            <h5 class="modal-title mb-0">
               <i class="bi bi-people me-2"></i>
-              Expedition Schedule Check
+              원정대 스케줄 확인
             </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
           </div>
-          <div class="modal-body p-3">
-            <div class="d-flex justify-content-end mb-3">
-              <button class="btn btn-sm btn-outline-primary" onclick="renderExpeditionScheduleContent()">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
-              </button>
-            </div>
-            <div id="expeditionScheduleContent"></div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <div class="modal-body p-3 overflow-hidden" style="height: calc(100vh - 45px);">
+            <div id="expeditionScheduleContent" class="h-100 overflow-auto"></div>
           </div>
         </div>
       </div>
