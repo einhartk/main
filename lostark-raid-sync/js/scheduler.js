@@ -233,8 +233,187 @@ async function clearRaidScheduledTime(partyId) {
   await updateRaidScheduledTime(partyId, null, null);
 }
 
+// Expedition Schedule Check Modal
+function openExpeditionScheduleModal() {
+  const modalId = 'expeditionScheduleModal';
+
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-fullscreen">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-people me-2"></i>
+              Expedition Schedule Check
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body p-3">
+            <div class="d-flex justify-content-end mb-3">
+              <button class="btn btn-sm btn-outline-primary" onclick="renderExpeditionScheduleContent()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+              </button>
+            </div>
+            <div id="expeditionScheduleContent"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  const modalElement = document.getElementById(modalId);
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+
+  renderExpeditionScheduleContent();
+
+  modalElement.addEventListener('hidden.bs.modal', () => {
+    modalElement.remove();
+  }, { once: true });
+}
+
+// Render expedition schedule content
+function renderExpeditionScheduleContent() {
+  const container = document.getElementById('expeditionScheduleContent');
+  if (!container) return;
+
+  const expeditionSlots = Array.isArray(state.expeditionSlots) ? state.expeditionSlots : [];
+  const expeditionSlotNames = Array.isArray(state.expeditionSlotNames) ? state.expeditionSlotNames : [];
+
+  // Collect all parties
+  const allParties = [];
+  try {
+    Object.keys(state.raidTabs || {}).forEach(raidId => {
+      Object.keys(state.raidTabs?.[raidId] || {}).forEach(difficultyId => {
+        const list = state.raidTabs?.[raidId]?.[difficultyId];
+        if (!Array.isArray(list)) return;
+        list.forEach(party => {
+          if (!party) return;
+          allParties.push({ ...party, raidId, difficultyId });
+        });
+      });
+    });
+  } catch (e) {
+    console.error('Failed to collect parties:', e);
+  }
+
+  if (expeditionSlots.length === 0) {
+    container.innerHTML = `
+      <div class="text-center text-muted py-5">
+        <i class="bi bi-people" style="font-size: 3rem;"></i>
+        <p class="mt-3">No expedition data available.</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Helper to build time text
+  const buildTimeText = (party) => {
+    const s = (party?.scheduledTimeDisplay && String(party.scheduledTimeDisplay).trim()) ? party.scheduledTimeDisplay : '';
+    if (s) return s;
+    if (party?.scheduledWeekday && party?.scheduledHour) return `${party.scheduledWeekday} ${party.scheduledHour}`;
+    return 'Time not set';
+  };
+
+  // Escape HTML
+  const escapeHtml = (str) => {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  };
+
+  let html = '<div class="row g-3">'; // 4x2 grid layout
+  
+  for (let slotIndex = 0; slotIndex < expeditionSlots.length; slotIndex++) {
+    const slotMembers = Array.isArray(expeditionSlots[slotIndex]) ? expeditionSlots[slotIndex] : [];
+    const slotName = expeditionSlotNames[slotIndex] ?? `Expedition ${slotIndex + 1}`;
+    const characterNames = slotMembers.filter(m => m && m.name).map(m => m.name);
+
+    html += `
+      <div class="col-md-6 col-lg-4 col-xl-3">
+        <div class="card">
+          <div class="card-header py-1">
+            <div class="fw-bold small">${escapeHtml(slotName)}</div>
+          </div>
+          <div class="card-body p-2">
+    `;
+
+    if (characterNames.length === 0) {
+      html += `<div class="text-muted" style="font-size: 0.75rem;">No characters</div>`;
+    } else {
+      // Ultra compact view
+      characterNames.forEach((characterName, idx) => {
+        const parties = [];
+        for (const party of allParties) {
+          const members = Array.isArray(party.members) ? party.members : [];
+          if (!members.some(m => m && m.name === characterName)) continue;
+          parties.push({
+            id: party.id,
+            name: party.name || party.displayName || party.id,
+            raidName: party.raidName,
+            difficultyName: party.difficultyName,
+            timeText: buildTimeText(party)
+          });
+        }
+
+        parties.sort((a, b) => (a.timeText || '').localeCompare(b.timeText || ''));
+
+        html += `
+          <div class="mb-1">
+            <div class="d-flex align-items-center">
+              <i class="bi bi-person-circle me-1 text-primary" style="font-size: 0.8rem;"></i>
+              <strong style="font-size: 0.8rem;">${escapeHtml(characterName)}</strong>
+              <span class="badge bg-secondary ms-1" style="font-size: 0.6rem;">${parties.length}</span>
+            </div>
+        `;
+
+        if (parties.length > 0) {
+          html += `<div class="ms-2">`;
+          parties.forEach(p => {
+            html += `
+              <div class="mb-1" style="font-size: 0.7rem;">
+                <span class="fw-bold">${escapeHtml(p.name)}</span>
+                <span class="text-muted">
+                  <i class="bi bi-geo-alt"></i> ${escapeHtml(p.raidName || '')} ${escapeHtml(p.difficultyName || '')}
+                  <i class="bi bi-clock ms-1"></i>${escapeHtml(p.timeText)}
+                </span>
+              </div>
+            `;
+          });
+          html += `</div>`;
+        }
+
+        html += `</div>`;
+      });
+    }
+
+    html += `
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
 // 시간 스케줄러 모달 열기
 function openSchedulerModal() {
+  // ... (rest of the code remains the same)
   const modalId = 'schedulerModal';
   
   const existingModal = document.getElementById(modalId);
@@ -1313,5 +1492,9 @@ window.capturePartyDetail = capturePartyDetail;
 window.performCapture = performCapture;
 window.navigatePartyDetail = navigatePartyDetail;
 window.clearCurrentPartyAndNext = clearCurrentPartyAndNext;
+window.openExpeditionScheduleModal = openExpeditionScheduleModal;
+window.renderExpeditionScheduleContent = renderExpeditionScheduleContent;
 window.navigatePartyDetail = navigatePartyDetail;
 window.clearCurrentPartyAndNext = clearCurrentPartyAndNext;
+window.openExpeditionScheduleModal = openExpeditionScheduleModal;
+window.renderExpeditionScheduleContent = renderExpeditionScheduleContent;
