@@ -327,6 +327,104 @@ function renderExpeditionScheduleContent() {
       .replace(/'/g, '&#39;');
   };
 
+  // Find closest schedule for expedition characters
+  function findClosestSchedule(characterNames, allParties) {
+    const now = new Date();
+    const schedules = [];
+    
+    console.log(`[DEBUG] Finding schedule for characters:`, characterNames);
+    console.log(`[DEBUG] Total parties:`, allParties.length);
+    
+    characterNames.forEach(characterName => {
+      allParties.forEach(party => {
+        const members = Array.isArray(party.members) ? party.members : [];
+        if (!members.some(m => m && m.name === characterName)) return;
+        
+        console.log(`[DEBUG] Character ${characterName} found in party:`, {
+          partyName: party.name || party.displayName || party.id,
+          scheduledWeekday: party.scheduledWeekday,
+          scheduledHour: party.scheduledHour,
+          timeText: buildTimeText(party)
+        });
+        
+        // Check for weekly recurring schedule
+        if (party.scheduledWeekday && party.scheduledHour) {
+          const weekdayMap = {
+            'sunday': 0,
+            'monday': 1,
+            'tuesday': 2,
+            'wednesday': 3,
+            'thursday': 4,
+            'friday': 5,
+            'saturday': 6
+          };
+          
+          const targetDay = weekdayMap[party.scheduledWeekday];
+          const today = now.getDay();
+          const [hours, minutes] = party.scheduledHour.split(':');
+          
+          // Calculate days until target with Wednesday as week start (day 3)
+          let daysUntilTarget;
+          if (today === targetDay) {
+            // If today is the target day, check if the time has passed
+            const targetTime = new Date(now);
+            targetTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+            if (targetTime > now) {
+              daysUntilTarget = 0; // Later today
+            } else {
+              daysUntilTarget = 7; // Next week
+            }
+          } else {
+            // Calculate difference considering week starts on Wednesday (3)
+            const currentWeekDay = today >= 3 ? today - 3 : today + 4; // Days since Wednesday
+            const targetWeekDay = targetDay >= 3 ? targetDay - 3 : targetDay + 4; // Target day since Wednesday
+            
+            daysUntilTarget = targetWeekDay - currentWeekDay;
+            if (daysUntilTarget <= 0) {
+              daysUntilTarget += 7; // Next week
+            }
+          }
+          
+          const nextSchedule = new Date(now);
+          nextSchedule.setDate(now.getDate() + daysUntilTarget);
+          nextSchedule.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          
+          const timeDiff = nextSchedule - now;
+          
+          console.log(`[DEBUG] Weekly schedule (Wed start):`, {
+            weekday: party.scheduledWeekday,
+            hour: party.scheduledHour,
+            today,
+            targetDay,
+            daysUntilTarget,
+            nextSchedule,
+            timeDiff,
+            isFuture: timeDiff > 0
+          });
+          
+          schedules.push({
+            characterName,
+            party: {
+              id: party.id,
+              name: party.name || party.displayName || party.id,
+              raidName: party.raidName,
+              difficultyName: party.difficultyName,
+              timeText: buildTimeText(party),
+              time: nextSchedule
+            }
+          });
+        }
+      });
+    });
+    
+    console.log(`[DEBUG] Found ${schedules.length} weekly schedules:`, schedules);
+    
+    // Sort by time (closest first)
+    schedules.sort((a, b) => a.party.time - b.party.time);
+    
+    return schedules.length > 0 ? schedules[0] : null;
+  }
+
   let html = '<div class="row g-3">'; // 4x2 grid layout
   
   for (let slotIndex = 0; slotIndex < expeditionSlots.length; slotIndex++) {
@@ -334,11 +432,29 @@ function renderExpeditionScheduleContent() {
     const slotName = expeditionSlotNames[slotIndex] ?? `Expedition ${slotIndex + 1}`;
     const characterNames = slotMembers.filter(m => m && m.name).map(m => m.name);
 
+    // Find closest schedule for this expedition
+    const closestSchedule = findClosestSchedule(characterNames, allParties);
+    console.log(`Expedition ${slotIndex + 1} (${slotName}):`, {
+      characterNames,
+      closestSchedule: closestSchedule ? `${closestSchedule.characterName} -> ${closestSchedule.party.name} (${closestSchedule.party.timeText})` : 'None'
+    });
+
+    // Build header content with closest schedule
+    let headerContent = `<div class="fw-bold small">${escapeHtml(slotName)}</div>`;
+    if (closestSchedule) {
+      headerContent += `
+        <div class="text-muted" style="font-size: 0.65rem;">
+          <i class="bi bi-clock-fill text-primary"></i> 
+          ${escapeHtml(closestSchedule.characterName)} -> ${escapeHtml(closestSchedule.party.name)} (${escapeHtml(closestSchedule.party.timeText)})
+        </div>
+      `;
+    }
+
     html += `
       <div class="col-md-6 col-lg-4 col-xl-3">
         <div class="card">
           <div class="card-header py-1">
-            <div class="fw-bold small">${escapeHtml(slotName)}</div>
+            ${headerContent}
           </div>
           <div class="card-body p-2">
     `;
