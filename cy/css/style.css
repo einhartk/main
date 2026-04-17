@@ -1,5 +1,5 @@
-/* Google Fonts Import */
-@import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Hi+Melody&display=swap');
+/* Google Fonts Import - Korean subset for faster loading */
+@import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Hi+Melody&display=swap&subset=korean');
 
 /* Reset and Base Styles */
 * {
@@ -549,8 +549,9 @@ a button:hover {
 .profile-image {
   width: 265px;
   height: 250px;
-  border-radius: 7px;
+  max-width: 100%;
   object-fit: cover;
+  border-radius: 7px;
 }
 
 /* Highlight Text */
@@ -610,19 +611,24 @@ a button:hover {
 body {
   margin: 0;
   padding: 20px;
-  background: #f0f0f0;
+  background-color: #e8e8e8;
+  background-image: 
+    linear-gradient(#d0d0d0 1px, transparent 1px),
+    linear-gradient(90deg, #d0d0d0 1px, transparent 1px);
+  background-size: 20px 20px;
   min-height: 100vh;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   overflow: auto;
 }
 
 .main-container {
-  width: 1000px;
+  width: 1100px;
   max-width: 100%;
-  min-height: 600px;
+  min-height: 700px;
   margin: 20px auto;
   background: white;
   border-radius: 8px;
@@ -643,22 +649,23 @@ body {
   flex: 1;
 }
 
-/* Compact Music Player */
+/* Compact Music Player - Cyworld Style */
 #music-player {
   position: fixed;
   top: 10px;
   right: 10px;
-  height: 30px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #b5b5b5;
-  border-radius: 15px;
-  padding: 0 10px;
+  height: 38px;
+  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+  border: 2px solid #ff6b9d;
+  border-radius: 20px;
+  padding: 0 15px;
   display: flex;
   align-items: center;
   z-index: 1000;
-  font-family: '굴림', 'Gulim', '돋움', 'Dotum', sans-serif;
-  font-size: 11px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  font-family: 'Hi Melody', '굴림', cursive;
+  font-size: 13px;
+  color: #5c3ccf;
+  box-shadow: 0 3px 8px rgba(255, 107, 157, 0.3), inset 0 1px 0 rgba(255,255,255,0.5);
   white-space: nowrap;
   overflow: hidden;
 }
@@ -683,10 +690,31 @@ body {
 }
 
 #music-player .btn {
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #ff6b9d;
+  border-radius: 50%;
   cursor: pointer;
-  padding: 2px 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #ff6b9d;
+  transition: all 0.2s ease;
+  margin: 0 3px;
+}
+
+#music-player .btn:hover {
+  background: #ff6b9d;
+  color: white;
+  transform: scale(1.1);
+}
+
+#music-player .play-btn {
+  background: #ff6b9d;
+  color: white;
+  font-weight: bold;
+}
+
+#music-player .play-btn:hover {
+  background: #ff4785;
 }
 
 /* Adjust music player for smaller screens */

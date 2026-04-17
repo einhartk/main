@@ -26,7 +26,7 @@ class MusicPlayer {
   }
 
   render() {
-    const container = document.getElementById('music-player');
+    let container = document.getElementById('music-player');
     if (!container) {
       container = document.createElement('div');
       container.id = 'music-player';
@@ -98,7 +98,7 @@ class MusicPlayer {
       this.currentSongIndex = foundIndex;
       this.loadAndPlay();
     } else {
-      alert('검색 결과가 없습니다.');
+      window.showModal('알림', '검색 결과가 없습니다.', 'info');
     }
   }
 

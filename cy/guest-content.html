@@ -13,7 +13,7 @@
     <div class="loading-overlay" id="loadingOverlay" style="display: none;">
       <div class="loading-content">
         <div class="spinner"></div>
-        <p>등록 중입니다...</p>
+        <p>처리 중...</p>
       </div>
     </div>
     
@@ -503,12 +503,26 @@
   </style>
 
 <script>
-// 방명록 작성 기능
-const guestbookForm = document.querySelector('.guestbook-write');
-const guestbookTextarea = guestbookForm.querySelector('textarea');
-const guestbookButton = guestbookForm.querySelector('.submit-btn');
-const guestbookContainer = document.querySelector('.guestbook-scrollbox');
-const charCount = document.getElementById('charCount');
+// 방명록 작성 기능 - SPA safe with delegate patterns
+// Get elements when needed (SPA safe)
+function getGuestbookElements() {
+  return {
+    guestbookForm: document.querySelector('.guestbook-write'),
+    guestbookTextarea: document.querySelector('.guestbook-write textarea'),
+    guestbookButton: document.querySelector('.guestbook-write .submit-btn'),
+    guestbookContainer: document.querySelector('.guestbook-scrollbox'),
+    charCount: document.getElementById('charCount')
+  };
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 // Firestore 컬렉션 참조
 let guestbookRef;
@@ -537,19 +551,22 @@ function initializeGuestbook() {
 // Load initial guestbook entries
 function loadInitialGuestbookEntries() {
   const loadingOverlay = document.getElementById('loadingOverlay');
-  loadingOverlay.style.display = 'flex';
+  const guestbookEntries = document.getElementById('guestbookEntries');
+  
+  if (loadingOverlay) loadingOverlay.style.display = 'flex';
+  
+  if (!guestbookEntries) {
+    console.error('guestbookEntries element not found');
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+    return;
+  }
   
   guestbookRef.get().then((querySnapshot) => {
-    const guestbookEntries = document.getElementById('guestbookEntries');
-    // Keep the loading indicator but remove any existing entries
-    const existingEntries = guestbookEntries.querySelectorAll('.guestbook-entry');
-    existingEntries.forEach(entry => entry.remove());
+    // Clear existing entries
+    guestbookEntries.innerHTML = '';
     
     if (querySnapshot.empty) {
-      const noEntries = document.createElement('p');
-      noEntries.className = 'no-entries';
-      noEntries.textContent = '아직 방명록이 없습니다. 첫 번째 글을 남겨주세요!';
-      guestbookEntries.appendChild(noEntries);
+      guestbookEntries.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">아직 방명록이 없습니다.<br>첫 번째 글을 남겨주세요!</div>';
       return;
     }
     
@@ -562,16 +579,19 @@ function loadInitialGuestbookEntries() {
     });
   }).catch((error) => {
     console.error('Error loading guestbook entries:', error);
-    alert('방명록을 불러오는 중 오류가 발생했습니다.');
+    window.showModal('오류', '방명록을 불러오는 중 오류가 발생했습니다.', 'error');
   }).finally(() => {
-    const loadingOverlay = document.getElementById('loadingOverlay');
-    loadingOverlay.style.display = 'none';
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
   });
 }
 
 // Add guestbook entry to DOM
 function addGuestbookEntryToDOM(entry) {
   const guestbookEntries = document.getElementById('guestbookEntries');
+  if (!guestbookEntries) {
+    console.error('guestbookEntries element not found');
+    return;
+  }
   const entryElement = document.createElement('div');
   entryElement.className = 'guestbook-entry';
   entryElement.dataset.id = entry.id;
@@ -579,22 +599,27 @@ function addGuestbookEntryToDOM(entry) {
   const date = entry.timestamp ? entry.timestamp.toDate() : new Date();
   const formattedDate = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   
+  const safeNickname = escapeHtml(entry.nickname || '익명');
+  const safeText = escapeHtml(entry.text || '').replace(/\n/g, '<br>');
+  const safeLikes = Number.isFinite(entry.likes) ? entry.likes : 0;
+  const safeAvatarId = Number.isFinite(entry.avatarId) ? entry.avatarId : 1;
+
   entryElement.innerHTML = `
     <div class="entry-header">
-      <span class="entry-nickname">${entry.nickname || '익명'}</span>
+      <span class="entry-nickname">${safeNickname}</span>
       <i class="fas fa-home"></i>
       <span class="entry-date">${formattedDate}</span>
     </div>
     <div class="entry-content">
       <div class="profile-img">
-        <img src="image/avatar${entry.avatarId || 1}.png" alt="프로필 이미지">
+        <img src="image/avatar${safeAvatarId}.png" alt="프로필 이미지">
       </div>
-      <div class="entry-text">${entry.text.replace(/\n/g, '<br>')}</div>
+      <div class="entry-text">${safeText}</div>
     </div>
     <div class="entry-actions">
       <button class="like-btn">
         <i class="far fa-heart"></i>
-        <span class="like-count">${entry.likes || 0}</span>
+        <span class="like-count">${safeLikes}</span>
       </button>
       <button class="delete-btn" data-id="${entry.id}">
         <i class="fas fa-trash"></i> 삭제
@@ -636,8 +661,9 @@ function handleLike(entryId) {
 }
 
 // Handle delete button click
-function handleDelete(entryId) {
-  if (!confirm('정말로 이 방명록을 삭제하시겠습니까?')) return;
+async function handleDelete(entryId) {
+  const result = await window.showConfirm('확인', '정말로 이 방명록을 삭제하시겠습니까?', 'warning');
+  if (!result.isConfirmed) return;
   if (!window.db) return;
   
   window.db.collection('cy-guestbook').doc(entryId).delete()
@@ -646,26 +672,35 @@ function handleDelete(entryId) {
     })
     .catch(error => {
       console.error('Error deleting entry:', error);
-      alert('방명록 삭제 중 오류가 발생했습니다.');
+      Swal.fire({
+        icon: 'error',
+        title: '오류',
+        text: '방명록 삭제 중 오류가 발생했습니다.',
+      });
     });
 }
 
-// 글자 수 제한 표시
-guestbookTextarea.addEventListener('input', function() {
-  const currentLength = this.value.length;
-  charCount.textContent = currentLength;
-  
-  if (currentLength > 200) {
-    this.value = this.value.substring(0, 200);
-    charCount.textContent = 200;
+// 글자 수 제한 표시 (delegate pattern for SPA)
+document.addEventListener('input', function(e) {
+  if (e.target.matches('.guestbook-write textarea')) {
+    const { charCount } = getGuestbookElements();
+    const currentLength = e.target.value.length;
+    if (charCount) charCount.textContent = currentLength;
+    
+    if (currentLength > 200) {
+      e.target.value = e.target.value.substring(0, 200);
+      if (charCount) charCount.textContent = 200;
+    }
   }
 });
 
-// 이모티콘 버튼 이벤트
-const smileyBtns = document.querySelectorAll('.smiley-btn');
-smileyBtns.forEach(btn => {
-  btn.addEventListener('click', function() {
-    const smiley = this.textContent;
+// 이모티콘 버튼 이벤트 (delegate pattern for SPA)
+document.addEventListener('click', function(e) {
+  if (e.target.matches('.smiley-btn')) {
+    const { guestbookTextarea, charCount } = getGuestbookElements();
+    if (!guestbookTextarea) return;
+    
+    const smiley = e.target.textContent;
     const start = guestbookTextarea.selectionStart;
     const end = guestbookTextarea.selectionEnd;
     const text = guestbookTextarea.value;
@@ -675,8 +710,8 @@ smileyBtns.forEach(btn => {
     guestbookTextarea.selectionStart = guestbookTextarea.selectionEnd = start + smiley.length;
     
     // 글자 수 업데이트
-    charCount.textContent = guestbookTextarea.value.length;
-  });
+    if (charCount) charCount.textContent = guestbookTextarea.value.length;
+  }
 });
 
 // 방명록 항목 렌더링 함수
@@ -684,22 +719,26 @@ function renderGuestbookEntry(doc) {
   const data = doc.data();
   const date = data.timestamp ? data.timestamp.toDate() : new Date();
   const dateString = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+  const safeNickname = escapeHtml(data.nickname || '익명');
+  const safeText = escapeHtml(data.text || '').replace(/\n/g, '<br>');
+  const safeAvatarId = Number.isFinite(data.avatarId) ? data.avatarId : Math.floor(Math.random() * 5 + 1);
   
   return `
     <div class="guestbook-entry" data-id="${doc.id}">
       <div class="entry-header">
         <span class="entry-number">No.${doc.id.substring(0, 4)}</span>
-        <span class="entry-nickname">${data.nickname || '익명'}</span>
+        <span class="entry-nickname">${safeNickname}</span>
         <i class="fas fa-user"></i>
         <span class="entry-date">${dateString}</span>
       </div>
       <div class="entry-content">
         <div class="profile-img">
-          <img src="image/img${data.avatarId || Math.floor(Math.random() * 5 + 1)}.jpg" alt="프로필 사진">
+          <img src="image/img${safeAvatarId}.jpg" alt="프로필 사진">
           <div class="profile-frame"></div>
         </div>
         <div class="entry-text">
-          <p>${(data.text || '').replace(/\n/g, '<br>')}</p>
+          <p>${safeText}</p>
           <div class="entry-actions">
             <button class="reply-btn"><i class="fas fa-reply"></i> 답글</button>
             <button class="delete-btn" data-id="${doc.id}"><i class="fas fa-trash"></i> 삭제</button>
@@ -712,13 +751,13 @@ function renderGuestbookEntry(doc) {
 
 // 방명록 추가 함수
 function addGuestbookEntry(text) {
-  const submitButton = document.querySelector('.submit-btn');
+  const { guestbookForm, guestbookButton } = getGuestbookElements();
   const loadingOverlay = document.getElementById('loadingOverlay');
   
   // Disable form and show loading
-  guestbookForm.style.pointerEvents = 'none';
-  submitButton.disabled = true;
-  loadingOverlay.style.display = 'flex';
+  if (guestbookForm) guestbookForm.style.pointerEvents = 'none';
+  if (guestbookButton) guestbookButton.disabled = true;
+  if (loadingOverlay) loadingOverlay.style.display = 'flex';
   
   // Prevent scrolling when overlay is shown
   document.body.style.overflow = 'hidden';
@@ -742,27 +781,30 @@ function addGuestbookEntry(text) {
       likes: 0
     }).then(() => {
       console.log('방명록이 성공적으로 등록되었습니다.');
-      guestbookTextarea.value = ''; // Clear the textarea after successful submission
-      charCount.textContent = '0'; // Reset character counter
+      const { guestbookTextarea, charCount } = getGuestbookElements();
+      if (guestbookTextarea) guestbookTextarea.value = ''; // Clear the textarea after successful submission
+      if (charCount) charCount.textContent = '0'; // Reset character counter
     }).catch((error) => {
       console.error('방명록 등록 중 오류가 발생했습니다: ', error);
-      alert('방명록 등록에 실패했습니다. 다시 시도해주세요.');
+      window.showModal('오류', '방명록 등록에 실패했습니다. 다시 시도해주세요.', 'error');
     }).finally(() => {
       // Re-enable form and hide loading
-      guestbookForm.style.pointerEvents = 'auto';
-      submitButton.disabled = false;
+      const { guestbookForm, guestbookButton } = getGuestbookElements();
+      if (guestbookForm) guestbookForm.style.pointerEvents = 'auto';
+      if (guestbookButton) guestbookButton.disabled = false;
       const loadingOverlay = document.getElementById('loadingOverlay');
-      loadingOverlay.style.display = 'none';
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
       document.body.style.overflow = 'auto'; // Re-enable scrolling
     });
   } catch (error) {
     console.error('방명록 추가 중 오류 발생:', error);
-    alert('방명록을 추가하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+    window.showModal('오류', '방명록을 추가하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.', 'error');
     // Re-enable form and hide loading in case of error
-    guestbookForm.style.pointerEvents = 'auto';
-    submitButton.disabled = false;
+    const { guestbookForm, guestbookButton } = getGuestbookElements();
+    if (guestbookForm) guestbookForm.style.pointerEvents = 'auto';
+    if (guestbookButton) guestbookButton.disabled = false;
     const loadingOverlay = document.getElementById('loadingOverlay');
-    loadingOverlay.style.display = 'none';
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
     document.body.style.overflow = 'auto'; // Re-enable scrolling
   }
 }
@@ -775,14 +817,14 @@ function addLikeButtonEvents() {
       const likeCount = this.querySelector('.like-count');
       const currentLikes = parseInt(likeCount.textContent);
       
+      if (!window.db) return;
+
       if (this.classList.contains('liked')) {
-        // 좋아요 취소
-        db.collection('cy-guestbook').doc(entryId).update({
+        window.db.collection('cy-guestbook').doc(entryId).update({
           likes: firebase.firestore.FieldValue.increment(-1)
         }).catch(error => console.error('Error updating likes: ', error));
       } else {
-        // 좋아요 추가
-        db.collection('cy-guestbook').doc(entryId).update({
+        window.db.collection('cy-guestbook').doc(entryId).update({
           likes: firebase.firestore.FieldValue.increment(1)
         }).catch(error => console.error('Error updating likes: ', error));
       }
@@ -794,99 +836,102 @@ function addLikeButtonEvents() {
 
 // 방명록 실시간 업데이트
 function setupGuestbookListener() {
+  // Show loading initially
+  const guestbookEntries = document.getElementById('guestbookEntries');
+  if (guestbookEntries) {
+    guestbookEntries.innerHTML = '<div style="text-align: center; padding: 40px; color: #5c3ccf;">방명록을 불러오는 중...</div>';
+  }
+  
   guestbookRef.onSnapshot((snapshot) => {
-    guestbookContainer.innerHTML = ''; // 기존 내용 초기화
+    const guestbookEntries = document.getElementById('guestbookEntries');
+    if (!guestbookEntries) {
+      console.error('guestbookEntries element not found in onSnapshot');
+      return;
+    }
+    
+    guestbookEntries.innerHTML = ''; // 기존 내용 초기화
+    
+    if (snapshot.empty) {
+      guestbookEntries.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">아직 방명록이 없습니다.<br>첫 번째 글을 남겨보세요!</div>';
+      return;
+    }
     
     snapshot.forEach((doc) => {
       const entryHTML = renderGuestbookEntry(doc);
-      guestbookContainer.insertAdjacentHTML('beforeend', entryHTML);
+      guestbookEntries.insertAdjacentHTML('beforeend', entryHTML);
     });
     
     // 삭제 버튼 이벤트 리스너 추가
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         const entryId = e.currentTarget.dataset.id;
-        if (confirm('정말로 이 방명록을 삭제하시겠습니까?')) {
-          db.collection('guestbook').doc(entryId).delete()
-            .then(() => console.log('방명록이 삭제되었습니다.'))
-            .catch(error => console.error('방명록 삭제 중 오류가 발생했습니다: ', error));
-        }
+        window.showConfirm('확인', '정말로 이 방명록을 삭제하시겠습니까?', 'warning').then(result => {
+          if (result.isConfirmed) {
+            if (!window.db) return;
+            window.db.collection('cy-guestbook').doc(entryId).delete()
+              .then(() => console.log('방명록이 삭제되었습니다.'))
+              .catch(err => console.error('삭제 오류:', err));
+          }
+        }).catch(err => console.error('모달 오류:', err));
       });
     });
   });
 }
 
-// 방명록 작성 이벤트 리스너
-guestbookForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const text = guestbookTextarea.value.trim();
-  if (text) {
-    addGuestbookEntry(text);
-    guestbookTextarea.value = '';
-    charCount.textContent = '0';
+// 방명록 작성 이벤트 리스너 (with null checks for SPA)
+document.addEventListener('submit', function(e) {
+  if (e.target.matches('.guestbook-write')) {
+    e.preventDefault();
+    const { guestbookTextarea, charCount } = getGuestbookElements();
+    if (!guestbookTextarea) return;
+    
+    const text = guestbookTextarea.value.trim();
+    if (text) {
+      addGuestbookEntry(text);
+      guestbookTextarea.value = '';
+      if (charCount) charCount.textContent = '0';
+    }
   }
 });
 
-guestbookButton.addEventListener('click', (e) => {
-  e.preventDefault();
-  const text = guestbookTextarea.value.trim();
-  if (text) {
-    addGuestbookEntry(text);
-    guestbookTextarea.value = '';
-    charCount.textContent = '0';
+document.addEventListener('click', function(e) {
+  if (e.target.matches('.guestbook-write .submit-btn') || e.target.closest('.guestbook-write .submit-btn')) {
+    e.preventDefault();
+    const { guestbookTextarea, charCount } = getGuestbookElements();
+    if (!guestbookTextarea) return;
+    
+    const text = guestbookTextarea.value.trim();
+    if (text) {
+      addGuestbookEntry(text);
+      guestbookTextarea.value = '';
+      if (charCount) charCount.textContent = '0';
+    }
   }
 });
 
 // 엔터 키로도 작성 가능 (Shift+Enter는 줄바꿈)
-guestbookTextarea.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
+    const { guestbookTextarea, charCount } = getGuestbookElements();
+    if (!guestbookTextarea || e.target !== guestbookTextarea) return;
+    
     e.preventDefault();
     const text = guestbookTextarea.value.trim();
     if (text) {
       addGuestbookEntry(text);
       guestbookTextarea.value = '';
-      charCount.textContent = '0';
+      if (charCount) charCount.textContent = '0';
     }
   }
 });
 
-// 페이지 로드 시 방명록 데이터 불러오기
-document.addEventListener('DOMContentLoaded', () => {
-  setupGuestbookListener();
-  
-  // 폼 제출 이벤트 리스너
-  guestbookForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = guestbookTextarea.value.trim();
-    if (text) {
-      addGuestbookEntry(text);
-      guestbookTextarea.value = '';
-      charCount.textContent = '0';
-    }
-  });
+// initializeGuestbook() 호출은 상단의 DOMContentLoaded / firebaseReady 흐름에서 처리
 
-  // 작성 버튼 클릭 이벤트
-  guestbookButton.addEventListener('click', (e) => {
-    e.preventDefault();
-    const text = guestbookTextarea.value.trim();
-    if (text) {
-      addGuestbookEntry(text);
-      guestbookTextarea.value = '';
-      charCount.textContent = '0';
-    }
-  });
-
-  // 엔터 키로도 작성 가능 (Shift+Enter는 줄바꿈)
-  guestbookTextarea.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      const text = guestbookTextarea.value.trim();
-      if (text) {
-        addGuestbookEntry(text);
-        guestbookTextarea.value = '';
-        charCount.textContent = '0';
-      }
-    }
-  });
-});
+// SPA 동적 로딩 시 즉시 초기화 시도 (for home-content.js)
+(function immediateInit() {
+  if (window.firebaseInitialized && window.db) {
+    console.log('[Guestbook] Immediate init on script load');
+    setTimeout(initializeGuestbook, 100);
+  }
+})();
 </script>

@@ -1,44 +1,626 @@
+<style>
+/* Diary Page Styles */
+.diary-container {
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.calendar {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.date-today {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #3b87ab;
+  margin-bottom: 6px;
+  font-family: 'NeoDunggeunmo', sans-serif;
+}
+
+.date-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.date {
+  width: 30px;
+  height: 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 1.5px solid #ddd;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Hi Melody', cursive;
+  position: relative;
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.date-count {
+  font-size: 10px;
+  color: #5c3ccf;
+  margin-top: 2px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.date:hover {
+  background: #e3f2fd;
+  border-color: #3b87ab;
+}
+
+.date.date-red {
+  background: #ffebee;
+  border-color: #f44336;
+  color: #f44336;
+  font-weight: bold;
+}
+
+/* Diary Form */
+.diary-form {
+  background: white;
+  border: 1px solid #e3f2fd;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.diary-form h3 {
+  font-family: 'NeoDunggeunmo', sans-serif;
+  color: #3b87ab;
+  margin-bottom: 15px;
+}
+
+.diary-form input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-family: 'KyoboHand', cursive;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.diary-form textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-family: 'KyoboHand', cursive;
+  font-size: 16px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.diary-form button {
+  background: #3b87ab;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'NeoDunggeunmo', sans-serif;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.diary-form button:hover {
+  background: #2d6a8e;
+}
+
+.diary-form .cancel-btn {
+  background: #999;
+  margin-left: 10px;
+}
+
+.diary-form .cancel-btn:hover {
+  background: #666;
+}
+
+/* Diary Entries */
+.diary-scrollbox {
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.diary {
+  border: 1px solid #ededf0;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.diary-date {
+  font-family: 'NeoDunggeunmo', sans-serif;
+  color: #3b87ab;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid #e3f2fd;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.diary-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.diary-actions button {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'NeoDunggeunmo', sans-serif;
+}
+
+.diary-actions .edit-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.diary-actions .edit-btn:hover {
+  background: #388e3c;
+}
+
+.diary-actions .delete-btn {
+  background: #f44336;
+  color: white;
+}
+
+.diary-actions .delete-btn:hover {
+  background: #d32f2f;
+}
+
+.diary-contents {
+  font-size: 18px;
+  font-family: 'KyoboHand', cursive;
+  text-align: left;
+  line-height: 1.8;
+  color: #333;
+}
+
+.diary-contents ul {
+  padding-left: 20px;
+}
+
+.diary-contents li {
+  margin-bottom: 5px;
+}
+
+/* Loading */
+.loading-overlay {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+}
+
+/* Scrollbar styling */
+.diary-scrollbox::-webkit-scrollbar {
+  width: 6px;
+}
+
+.diary-scrollbox::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.diary-scrollbox::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.diary-scrollbox::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+</style>
+
+<!-- Loading Overlay for Diary -->
+<div id="diaryLoadingOverlay" class="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
+  <div style="background: white; padding: 30px 50px; border-radius: 10px; text-align: center; font-family: 'NeoDunggeunmo', sans-serif;">
+    <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+    <div>처리 중...</div>
+  </div>
+</div>
+
+<div class="diary-container">
   <div class="calendar">
     <div id="dateToday" class="date-today"></div>
     <div class="date-list" id="dateList"></div>
   </div>
-  <div class="diary-scrollbox">
-    <div class="diary">
-      <div class="diary-date">2025.02.15. 월 10:28</div>
-      <div class="diary-contents">
-        <p><br>프로그래밍 재밌다 <br>
-      </div>
-    </div>
-    <div class="diary">
-      <div class="diary-date">자기소개</div>
-      <div class="diary-contents">
-        <p><br>프로그래밍에 관심이 많습니다. <br>현재 열심히 공부하며 코딩 중!
-      </div>
-    </div>
-    <div class="diary">
-      <div class="diary-date">보유기술</div>
-      <div class="diary-contents">
-        <li style="list-style: none;"> 
-          <ul>
-            <li>JAVA</li>
-            <li>ORACLE</li>
-            <li>LINUX</li>
-            <li>HTML</li>
-          </ul>                        
-        </li>
-      </div>
-    </div>
-    <div class="diary">
-      <div class="diary-date">학력 사항</div>
-      <div class="diary-contents">
-        <li style="list-style: none;"> 
-          <ul>
-            <li>좋은대학교</li>
-            <li>좋은학과</li>
-            <li>졸업</li>
-          </ul>                        
-        </li>
-      </div>
-    </div>
+  
+  <!-- Diary Form -->
+  <div class="diary-form" id="diaryForm" style="display: none;">
+    <h3 id="formTitle">새 다이어리 작성</h3>
+    <input type="text" id="diaryTitle" placeholder="제목을 입력하세요">
+    <textarea id="diaryContent" placeholder="내용을 입력하세요..."></textarea>
+    <button onclick="saveDiary()">저장</button>
+    <button class="cancel-btn" onclick="cancelEdit()">취소</button>
   </div>
-  <script src="js/diary.js"></script>
+  <button onclick="showDiaryForm()" id="newDiaryBtn" style="margin-bottom: 20px; background: #3b87ab; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-family: 'NeoDunggeunmo', sans-serif;">+ 새 다이어리</button>
+  
+  <!-- Diary List -->
+  <div class="diary-scrollbox" id="diaryList">
+    <div class="loading-overlay">다이어리를 불러오는 중...</div>
+  </div>
+</div>
+
+<script>
+// Diary Firebase Integration
+let diaryRef = null;
+let editingId = null;
+
+// Initialize calendar (immediate execution for SPA)
+(function initDiaryCalendar() {
+  const dateToday = document.getElementById('dateToday');
+  const dateList = document.getElementById('dateList');
+  
+  if (!dateToday || !dateList) return;
+  
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const weekDays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const weekDay = weekDays[now.getDay()];
+  
+  dateToday.innerHTML = `${month}.${day}<br/>${weekDay}`;
+  
+  const today = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  
+  for (let i = 1; i <= daysInMonth; i++) {
+    let dateDiv = document.createElement('div');
+    dateDiv.classList.add('date');
+    dateDiv.dataset.date = i;
+    
+    // 날짜 숫자
+    const dateNum = document.createElement('span');
+    dateNum.textContent = i;
+    dateDiv.appendChild(dateNum);
+    
+    // 카운트 표시 (초기 0)
+    const countSpan = document.createElement('span');
+    countSpan.className = 'date-count';
+    countSpan.id = `date-count-${i}`;
+    countSpan.textContent = '0';
+    dateDiv.appendChild(countSpan);
+    
+    if (i === today) {
+      dateDiv.classList.add('date-red');
+      window.selectedDate = i;
+    }
+    
+    dateDiv.addEventListener('click', function() {
+      document.querySelectorAll('.date').forEach(d => d.classList.remove('date-red'));
+      this.classList.add('date-red');
+      window.selectedDate = parseInt(this.dataset.date);
+      if (window.allDiaryEntries) {
+        filterDiaryByDate(window.selectedDate);
+      }
+    });
+    
+    dateList.appendChild(dateDiv);
+  }
+})();
+
+// 날짜별 필터링 함수
+function filterDiaryByDate(selectedDay) {
+  const diaryList = document.getElementById('diaryList');
+  if (!diaryList || !window.allDiaryEntries) return;
+  
+  diaryList.innerHTML = '';
+  
+  const filtered = window.allDiaryEntries.filter(entry => {
+    const entryDate = entry.timestamp ? entry.timestamp.toDate() : new Date();
+    return entryDate.getDate() === selectedDay;
+  });
+  
+  if (filtered.length === 0) {
+    diaryList.innerHTML = `<div style="text-align: center; padding: 30px; color: #999;">${selectedDay}일에 작성된 다이어리가 없습니다.</div>`;
+    return;
+  }
+  
+  filtered.forEach(entry => {
+    const div = createDiaryEntry(entry.id, entry);
+    diaryList.appendChild(div);
+  });
+}
+
+// 날짜별 카운트 업데이트 함수
+function updateDateCounts(entries) {
+  const now = new Date();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  
+  // 카운트 초기화
+  const counts = {};
+  for (let i = 1; i <= daysInMonth; i++) {
+    counts[i] = 0;
+  }
+  
+  // 각 날짜별 카운트 계산
+  entries.forEach(entry => {
+    if (entry.timestamp && entry.timestamp.toDate) {
+      const entryDate = entry.timestamp.toDate();
+      // 현재 월과 같은 경우만 카운트
+      if (entryDate.getMonth() === now.getMonth() && entryDate.getFullYear() === now.getFullYear()) {
+        const day = entryDate.getDate();
+        if (counts[day] !== undefined) {
+          counts[day]++;
+        }
+      }
+    }
+  });
+  
+  // UI 업데이트
+  for (let i = 1; i <= daysInMonth; i++) {
+    const countEl = document.getElementById(`date-count-${i}`);
+    if (countEl) {
+      countEl.textContent = counts[i] || '0';
+      // 카운트가 있으면 색상 변경
+      if (counts[i] > 0) {
+        countEl.style.color = '#5c3ccf';
+      } else {
+        countEl.style.color = '#999';
+      }
+    }
+  }
+}
+
+// Initialize Firebase Diary
+(function initDiary() {
+  if (window.firebaseInitialized && window.db) {
+    setupDiaryListener();
+  } else {
+    document.addEventListener('firebaseReady', setupDiaryListener, { once: true });
+  }
+})();
+
+function setupDiaryListener() {
+  if (!window.db) return;
+  
+  diaryRef = window.db.collection('cy-diary').orderBy('timestamp', 'desc');
+  
+  diaryRef.onSnapshot((snapshot) => {
+    const diaryList = document.getElementById('diaryList');
+    
+    // 전체 데이터 저장
+    window.allDiaryEntries = [];
+    snapshot.forEach((doc) => {
+      window.allDiaryEntries.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    // 날짜별 카운트 업데이트
+    updateDateCounts(window.allDiaryEntries);
+    
+    // localStorage에서 선택된 게시글 ID 확인
+    const selectedDiaryId = localStorage.getItem('selectedDiaryId');
+    
+    if (selectedDiaryId) {
+      // 선택된 게시글이 있으면 해당 게시글 찾기
+      const selectedEntry = window.allDiaryEntries.find(e => e.id === selectedDiaryId);
+      if (selectedEntry && selectedEntry.timestamp) {
+        const entryDate = selectedEntry.timestamp.toDate();
+        const entryDay = entryDate.getDate();
+        
+        // 해당 날짜로 달력 선택
+        window.selectedDate = entryDay;
+        document.querySelectorAll('.date').forEach(d => {
+          d.classList.remove('date-red');
+          if (parseInt(d.dataset.date) === entryDay) {
+            d.classList.add('date-red');
+          }
+        });
+        
+        // 해당 날짜의 게시글 표시
+        filterDiaryByDate(entryDay);
+        
+        // 선택된 게시글로 스크롤 및 하이라이트
+        setTimeout(() => {
+          const selectedEl = document.querySelector(`[data-id="${selectedDiaryId}"]`);
+          if (selectedEl) {
+            selectedEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            selectedEl.style.boxShadow = '0 0 10px #5c3ccf';
+            setTimeout(() => {
+              selectedEl.style.boxShadow = '';
+            }, 2000);
+          }
+          // localStorage 클리어
+          localStorage.removeItem('selectedDiaryId');
+        }, 100);
+        return;
+      }
+    }
+    
+    // 선택된 날짜(기본: 오늘)의 게시글만 표시
+    const selectedDate = window.selectedDate || new Date().getDate();
+    filterDiaryByDate(selectedDate);
+    
+  }, (error) => {
+    console.error('Diary listener error:', error);
+    document.getElementById('diaryList').innerHTML = '<div style="text-align: center; padding: 30px; color: red;">다이어리를 불러오는 중 오류가 발생했습니다.</div>';
+  });
+}
+
+function createDiaryEntry(id, data) {
+  const div = document.createElement('div');
+  div.className = 'diary';
+  div.dataset.id = id;
+  
+  const date = data.timestamp ? data.timestamp.toDate() : new Date();
+  const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+  
+  div.innerHTML = `
+    <div class="diary-date">
+      <span>${escapeHtml(data.title || '제목 없음')} - ${dateStr}</span>
+      <div class="diary-actions">
+        <button class="edit-btn" onclick="editDiary('${id}', '${escapeHtml(data.title || '')}', '${escapeHtml(data.content || '')}')">수정</button>
+        <button class="delete-btn" onclick="deleteDiary('${id}')">삭제</button>
+      </div>
+    </div>
+    <div class="diary-contents">${escapeHtml(data.content || '').replace(/\n/g, '<br>')}</div>
+  `;
+  
+  return div;
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function showDiaryForm() {
+  // 미래 날짜 체크
+  const selectedDate = window.selectedDate || new Date().getDate();
+  const today = new Date().getDate();
+  if (selectedDate > today) {
+    window.showModal('알림', '미래 날짜에는 다이어리를 작성할 수 없습니다.', 'warning');
+    return;
+  }
+  
+  document.getElementById('diaryForm').style.display = 'block';
+  document.getElementById('newDiaryBtn').style.display = 'none';
+  editingId = null;
+  document.getElementById('formTitle').textContent = '새 다이어리 작성';
+  document.getElementById('diaryTitle').value = '';
+  document.getElementById('diaryContent').value = '';
+}
+
+function cancelEdit() {
+  document.getElementById('diaryForm').style.display = 'none';
+  document.getElementById('newDiaryBtn').style.display = 'inline-block';
+  editingId = null;
+  document.getElementById('diaryTitle').value = '';
+  document.getElementById('diaryContent').value = '';
+}
+
+function editDiary(id, title, content) {
+  editingId = id;
+  document.getElementById('diaryForm').style.display = 'block';
+  document.getElementById('newDiaryBtn').style.display = 'none';
+  document.getElementById('formTitle').textContent = '다이어리 수정';
+  document.getElementById('diaryTitle').value = title;
+  document.getElementById('diaryContent').value = content;
+}
+
+function showDiaryLoading(show) {
+  const loadingOverlay = document.getElementById('diaryLoadingOverlay');
+  if (loadingOverlay) {
+    loadingOverlay.style.display = show ? 'flex' : 'none';
+  }
+  if (show) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = 'auto';
+  }
+}
+
+function saveDiary() {
+  if (!window.db) {
+    window.showModal('오류', 'Firebase가 초기화되지 않았습니다.', 'error');
+    return;
+  }
+  
+  const title = document.getElementById('diaryTitle').value.trim();
+  const content = document.getElementById('diaryContent').value.trim();
+  const saveBtn = document.querySelector('#diaryForm button[onclick="saveDiary()"]');
+  
+  if (!title || !content) {
+    window.showModal('알림', '제목과 내용을 모두 입력해주세요.', 'warning');
+    return;
+  }
+  
+  // Show loading overlay
+  showDiaryLoading(true);
+  
+  // Show loading on button
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = '저장 중...';
+  }
+  
+  const diaryData = {
+    title: title,
+    content: content,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  
+  function resetButton() {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '저장';
+    }
+    showDiaryLoading(false);
+  }
+  
+  if (editingId) {
+    // Update existing
+    window.db.collection('cy-diary').doc(editingId).update(diaryData)
+      .then(() => {
+        window.showModal('성공', '수정 완료!', 'success');
+        resetButton();
+        cancelEdit();
+      })
+      .catch((error) => {
+        console.error('Error updating diary:', error);
+        resetButton();
+        window.showModal('오류', '수정 중 오류가 발생했습니다.', 'error');
+      });
+  } else {
+    // Create new
+    window.db.collection('cy-diary').add(diaryData)
+      .then(() => {
+        window.showModal('성공', '저장 완료!', 'success');
+        resetButton();
+        cancelEdit();
+      })
+      .catch((error) => {
+        console.error('Error adding diary:', error);
+        resetButton();
+        window.showModal('오류', '저장 중 오류가 발생했습니다.', 'error');
+      });
+  }
+}
+
+async function deleteDiary(id) {
+  const result = await window.showConfirm('확인', '정말로 이 다이어리를 삭제하시겠습니까?', 'warning');
+  if (!result.isConfirmed) return;
+  if (!window.db) return;
+  
+  window.db.collection('cy-diary').doc(id).delete()
+    .then(() => {
+      console.log('Diary deleted successfully');
+    })
+    .catch((error) => {
+      console.error('Error deleting diary:', error);
+      window.showModal('오류', '삭제 중 오류가 발생했습니다.', 'error');
+    });
+}
+</script>

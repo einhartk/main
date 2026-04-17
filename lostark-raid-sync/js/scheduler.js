@@ -1602,7 +1602,169 @@ window.navigatePartyDetail = navigatePartyDetail;
 window.clearCurrentPartyAndNext = clearCurrentPartyAndNext;
 window.openExpeditionScheduleModal = openExpeditionScheduleModal;
 window.renderExpeditionScheduleContent = renderExpeditionScheduleContent;
-window.navigatePartyDetail = navigatePartyDetail;
-window.clearCurrentPartyAndNext = clearCurrentPartyAndNext;
-window.openExpeditionScheduleModal = openExpeditionScheduleModal;
-window.renderExpeditionScheduleContent = renderExpeditionScheduleContent;
+
+// Memory-optimized schedule reminder
+let lastScheduleCheck = 0;
+const SCHEDULE_CHECK_INTERVAL = 60000; // 1 minute
+let scheduleReminderInterval;
+let audioCache = null;
+
+function checkScheduleReminder() {
+  const now = Date.now();
+  
+  // Throttle checks to save memory/CPU
+  if (now - lastScheduleCheck < SCHEDULE_CHECK_INTERVAL) {
+    return;
+  }
+  lastScheduleCheck = now;
+  
+  const currentDate = new Date();
+  const currentDay = currentDate.getDay();
+  const currentHour = currentDate.getHours();
+  const currentMinute = currentDate.getMinutes();
+  const currentTotalMinutes = currentHour * 60 + currentMinute;
+  
+  // Precompute day name mapping once
+  const currentDayName = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][currentDay];
+  
+  // Early exit if no schedules exist
+  if (!state.raidTabs) return;
+  
+  let foundParty = null;
+  
+  try {
+    // Single pass through data, no intermediate arrays
+    for (const raidId in state.raidTabs) {
+      const raidTab = state.raidTabs[raidId];
+      if (!raidTab) continue;
+      
+      for (const difficultyId in raidTab) {
+        const parties = raidTab[difficultyId];
+        if (!Array.isArray(parties)) continue;
+        
+        for (const party of parties) {
+          if (!party || !party.scheduledWeekday || !party.scheduledHour) continue;
+          
+          if (party.scheduledWeekday !== currentDayName) continue;
+          
+          const [scheduledHour, scheduledMinute] = party.scheduledHour.split(':');
+          const scheduledTotalMinutes = parseInt(scheduledHour) * 60 + parseInt(scheduledMinute);
+          const timeDiff = Math.abs(currentTotalMinutes - scheduledTotalMinutes);
+          
+          if (timeDiff <= 5) {
+            foundParty = party;
+            break; // Found one, no need to continue
+          }
+        }
+        if (foundParty) break;
+      }
+      if (foundParty) break;
+    }
+  } catch (e) {
+    console.error('Schedule reminder check failed:', e);
+    return;
+  }
+  
+  if (foundParty) {
+    const partyName = foundParty.name || foundParty.displayName || foundParty.id;
+    
+    // Page notification (always works)
+    showNotification(
+      `${partyName} starting now or within 5 minutes!`,
+      'warning',
+      5000 // 5 seconds
+    );
+    
+    // System notification (requires permission, works when tab is hidden)
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification('로스트아크 공격대 알림', {
+          body: `${partyName} 시작 시간이 5분 이내입니다!`,
+          icon: 'img/favicon.ico',
+          tag: 'schedule-reminder'
+        });
+      } catch (e) {
+        console.log('System notification failed:', e);
+      }
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      // Request permission on first use
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification('로스트아크 공격대 알림', {
+            body: `${partyName} 시작 시간이 5분 이내입니다!`,
+            icon: 'img/favicon.ico',
+            tag: 'schedule-reminder'
+          });
+        }
+      });
+    }
+    
+    // Cache audio object to avoid recreation
+    if (!audioCache) {
+      try {
+        audioCache = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBi6Gy/LTgjMGHm7A7+OZURE');
+      } catch (e) {
+        console.log('Could not create audio cache:', e);
+        audioCache = { play: () => {} }; // Dummy object
+      }
+    }
+    
+    // Play cached audio
+    try {
+      audioCache.play().catch(e => console.log('Audio play failed:', e));
+    } catch (e) {
+      console.log('Audio play error:', e);
+    }
+  }
+}
+
+function startScheduleReminder() {
+  if (scheduleReminderInterval) {
+    clearInterval(scheduleReminderInterval);
+  }
+  
+  // Check immediately with throttling
+  checkScheduleReminder();
+  
+  // Check every 30 seconds
+  scheduleReminderInterval = setInterval(checkScheduleReminder, SCHEDULE_CHECK_INTERVAL);
+  console.log(`[SCHEDULE REMINDER] Started checking every ${SCHEDULE_CHECK_INTERVAL/1000} seconds`);
+}
+
+function stopScheduleReminder() {
+  if (scheduleReminderInterval) {
+    clearInterval(scheduleReminderInterval);
+    scheduleReminderInterval = null;
+    console.log('[SCHEDULE REMINDER] Stopped');
+  }
+  
+  // Clean up audio cache
+  if (audioCache) {
+    audioCache = null;
+  }
+}
+
+// Auto-start with visibility API to pause when tab is not visible
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopScheduleReminder(); // Pause when tab is hidden
+  } else {
+    startScheduleReminder(); // Resume when tab is visible
+  }
+}
+
+// Auto-start when page loads
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    startScheduleReminder();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  });
+} else {
+  startScheduleReminder();
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+// Global exports
+window.checkScheduleReminder = checkScheduleReminder;
+window.startScheduleReminder = startScheduleReminder;
+window.stopScheduleReminder = stopScheduleReminder;

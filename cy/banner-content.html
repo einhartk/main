@@ -1,60 +1,229 @@
   <div class="updated_news">Updated news</div>
   <div class="updated_news_content">
-    <div class="category">
+    <div class="category" id="recentPosts">
       <div class="category_box">
-        <div class="category_box_photo">사진첩</div>
-        <a href="#" onclick="loadContent('picture-content.html')">
-          <div class="category_box_content">일상★<span class="new">N</span></div>
+        <div class="category_box_type" id="recentType1">카테고리</div>
+        <a href="#" id="recentLink1">
+          <div class="category_box_content" id="recentPost1">로딩 중...</div>
         </a>
       </div>
       <div class="category_box">
-        <div class="category_box_board">다이어리</div>
-        <a href="#" onclick="loadContent('diary-content.html')">
-          <div class="category_box_content">자기소개★<span class="new">N</span></div>
+        <div class="category_box_type" id="recentType2">카테고리</div>
+        <a href="#" id="recentLink2">
+          <div class="category_box_content" id="recentPost2">로딩 중...</div>
         </a>
       </div>
       <div class="category_box">
-        <div class="category_box_board">다이어리</div>
-        <a href="#" onclick="loadContent('diary-content.html')">
-          <div class="category_box_content">보유기술♬<span class="new">N</span></div>
+        <div class="category_box_type" id="recentType3">카테고리</div>
+        <a href="#" id="recentLink3">
+          <div class="category_box_content" id="recentPost3">로딩 중...</div>
         </a>
       </div>
       <div class="category_box">
-        <div class="category_box_photo">사진첩</div>
-        <a href="#" onclick="loadContent('picture-content.html')">
-          <div class="category_box_content">여행★</div>
+        <div class="category_box_type" id="recentType4">카테고리</div>
+        <a href="#" id="recentLink4">
+          <div class="category_box_content" id="recentPost4">로딩 중...</div>
         </a>
       </div>
     </div>
 
     <div class="summary">
       <div class="summary_main">
-        <div class="summary_main_content">
+        <div class="summary_main_content" onclick="loadContent('diary-content.html')" style="cursor: pointer;">
           <div class="summary_content_category">다이어리</div>
-          <div class="summary_content_count">8/25</div>
+          <div class="summary_content_count"><span id="diaryTodayCount">0</span>/<span id="diaryTotalCount">0</span></div>
         </div>
-        <div class="summary_main_content">
+        <div class="summary_main_content" onclick="loadContent('picture-content.html')" style="cursor: pointer;">
           <div class="summary_content_category">사진첩</div>
-          <div class="summary_content_count">8/25</div>
+          <div class="summary_content_count"><span id="albumTodayCount">0</span>/<span id="albumTotalCount">0</span></div>
         </div>
       </div>
     </div>
   </div>
   <div class="Miniroom">Miniroom</div>
-  <div class="Miniroom_content">
-    <img src="image/mini.PNG" class="mini-image">
-  </div>
-  <div id="app">
-    <h2 class="Miniroom"> 일촌평 </h2>
-    <input v-model="nickname" id="nickname" placeholder="닉네임 입력">
-    <input v-model="password" type="password" class="pwd" placeholder="비밀번호 입력"><br>
-    <textarea v-model="comment" class="comment" rows="4" placeholder="일촌과 나누고 싶은 이야기를 남겨보세요~"></textarea>
-    <button @click="addComment" class="submit-btn">작성하기</button>
-
-    <div class="comment-list">
-      <div v-for="(item, index) in comments" :key="index" class="comment-item">
-        <hr>
-        <p><strong>{{ item.nickname }}</strong>: {{ item.comment }}</p>
-      </div>
+  <div id="miniroom-display" class="Miniroom_content" style="min-height: 350px; border: 2px dashed #ccc; border-radius: 8px; position: relative; background: #f5f5f5; background-image: linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px); background-size: 20px 20px; overflow: hidden;">
+    <div id="miniroom-placeholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999; font-size: 14px; text-align: center;">
+      🏠 내방 꾸미기에서 저장된<br>방이 여기에 표시됩니다
     </div>
   </div>
+  
+  <script>
+    // Store recent posts data for click handling
+    window.recentDiaryData = {};
+    window.recentAlbumData = {};
+    
+    // Load recent posts from Firebase (diary + album combined)
+    async function loadRecentPosts() {
+      if (!window.db) {
+        console.log('Firebase not ready for recent posts');
+        return;
+      }
+      
+      // Check if date is today
+      function isToday(timestamp) {
+        if (!timestamp || !timestamp.toDate) return false;
+        const date = timestamp.toDate();
+        const now = new Date();
+        return date.getDate() === now.getDate() && 
+               date.getMonth() === now.getMonth() && 
+               date.getFullYear() === now.getFullYear();
+      }
+      
+      try {
+        // Load diaries and albums in parallel
+        const [diarySnapshot, albumSnapshot] = await Promise.all([
+          window.db.collection('cy-diary').orderBy('timestamp', 'desc').limit(4).get(),
+          window.db.collection('cy-album').orderBy('timestamp', 'desc').limit(4).get()
+        ]);
+        
+        // Combine all posts
+        const allPosts = [];
+        
+        diarySnapshot.forEach((doc) => {
+          allPosts.push({
+            id: doc.id,
+            type: 'diary',
+            ...doc.data()
+          });
+        });
+        
+        albumSnapshot.forEach((doc) => {
+          allPosts.push({
+            id: doc.id,
+            type: 'album',
+            ...doc.data()
+          });
+        });
+        
+        // Sort by timestamp (newest first)
+        allPosts.sort((a, b) => {
+          const timeA = a.timestamp ? a.timestamp.toDate().getTime() : 0;
+          const timeB = b.timestamp ? b.timestamp.toDate().getTime() : 0;
+          return timeB - timeA;
+        });
+        
+        // Take top 4
+        const top4 = allPosts.slice(0, 4);
+        
+        // Render posts
+        for (let i = 1; i <= 4; i++) {
+          const post = top4[i - 1];
+          const typeEl = document.getElementById(`recentType${i}`);
+          const linkEl = document.getElementById(`recentLink${i}`);
+          const contentEl = document.getElementById(`recentPost${i}`);
+          
+          if (!post) {
+            if (typeEl) typeEl.textContent = '-';
+            if (contentEl) contentEl.innerHTML = '등록된 글 없음';
+            continue;
+          }
+          
+          const title = post.title || '제목 없음';
+          const shortTitle = title.length > 8 ? title.substring(0, 8) + '...' : title;
+          const isNew = isToday(post.timestamp) ? '<span class="new">N</span>' : '';
+          
+          if (typeEl) {
+            typeEl.textContent = post.type === 'diary' ? '다이어리' : '사진첩';
+            typeEl.className = post.type === 'diary' ? 'category_box_board' : 'category_box_photo';
+          }
+          
+          if (contentEl) {
+            contentEl.innerHTML = shortTitle + isNew;
+          }
+          
+          if (linkEl) {
+            const targetPage = post.type === 'diary' ? 'diary-content.html' : 'picture-content.html';
+            const storageKey = post.type === 'diary' ? 'selectedDiaryId' : 'selectedAlbumId';
+            linkEl.onclick = function(e) {
+              e.preventDefault();
+              localStorage.setItem(storageKey, post.id);
+              loadContent(targetPage);
+            };
+          }
+        }
+        
+      } catch (err) {
+        console.error('Error loading recent posts:', err);
+        for (let i = 1; i <= 4; i++) {
+          const contentEl = document.getElementById(`recentPost${i}`);
+          if (contentEl) contentEl.textContent = '불러오기 실패';
+        }
+      }
+    }
+    
+    // Load on Firebase ready
+    document.addEventListener('firebaseReady', loadRecentPosts);
+    
+    // Load immediately if Firebase is already ready
+    if (window.firebaseInitialized && window.db) {
+      loadRecentPosts();
+    }
+    
+    // Load miniroom data from room.html
+    (function loadBannerMiniroom() {
+      const savedData = localStorage.getItem('roomDecoration');
+      const savedBg = localStorage.getItem('roomBackground') || 'grid';
+      const display = document.getElementById('miniroom-display');
+      const placeholder = document.getElementById('miniroom-placeholder');
+      
+      if (!display) return;
+      
+      // Apply background
+      display.style.backgroundImage = '';
+      display.style.backgroundColor = '';
+      switch(savedBg) {
+        case 'grid':
+          display.style.background = '#f5f5f5';
+          display.style.backgroundImage = 'linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)';
+          display.style.backgroundSize = '20px 20px';
+          break;
+        case 'room':
+          display.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+          break;
+        case 'sky':
+          display.style.background = 'linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%)';
+          break;
+        case 'grass':
+          display.style.background = 'linear-gradient(to bottom, #87CEEB 0%, #90EE90 60%, #228B22 100%)';
+          break;
+        case 'pink':
+          display.style.background = 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)';
+          break;
+        case 'mini':
+          display.style.background = 'url(image/mini.PNG)';
+          display.style.backgroundSize = '100% 100%';
+          display.style.backgroundPosition = 'center center';
+          display.style.backgroundRepeat = 'no-repeat';
+          break;
+      }
+      
+      // Load items
+      if (savedData) {
+        try {
+          const data = JSON.parse(savedData);
+          const items = data.items || data;
+          
+          if (items && items.length > 0) {
+            if (placeholder) placeholder.style.display = 'none';
+            
+            items.forEach(item => {
+              const el = document.createElement('img');
+              el.src = item.src;
+              // Use percentage for responsive positioning (same as room.html)
+              const left = item.left || '10%';
+              const top = item.top || '10%';
+              const width = item.width || '15%';
+              el.style.cssText = `position:absolute;left:${left};top:${top};width:${width};z-index:1`;
+              el.style.transform = `rotate(${item.rotate || 0}deg) scale(${item.scale || 1})`;
+              el.style.maxWidth = '100px';
+              el.style.maxHeight = '100px';
+              el.style.opacity = '0.9';
+              display.appendChild(el);
+            });
+          }
+        } catch (e) {
+          console.error('Failed to load miniroom data:', e);
+        }
+      }
+    })();
+  </script>

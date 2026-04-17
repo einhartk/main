@@ -5,18 +5,154 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>2021 MINI HOMEPAGE</title>
+  <!-- Google Fonts Preconnect for faster loading -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Vue 3 CDN -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- SweetAlert2 for nice modals -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
   <!-- Main Styles -->
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/container-styles.css" />
   <!-- Scripts -->
   <script src="js/music-player.js"></script>
   <script src="js/content/home-content.js"></script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-    <script src="js/firebase-config.js"></script>
+    <!-- Firebase SDK (deferred for performance) -->
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <script defer src="js/firebase-config.js"></script>
+  
+  <style>
+    /* 활성 탭 스타일 */
+    .menu-container button.active {
+      background: #5c3ccf !important;
+      color: white !important;
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(92, 60, 207, 0.4);
+    }
+    .menu-container button {
+      transition: all 0.3s ease;
+    }
+  </style>
+  
+  <script>
+    // SweetAlert2 모달 함수 (전역)
+    window.showModal = function(title, text, icon = 'info') {
+      return Swal.fire({
+        title: title,
+        text: text,
+        icon: icon,
+        confirmButtonText: '확인',
+        confirmButtonColor: '#5c3ccf',
+        background: '#fefefe',
+        customClass: {
+          popup: 'cy-modal'
+        }
+      });
+    };
+    
+    window.showConfirm = function(title, text, icon = 'warning') {
+      return Swal.fire({
+        title: title,
+        text: text,
+        icon: icon,
+        showCancelButton: true,
+        confirmButtonText: '확인',
+        cancelButtonText: '취소',
+        confirmButtonColor: '#5c3ccf',
+        cancelButtonColor: '#aaa',
+        background: '#fefefe',
+        customClass: {
+          popup: 'cy-modal'
+        }
+      });
+    };
+    
+    function updateActiveTab(tabId) {
+      const tabs = document.querySelectorAll('.menu-button button[id^="tab-"]');
+      tabs.forEach(tab => tab.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+    }
+    
+    // 방문자 카운트 관리 (Firebase)
+    async function updateVisitorCount() {
+      if (!window.db) {
+        console.log('Firebase not ready for visitor count');
+        return;
+      }
+      
+      // 사용자 ID 생성/확인
+      let userId = localStorage.getItem('visitorUserId');
+      if (!userId) {
+        userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('visitorUserId', userId);
+      }
+      
+      const today = new Date().toDateString();
+      const db = window.db;
+      
+      try {
+        // 카운터 문서 참조
+        const counterRef = db.collection('cy-visitors').doc('counter');
+        const userRef = db.collection('cy-visitors').doc(userId);
+        
+        // 사용자 방문 기록 확인
+        const userDoc = await userRef.get();
+        const userData = userDoc.exists ? userDoc.data() : {};
+        const lastVisit = userData.lastVisitDate;
+        
+        // 오늘 첫 방문인 경우에만 카운트 증가
+        if (lastVisit !== today) {
+          await db.runTransaction(async (transaction) => {
+            const counterDoc = await transaction.get(counterRef);
+            let counterData = counterDoc.exists ? counterDoc.data() : { total: 0, today: 0, lastUpdated: today };
+            
+            // 날짜가 바뀌면 today 리셋
+            if (counterData.lastUpdated !== today) {
+              counterData.today = 0;
+              counterData.lastUpdated = today;
+            }
+            
+            // 카운트 증가
+            counterData.total++;
+            counterData.today++;
+            
+            transaction.set(counterRef, counterData);
+            transaction.set(userRef, { 
+              lastVisitDate: today, 
+              visitCount: (userData.visitCount || 0) + 1,
+              firstVisit: userData.firstVisit || new Date().toISOString()
+            });
+          });
+        }
+        
+        // 화면에 표시
+        const counterDoc = await counterRef.get();
+        const counterData = counterDoc.exists ? counterDoc.data() : { total: 1, today: 1 };
+        document.getElementById('todayVisitors').textContent = counterData.today || 1;
+        document.getElementById('totalVisitors').textContent = counterData.total || 1;
+        
+      } catch (error) {
+        console.error('Visitor count error:', error);
+        document.getElementById('todayVisitors').textContent = '?';
+        document.getElementById('totalVisitors').textContent = '?';
+      }
+    }
+    
+    // 초기 로드 시 실행 (비동기로 분리)
+    document.addEventListener('DOMContentLoaded', function() {
+      updateActiveTab('tab-home');
+      // 방문자 카운팅은 메인 렌더링 후 실행
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => updateVisitorCount(), { timeout: 2000 });
+      } else {
+        setTimeout(updateVisitorCount, 100);
+      }
+    });
+  </script>
 </head>
 
 <body>
@@ -28,10 +164,10 @@
       <div class="page">
 
         <div class="container1">
-          <div class="item1 box">TODAY <span class="highlight">11</span> | TOTAL 1206</div>
-          <div class="item2">
+          <div class="item1 box">TODAY <span class="highlight" id="todayVisitors">0</span> | TOTAL <span id="totalVisitors">0</span></div>
+          <div class="item2" style="margin-top: 25px;">
             <div class="profile">
-              <!-- <img src="image/img2.jpg" class="profile-image" alt="프로필 이미지"> -->
+              <img src="data:image/jpeg;base64,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" class="profile-image" alt="프로필 이미지">
               <br><br>교동~♬
             </div>
             <div class="profile-dropdown">
@@ -74,7 +210,7 @@
                 </div>
                 <div class="category_box">
                   <div class="category_box_photo">사진첩</div>
-                  <a href="picture.html">
+                  <a href="#" onclick="event.preventDefault(); loadContent('picture-content.html');">
                     <div class="category_box_content">여행★</div>
                   </a>
                 </div>
@@ -82,59 +218,195 @@
 
               <div class="summary">
                 <div class="summary_main">
-                  <div class="summary_main_content">
+                  <div class="summary_main_content" onclick="loadContent('diary-content.html')" style="cursor: pointer;">
                     <div class="summary_content_category">다이어리</div>
-                    <div class="summary_content_count">8/25</div>
+                    <div class="summary_content_count"><span id="diaryTodayCount">0</span>/<span id="diaryTotalCount">0</span></div>
                   </div>
-                  <div class="summary_main_content">
+                  <div class="summary_main_content" onclick="loadContent('picture-content.html')" style="cursor: pointer;">
                     <div class="summary_content_category">사진첩</div>
-                    <div class="summary_content_count">8/25</div>
+                    <div class="summary_content_count"><span id="albumTodayCount">0</span>/<span id="albumTotalCount">0</span></div>
                   </div>
                 </div>
               </div>
             </div>
             <div class="Miniroom">Miniroom</div>
-            <div class="Miniroom_content">
-              <img src="image/mini.PNG" class="mini-image" alt="미니룸 이미지">
-            </div>
-            <div id="app">
-                <h2 class="Miniroom"> 일촌평 </h2>
-                <input v-model="nickname" id="nickname" placeholder="닉네임 입력">
-                <input v-model="password" type="password" class="pwd" placeholder="비밀번호 입력"><br>
-                <textarea v-model="comment" class="comment" rows="4" placeholder="일촌과 나누고 싶은 이야기를 남겨보세요~"></textarea>
-                <button @click="addComment" class="submit-btn">작성하기</button>
-            
-                <div class="comment-list">
-                  <div v-for="(item, index) in comments" :key="index" class="comment-item">
-                    <hr>
-                    <p><strong>{{ item.nickname }}</strong>: {{ item.comment }}</p>
-                  </div>
-                </div>
+            <div id="miniroom-display" class="Miniroom_content" style="min-height: 200px; border: 2px dashed #ccc; border-radius: 8px; position: relative; background: #f5f5f5; background-image: linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px); background-size: 20px 20px; overflow: hidden;">
+              <!-- 저장된 아이템들이 여기에 표시됨 -->
+              <div id="miniroom-placeholder" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #999; font-size: 14px; text-align: center;">
+                🏠 내방 꾸미기에서 저장된<br>방이 여기에 표시됩니다
               </div>
+            </div>
+            
+            <script>
+              // Apply background (read-only from room.html saved data)
+              function applyMiniroomBg(bg) {
+                const display = document.getElementById('miniroom-display');
+                if (!display) return; // Safety check for SPA loading
+                
+                display.style.backgroundImage = '';
+                display.style.backgroundColor = '';
+                
+                switch(bg) {
+                  case 'grid':
+                    display.style.background = '#f5f5f5';
+                    display.style.backgroundImage = 'linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px)';
+                    display.style.backgroundSize = '20px 20px';
+                    break;
+                  case 'room':
+                    display.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                    break;
+                  case 'sky':
+                    display.style.background = 'linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%)';
+                    break;
+                  case 'grass':
+                    display.style.background = 'linear-gradient(to bottom, #87CEEB 0%, #90EE90 60%, #228B22 100%)';
+                    break;
+                  case 'pink':
+                    display.style.background = 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)';
+                    break;
+                  case 'mini':
+                    display.style.background = 'url(image/mini.PNG)';
+                    display.style.backgroundSize = '100% 100%';
+                    display.style.backgroundPosition = 'center center';
+                    display.style.backgroundRepeat = 'no-repeat';
+                    break;
+                }
+              }
               
+              // Load saved room data from room.html
+              function loadMiniroomData() {
+                const savedData = localStorage.getItem('roomDecoration');
+                const savedBg = localStorage.getItem('roomBackground') || 'grid';
+                const display = document.getElementById('miniroom-display');
+                const placeholder = document.getElementById('miniroom-placeholder');
+                
+                if (!display) return; // Safety check for SPA loading
+                
+                // Apply saved background
+                applyMiniroomBg(savedBg);
+                
+                // Clear existing items first
+                display.querySelectorAll('img').forEach(el => el.remove());
+                if (placeholder) placeholder.style.display = 'block';
+                
+                // Load saved items if exists
+                if (savedData) {
+                  try {
+                    const data = JSON.parse(savedData);
+                    const items = data.items || data; // Support both formats
+                    
+                    if (items && items.length > 0) {
+                      if (placeholder) placeholder.style.display = 'none';
+                      
+                      items.forEach(item => {
+                        const el = document.createElement('img');
+                        el.src = item.src;
+                        // Use percentage for responsive positioning (same as room.html)
+                        const left = item.left || '10%';
+                        const top = item.top || '10%';
+                        const width = item.width || '15%';
+                        el.style.cssText = `position:absolute;left:${left};top:${top};width:${width};z-index:1`;
+                        el.style.transform = `rotate(${item.rotate || 0}deg) scale(${item.scale || 1})`;
+                        el.style.maxWidth = '100px';
+                        el.style.maxHeight = '100px';
+                        el.style.opacity = '0.9';
+                        display.appendChild(el);
+                      });
+                    }
+                  } catch (e) {
+                    console.error('Failed to load room data:', e);
+                  }
+                }
+              }
+              
+              // Load when page loads
+              document.addEventListener('DOMContentLoaded', loadMiniroomData);
+            </script>
+            
           </div>
         </div>
 
-        <div class="menu-container">
+        <div class="menu-container" style="margin-top: 20px;">
           <div class="menu-button">
-            <button onclick="event.preventDefault(); loadContent('banner-content.html');">홈</button>
-            <button onclick="event.preventDefault(); loadContent('diary-content.html');">다이어리</button>
-            <button onclick="event.preventDefault(); loadContent('picture-content.html');">사진첩</button>
-            <button onclick="event.preventDefault(); loadContent('guest-content.html');">방명록</button>
-            <button onclick="event.preventDefault(); loadContent('room-content.html');">내방 꾸미기</button>
+            <button id="tab-home" onclick="event.preventDefault(); loadContent('banner-content.html'); updateActiveTab('tab-home');">홈</button>
+            <button id="tab-diary" onclick="event.preventDefault(); loadContent('diary-content.html'); updateActiveTab('tab-diary');">다이어리</button>
+            <button id="tab-picture" onclick="event.preventDefault(); loadContent('picture-content.html'); updateActiveTab('tab-picture');">사진첩</button>
+            <button id="tab-guest" onclick="event.preventDefault(); loadContent('guest-content.html'); updateActiveTab('tab-guest');">방명록</button>
+            <button id="tab-ilchon" onclick="event.preventDefault(); loadContent('ilchon-content.html'); updateActiveTab('tab-ilchon');">일촌평</button>
+            <button onclick="event.preventDefault(); window.open('room.html', 'room', 'width=1400,height=900,menubar=no,toolbar=no');">내방 꾸미기</button>
           </div>
         </div>
 
-
-        <div id="popup" class="popup">
-          <div class="popup-content">
-              <span class="close-btn" onclick="closePopup()">&times;</span>
-              <p>일촌평 기능을 추가했습니다!</p><br>
-          </div>
-        </div>
       </div>
     </div>
   </div>
+<script>
+// 홈 화면 실시간 카운트 업데이트
+function updateHomeCounts() {
+  if (!window.db) {
+    console.log('Firebase not ready yet');
+    return;
+  }
+  
+  // 오늘 날짜 범위 계산
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  
+  // 다이어리 카운트 리스너
+  window.db.collection('cy-diary').onSnapshot((snapshot) => {
+    const total = snapshot.size;
+    let today = 0;
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.timestamp && data.timestamp.toDate) {
+        const entryDate = data.timestamp.toDate();
+        if (entryDate >= startOfDay && entryDate < endOfDay) {
+          today++;
+        }
+      }
+    });
+    
+    const todayEl = document.getElementById('diaryTodayCount');
+    const totalEl = document.getElementById('diaryTotalCount');
+    if (todayEl) todayEl.textContent = today;
+    if (totalEl) totalEl.textContent = total;
+  });
+  
+  // 사진첩 카운트 리스너
+  window.db.collection('cy-album').onSnapshot((snapshot) => {
+    const total = snapshot.size;
+    let today = 0;
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.timestamp && data.timestamp.toDate) {
+        const entryDate = data.timestamp.toDate();
+        if (entryDate >= startOfDay && entryDate < endOfDay) {
+          today++;
+        }
+      }
+    });
+    
+    const todayEl = document.getElementById('albumTodayCount');
+    const totalEl = document.getElementById('albumTotalCount');
+    if (todayEl) todayEl.textContent = today;
+    if (totalEl) totalEl.textContent = total;
+  });
+}
+
+// Firebase 준비되면 카운트 업데이트 시작
+document.addEventListener('firebaseReady', updateHomeCounts);
+
+// DOM 로드 후 Firebase가 이미 준비되어 있으면 바로 실행
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.firebaseInitialized && window.db) {
+    updateHomeCounts();
+  }
+});
+</script>
+
 </body>
 
 </html>

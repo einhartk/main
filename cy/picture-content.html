@@ -1,34 +1,67 @@
+  <!-- Loading Overlay for Album -->
+  <div id="albumLoadingOverlay" class="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 30px 50px; border-radius: 10px; text-align: center; font-family: 'NeoDunggeunmo', sans-serif;">
+      <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+      <div>처리 중...</div>
+    </div>
+  </div>
+
   <div class="box content-box">
     <div class="content-photo">
-      <div class="photo-title font-neo">일상♬</div>
-      <div class="photo-gallery">
-        <div class="photo-item">
-          <img src="image/img7.jpg" alt="일상 사진 1" class="gallery-img" />
-          <div class="photo-caption">일상의 추억</div>
+      <div class="photo-title font-neo">사진첩 ♬</div>
+      
+      <!-- Editor Form -->
+      <div class="editor-form" id="editorForm" style="display: none;">
+        <h3>새 앨범 작성</h3>
+        <input type="text" id="albumTitle" placeholder="제목을 입력하세요">
+        
+        <!-- Simple WYSIWYG Editor Toolbar -->
+        <div class="editor-toolbar">
+          <button type="button" onclick="formatText('bold')" title="굵게"><b>B</b></button>
+          <button type="button" onclick="formatText('italic')" title="기울임"><i>I</i></button>
+          <button type="button" onclick="formatText('underline')" title="밑줄"><u>U</u></button>
+          <button type="button" onclick="insertImage()" title="사진 삽입">📷 사진</button>
         </div>
-        <div class="photo-item">
-          <img src="image/img8.jpg" alt="일상 사진 2" class="gallery-img" />
-          <div class="photo-caption">즐거운 순간</div>
-        </div>
-        <div class="photo-item">
-          <img src="image/img1.jpg" alt="일상 사진 3" class="gallery-img" />
-          <div class="photo-caption">추억의 장소</div>
+        
+        <!-- Editor Content Area -->
+        <div id="albumEditor" class="editor-content" contenteditable="true" placeholder="내용을 입력하세요..."></div>
+        
+        <!-- Hidden File Input for Image Upload -->
+        <input type="file" id="editorImageUpload" accept="image/*" style="display: none;">
+        
+        <div class="editor-actions">
+          <button onclick="saveAlbum()" class="save-btn">저장</button>
+          <button onclick="cancelAlbumEdit()" class="cancel-btn">취소</button>
         </div>
       </div>
       
-      <div class="photo-upload">
-        <input type="file" id="photo-upload" accept="image/*" style="display: none;">
-        <button onclick="document.getElementById('photo-upload').click()">사진 업로드</button>
+      <button onclick="showAlbumForm()" id="newAlbumBtn" class="new-album-btn">+ 새 앨범</button>
+      
+      <!-- Album List -->
+      <div class="photo-gallery" id="albumList">
+        <div class="loading-overlay">앨범을 불러오는 중...</div>
       </div>
     </div>
   </div>
 
 <style>
+/* Full width container */
+.box.content-box {
+  width: 100%;
+  max-width: 100%;
+}
+
+.content-photo {
+  width: 100%;
+  max-width: 100%;
+}
+
 .photo-gallery {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-  padding: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+  padding: 20px;
+  width: 100%;
 }
 
 .photo-item {
@@ -45,7 +78,7 @@
 
 .gallery-img {
   width: 100%;
-  height: 200px;
+  height: 280px;
   object-fit: cover;
   display: block;
 }
@@ -86,38 +119,492 @@
   margin: 15px 0;
   font-weight: bold;
 }
+
+/* Editor Form Styles */
+.editor-form {
+  background: white;
+  border: 2px solid #e3f2fd;
+  border-radius: 10px;
+  padding: 20px;
+  margin: 0 20px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.editor-form h3 {
+  font-family: 'NeoDunggeunmo', sans-serif;
+  color: #5c3ccf;
+  margin-bottom: 15px;
+}
+
+.editor-form input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-family: 'KyoboHand', cursive;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.editor-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background: #f5f5f5;
+  border-radius: 5px;
+}
+
+.editor-toolbar button {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.editor-toolbar button:hover {
+  background: #e3f2fd;
+  border-color: #5c3ccf;
+}
+
+.editor-content {
+  width: 100%;
+  min-height: 200px;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-family: 'KyoboHand', cursive;
+  font-size: 16px;
+  line-height: 1.8;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.editor-content img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.editor-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.editor-actions .save-btn {
+  background: #5c3ccf;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'NeoDunggeunmo', sans-serif;
+}
+
+.editor-actions .save-btn:hover {
+  background: #4a2fb8;
+}
+
+.editor-actions .cancel-btn {
+  background: #999;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'NeoDunggeunmo', sans-serif;
+}
+
+.editor-actions .cancel-btn:hover {
+  background: #666;
+}
+
+.new-album-btn {
+  margin: 0 20px 20px;
+  background: #5c3ccf;
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'NeoDunggeunmo', sans-serif;
+  font-size: 14px;
+}
+
+.new-album-btn:hover {
+  background: #4a2fb8;
+}
+
+.loading-overlay {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  grid-column: 1 / -1;
+}
+
+/* Album Item Styles */
+.album-item {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s;
+}
+
+.album-item:hover {
+  transform: translateY(-5px);
+}
+
+.album-header {
+  padding: 15px;
+  border-bottom: 2px solid #e3f2fd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.album-title {
+  font-family: 'NeoDunggeunmo', sans-serif;
+  color: #5c3ccf;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.album-date {
+  font-size: 12px;
+  color: #999;
+}
+
+.album-content {
+  padding: 15px;
+  font-family: 'KyoboHand', cursive;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #333;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.album-content img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.album-actions {
+  padding: 10px 15px;
+  border-top: 1px solid #eee;
+  display: flex;
+  gap: 8px;
+}
+
+.album-actions button {
+  padding: 5px 12px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'NeoDunggeunmo', sans-serif;
+}
+
+.album-actions .edit-btn {
+  background: #4caf50;
+  color: white;
+}
+
+.album-actions .edit-btn:hover {
+  background: #388e3c;
+}
+
+.album-actions .delete-btn {
+  background: #f44336;
+  color: white;
+}
+
+.album-actions .delete-btn:hover {
+  background: #d32f2f;
+}
+
+/* Image Upload Progress */
+.upload-progress {
+  text-align: center;
+  padding: 20px;
+  color: #5c3ccf;
+}
 </style>
 
 <script>
-// 사진 업로드 기능
-document.getElementById('photo-upload').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (file) {
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      const gallery = document.querySelector('.photo-gallery');
-      const photoItem = document.createElement('div');
-      photoItem.className = 'photo-item';
-      photoItem.innerHTML = `
-        <img src="${event.target.result}" alt="업로드된 이미지" class="gallery-img" />
-        <div class="photo-caption">새로운 추억</div>
-      `;
-      gallery.prepend(photoItem);
-      
-      // 애니메이션 효과
-      photoItem.style.opacity = '0';
-      setTimeout(() => {
-        photoItem.style.transition = 'opacity 0.5s';
-        photoItem.style.opacity = '1';
-      }, 10);
-    };
-    reader.readAsDataURL(file);
+// Album Firebase Integration
+let albumRef = null;
+let editingAlbumId = null;
+let pendingImageFile = null;
+
+// Initialize Firebase Album
+(function initAlbum() {
+  if (window.firebaseInitialized && window.db) {
+    setupAlbumListener();
+  } else {
+    document.addEventListener('firebaseReady', setupAlbumListener, { once: true });
   }
+})();
+
+function setupAlbumListener() {
+  if (!window.db) return;
+  
+  albumRef = window.db.collection('cy-album').orderBy('timestamp', 'desc');
+  
+  albumRef.onSnapshot((snapshot) => {
+    const albumList = document.getElementById('albumList');
+    albumList.innerHTML = '';
+    
+    if (snapshot.empty) {
+      albumList.innerHTML = '<div class="loading-overlay">작성된 앨범이 없습니다.</div>';
+      localStorage.removeItem('selectedAlbumId');
+      return;
+    }
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const album = createAlbumElement(doc.id, data);
+      albumList.appendChild(album);
+    });
+    
+    // localStorage에서 선택된 앨범 ID 확인
+    const selectedAlbumId = localStorage.getItem('selectedAlbumId');
+    
+    if (selectedAlbumId) {
+      // 선택된 앨범으로 스크롤 및 하이라이트
+      setTimeout(() => {
+        const selectedEl = document.querySelector(`[data-id="${selectedAlbumId}"]`);
+        if (selectedEl) {
+          selectedEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          selectedEl.style.boxShadow = '0 0 10px #5c3ccf';
+          setTimeout(() => {
+            selectedEl.style.boxShadow = '';
+          }, 2000);
+        }
+        // localStorage 클리어
+        localStorage.removeItem('selectedAlbumId');
+      }, 100);
+    }
+    
+  }, (error) => {
+    console.error('Album listener error:', error);
+    document.getElementById('albumList').innerHTML = '<div class="loading-overlay" style="color: red;">앨범을 불러오는 중 오류가 발생했습니다.</div>';
+  });
+}
+
+function createAlbumElement(id, data) {
+  const div = document.createElement('div');
+  div.className = 'album-item';
+  div.dataset.id = id;
+  
+  const date = data.timestamp ? data.timestamp.toDate() : new Date();
+  const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+  
+  div.innerHTML = `
+    <div class="album-header">
+      <span class="album-title">${escapeHtml(data.title || '제목 없음')}</span>
+      <span class="album-date">${dateStr}</span>
+    </div>
+    <div class="album-content">${data.content || ''}</div>
+    <div class="album-actions">
+      <button class="edit-btn" onclick="editAlbum('${id}', '${escapeHtml(data.title || '')}')">수정</button>
+      <button class="delete-btn" onclick="deleteAlbum('${id}')">삭제</button>
+    </div>
+  `;
+  
+  return div;
+}
+
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Editor Functions
+function showAlbumForm() {
+  document.getElementById('editorForm').style.display = 'block';
+  document.getElementById('newAlbumBtn').style.display = 'none';
+  editingAlbumId = null;
+  document.getElementById('albumTitle').value = '';
+  document.getElementById('albumEditor').innerHTML = '';
+  pendingImageFile = null;
+}
+
+function cancelAlbumEdit() {
+  document.getElementById('editorForm').style.display = 'none';
+  document.getElementById('newAlbumBtn').style.display = 'inline-block';
+  editingAlbumId = null;
+  document.getElementById('albumTitle').value = '';
+  document.getElementById('albumEditor').innerHTML = '';
+  pendingImageFile = null;
+}
+
+function formatText(command) {
+  document.execCommand(command, false, null);
+  document.getElementById('albumEditor').focus();
+}
+
+function insertImage() {
+  document.getElementById('editorImageUpload').click();
+}
+
+// Handle image upload to editor (Base64 for Firestore)
+document.getElementById('editorImageUpload').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  if (!window.db) {
+    alert('Firebase가 초기화되지 않았습니다.');
+    return;
+  }
+  
+  // Check file size (Firestore has 1MB limit, keep it under 500KB for safety)
+  if (file.size > 500 * 1024) {
+    window.showModal('알림', '파일 크기가 너무 큽니다. 500KB 이하의 이미지를 선택해주세요.', 'warning');
+    e.target.value = '';
+    return;
+  }
+  
+  // Show uploading indicator in editor
+  const editor = document.getElementById('albumEditor');
+  const placeholder = document.createElement('div');
+  placeholder.className = 'upload-progress';
+  placeholder.textContent = '사진 변환 중...';
+  editor.appendChild(placeholder);
+  
+  // Read file as Base64
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const base64Image = event.target.result;
+    
+    // Remove placeholder and insert image
+    placeholder.remove();
+    
+    const img = document.createElement('img');
+    img.src = base64Image; // Store as Base64 data URL
+    img.style.maxWidth = '100%';
+    img.style.borderRadius = '8px';
+    img.style.margin = '10px 0';
+    img.dataset.base64 = 'true'; // Mark as base64 image
+    editor.appendChild(img);
+    
+    // Add a line break after image
+    const br = document.createElement('br');
+    editor.appendChild(br);
+  };
+  
+  reader.onerror = function() {
+    placeholder.textContent = '파일 읽기 실패';
+    setTimeout(() => placeholder.remove(), 3000);
+  };
+  
+  reader.readAsDataURL(file);
+  
+  // Reset input
+  e.target.value = '';
 });
 
-// 이미지 클릭 시 확대 보기 기능
+async function saveAlbum() {
+  if (!window.db) {
+    alert('Firebase가 초기화되지 않았습니다.');
+    return;
+  }
+  
+  const title = document.getElementById('albumTitle').value.trim();
+  const content = document.getElementById('albumEditor').innerHTML;
+  const saveBtn = document.querySelector('.editor-actions .save-btn');
+  
+  if (!title) {
+    window.showModal('알림', '제목을 입력해주세요.', 'warning');
+    return;
+  }
+  
+  // Show loading overlay
+  const loadingOverlay = document.getElementById('albumLoadingOverlay');
+  if (loadingOverlay) {
+    loadingOverlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+  
+  // Show loading on button
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = '저장 중...';
+  }
+  
+  const albumData = {
+    title: title,
+    content: content,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  
+  function resetButton() {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '저장';
+    }
+    if (loadingOverlay) {
+      loadingOverlay.style.display = 'none';
+      document.body.style.overflow = 'auto';
+    }
+  }
+  
+  try {
+    if (editingAlbumId) {
+      await window.db.collection('cy-album').doc(editingAlbumId).update(albumData);
+      window.showModal('성공', '수정 완료!', 'success');
+    } else {
+      await window.db.collection('cy-album').add(albumData);
+      window.showModal('성공', '저장 완료!', 'success');
+    }
+    resetButton();
+    cancelAlbumEdit();
+  } catch (error) {
+    console.error('Error saving album:', error);
+    resetButton();
+    window.showModal('오류', '저장 중 오류가 발생했습니다.', 'error');
+  }
+}
+
+function editAlbum(id, title) {
+  editingAlbumId = id;
+  const albumElement = document.querySelector(`.album-item[data-id="${id}"]`);
+  const content = albumElement.querySelector('.album-content').innerHTML;
+  
+  document.getElementById('editorForm').style.display = 'block';
+  document.getElementById('newAlbumBtn').style.display = 'none';
+  document.getElementById('albumTitle').value = title;
+  document.getElementById('albumEditor').innerHTML = content;
+}
+
+async function deleteAlbum(id) {
+  const result = await window.showConfirm('확인', '정말로 이 앨범을 삭제하시겠습니까?', 'warning');
+  if (!result.isConfirmed) return;
+  if (!window.db) return;
+  
+  try {
+    await window.db.collection('cy-album').doc(id).delete();
+    console.log('Album deleted successfully');
+  } catch (error) {
+    console.error('Error deleting album:', error);
+    window.showModal('오류', '삭제 중 오류가 발생했습니다.', 'error');
+  }
+}
+
+// Image modal view (existing functionality)
 document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('gallery-img')) {
+  if (e.target.tagName === 'IMG' && e.target.closest('.album-content')) {
     const imgSrc = e.target.src;
     const modal = document.createElement('div');
     modal.style.cssText = `
@@ -126,7 +613,7 @@ document.addEventListener('click', function(e) {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.9);
       display: flex;
       justify-content: center;
       align-items: center;

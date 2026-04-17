@@ -30,44 +30,29 @@ async function loadContent(page) {
     
     container.innerHTML = '<div style="text-align: center; padding: 50px;">로딩 중...</div>';
     
+    // Update home counts if loading home page
+    if (page.includes('banner-content.html') && typeof updateHomeCounts === 'function') {
+      setTimeout(updateHomeCounts, 100);
+    }
+    
     const response = await fetch(page);
     if (!response.ok) throw new Error('페이지를 불러오지 못했습니다.');
     
     const html = await response.text();
-    // Add a small delay to ensure styles are applied
-    await new Promise(resolve => setTimeout(resolve, 50));
     container.innerHTML = html;
     
-    // If loading diary content, initialize the calendar
-    if (page.includes('diary')) {
-      // Remove any existing diary.js scripts to prevent duplicates
-      const existingScripts = document.querySelectorAll('script[src*="diary.js"]');
-      existingScripts.forEach(script => script.remove());
-      
-      // Create and append the diary.js script
-      const script = document.createElement('script');
-      script.src = 'js/diary.js';
-      script.onload = function() {
-        // Initialize the calendar after the script is loaded
-        if (window.updateTodayDate && window.createDateList) {
-          updateTodayDate();
-          createDateList();
+    // Execute inline scripts from the loaded content (in global scope)
+    const scripts = container.querySelectorAll('script');
+    scripts.forEach(script => {
+      if (script.textContent) {
+        try {
+          // Execute in global scope so functions are available to onclick handlers
+          eval.call(window, script.textContent);
+        } catch (e) {
+          console.error('Script execution error:', e);
         }
-      };
-      document.body.appendChild(script);
-    }
-    
-    // Execute any other scripts in the loaded content
-    const scripts = container.getElementsByTagName('script');
-    for (let script of scripts) {
-      const newScript = document.createElement('script');
-      if (script.src) {
-        newScript.src = script.src;
-      } else {
-        newScript.textContent = script.textContent;
       }
-      document.body.appendChild(newScript).parentNode.removeChild(newScript);
-    }
+    });
     
     // Update URL hash for bookmarking without page reload
     history.pushState(null, '', '#' + page.split('.')[0]);
@@ -85,6 +70,13 @@ async function loadContent(page) {
 function handleInitialLoad() {
   let hash = window.location.hash.replace('#', '');
   const defaultPage = 'banner-content.html';
+  
+  // Room is opened in new window, not in SPA
+  if (hash === 'room') {
+    window.open('room.html', 'room', 'width=1400,height=900,menubar=no,toolbar=no');
+    window.location.hash = 'banner-content';
+    hash = 'banner-content';
+  }
   
   // If no hash, set default and update URL
   if (!hash) {
@@ -117,7 +109,16 @@ if (document.readyState === 'loading') {
 // Handle browser back/forward buttons
 window.addEventListener('popstate', () => {
   const hash = window.location.hash.replace('#', '');
-  if (hash) {
+  
+  // Room is opened in new window
+  if (hash === 'room') {
+    window.open('room.html', 'room', 'width=1400,height=900,menubar=no,toolbar=no');
+    window.location.hash = 'banner-content';
+    loadContent('banner-content.html');
+    return;
+  }
+  
+  if (hash && hash !== 'room') {
     loadContent(`${hash}.html`).catch(error => {
       console.error('Error loading content from history:', error);
       window.location.hash = 'banner-content';
@@ -156,72 +157,3 @@ document.addEventListener('click', function(event) {
     closePopup();
   }
 });
-
-// Initialize Vue app
-const app = Vue.createApp({
-  data() {
-    return {
-      newComment: {
-        nickname: '',
-        password: '',
-        comment: ''
-      },
-      comments: []
-    };
-  },
-  methods: {
-    // Add a new comment
-    addComment() {
-      if (!this.newComment.nickname || !this.newComment.comment) {
-        alert('닉네임과 댓글을 모두 입력해주세요.');
-        return;
-      }
-      
-      const comment = {
-        id: Date.now(),
-        nickname: this.newComment.nickname,
-        password: this.newComment.password,
-        comment: this.newComment.comment,
-        date: new Date().toISOString()
-      };
-      
-      this.comments.unshift(comment);
-      this.saveComments();
-      
-      // Reset form
-      this.newComment.nickname = '';
-      this.newComment.password = '';
-      this.newComment.comment = '';
-    },
-    
-    // Delete a comment with password verification
-    deleteComment(index) {
-      const password = prompt('비밀번호를 입력하세요:');
-      if (password === this.comments[index].password) {
-        this.comments.splice(index, 1);
-        this.saveComments();
-      } else if (password !== null) {
-        alert('비밀번호가 일치하지 않습니다.');
-      }
-    },
-    
-    // Save comments to localStorage
-    saveComments() {
-      localStorage.setItem('homeComments', JSON.stringify(this.comments));
-    },
-    
-    // Load comments from localStorage
-    loadComments() {
-      const savedComments = localStorage.getItem('homeComments');
-      if (savedComments) {
-        this.comments = JSON.parse(savedComments);
-      }
-    }
-  },
-  mounted() {
-    this.loadComments();
-  }
-});
-
-// Mount the Vue app
-app.mount("#app");

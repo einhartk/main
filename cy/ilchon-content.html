@@ -1,0 +1,314 @@
+<div class="box" style="width: 100%; max-width: 100%;">
+  <div class="box-header">
+    <div class="box-title">
+      <img src="image/mimi.PNG" class="mini-icon" alt="미니">
+      일촌평
+    </div>
+  </div>
+
+  <div class="box-content" style="width: 100%;">
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <p>처리 중...</p>
+      </div>
+    </div>
+
+    <!-- Ilchon Write Form -->
+    <div class="ilchon-write">
+      <div class="form-group">
+        <label>일촌평 작성</label>
+        <textarea id="ilchonTextarea" placeholder="일촌평을 남겨주세요! (최대 100자)" maxlength="100"></textarea>
+        <div class="char-count">
+          <span id="charCount">0</span>/100
+        </div>
+      </div>
+      <button type="button" class="submit-btn" id="ilchonSubmitBtn" onclick="submitIlchon()">
+        등록하기
+      </button>
+    </div>
+
+    <!-- Ilchon List -->
+    <div class="ilchon-container" id="ilchonContainer">
+      <!-- Ilchon entries will be loaded here -->
+    </div>
+  </div>
+</div>
+
+<style>
+.ilchon-write {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.ilchon-write .form-group {
+  margin-bottom: 10px;
+}
+
+.ilchon-write label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #333;
+  font-family: 'NeoDunggeunmo', sans-serif;
+}
+
+.ilchon-write textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 10px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-family: 'Hi Melody', cursive;
+  font-size: 1.1rem;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.ilchon-write textarea:focus {
+  outline: none;
+  border-color: #5c3ccf;
+}
+
+.ilchon-write .char-count {
+  text-align: right;
+  font-size: 0.9rem;
+  color: #999;
+  margin-top: 5px;
+}
+
+.ilchon-container {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ilchon-item {
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 10px;
+  transition: all 0.3s;
+}
+
+.ilchon-item:hover {
+  border-color: #5c3ccf;
+  box-shadow: 0 2px 8px rgba(92, 60, 207, 0.1);
+}
+
+.ilchon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ilchon-author {
+  font-weight: bold;
+  color: #5c3ccf;
+  font-family: 'NeoDunggeunmo', sans-serif;
+}
+
+.ilchon-date {
+  font-size: 0.9rem;
+  color: #999;
+}
+
+.ilchon-content {
+  font-family: 'Hi Melody', cursive;
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: #333;
+  word-wrap: break-word;
+}
+
+.ilchon-actions {
+  margin-top: 10px;
+  text-align: right;
+}
+
+.ilchon-actions button {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: 'NeoDunggeunmo', sans-serif;
+}
+
+.ilchon-actions button:hover {
+  background: #ff5252;
+}
+</style>
+
+<script>
+let ilchonRef = null;
+
+// Initialize ilchon
+function initializeIlchon() {
+  if (!window.db) {
+    console.log('Firebase not ready for ilchon');
+    return;
+  }
+  
+  ilchonRef = window.db.collection('cy-ilchon').orderBy('timestamp', 'desc');
+  setupIlchonListener();
+  setupCharCount();
+}
+
+// Character count
+function setupCharCount() {
+  const textarea = document.getElementById('ilchonTextarea');
+  const charCount = document.getElementById('charCount');
+  
+  if (textarea && charCount) {
+    textarea.addEventListener('input', function() {
+      charCount.textContent = this.value.length;
+    });
+  }
+}
+
+// Submit ilchon
+function submitIlchon() {
+  const textarea = document.getElementById('ilchonTextarea');
+  const submitBtn = document.getElementById('ilchonSubmitBtn');
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  
+  if (!textarea || !textarea.value.trim()) {
+    window.showModal('알림', '일촌평을 입력해주세요!', 'warning');
+    return;
+  }
+  
+  if (!window.db) {
+    alert('Firebase가 초기화되지 않았습니다.');
+    return;
+  }
+  
+  // Show loading
+  if (loadingOverlay) loadingOverlay.style.display = 'flex';
+  submitBtn.disabled = true;
+  
+  const content = textarea.value.trim();
+  const author = '방문자'; // Can be customized or from auth
+  
+  window.db.collection('cy-ilchon').add({
+    content: content,
+    author: author,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(() => {
+    textarea.value = '';
+    document.getElementById('charCount').textContent = '0';
+    window.showModal('성공', '일촌평이 등록되었습니다!', 'success');
+  })
+  .catch((error) => {
+    console.error('Error adding ilchon:', error);
+    window.showModal('오류', '일촌평 등록 중 오류가 발생했습니다.', 'error');
+  })
+  .finally(() => {
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+    submitBtn.disabled = false;
+  });
+}
+
+// Setup listener
+function setupIlchonListener() {
+  if (!ilchonRef) return;
+  
+  const container = document.getElementById('ilchonContainer');
+  if (!container) return;
+  
+  container.innerHTML = '<div style="text-align: center; padding: 40px; color: #5c3ccf;">일촌평을 불러오는 중...</div>';
+  
+  ilchonRef.onSnapshot((snapshot) => {
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (snapshot.empty) {
+      container.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">아직 일촌평이 없습니다.<br>첫 번째 일촌평을 남겨보세요!</div>';
+      return;
+    }
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      const entry = createIlchonEntry(doc.id, data);
+      container.appendChild(entry);
+    });
+  }, (error) => {
+    console.error('Ilchon listener error:', error);
+    if (container) {
+      container.innerHTML = '<div style="text-align: center; padding: 40px; color: red;">일촌평을 불러오는 중 오류가 발생했습니다.</div>';
+    }
+  });
+}
+
+// Create ilchon entry element
+function createIlchonEntry(id, data) {
+  const div = document.createElement('div');
+  div.className = 'ilchon-item';
+  div.setAttribute('data-id', id);
+  
+  const date = data.timestamp && data.timestamp.toDate 
+    ? data.timestamp.toDate().toLocaleString('ko-KR') 
+    : '방금 전';
+  
+  div.innerHTML = `
+    <div class="ilchon-header">
+      <span class="ilchon-author">${data.author || '방문자'}</span>
+      <span class="ilchon-date">${date}</span>
+    </div>
+    <div class="ilchon-content">${escapeHtml(data.content)}</div>
+    <div class="ilchon-actions">
+      <button onclick="deleteIlchon('${id}')">삭제</button>
+    </div>
+  `;
+  
+  return div;
+}
+
+// Delete ilchon
+async function deleteIlchon(id) {
+  const result = await window.showConfirm('확인', '정말 삭제하시겠습니까?', 'warning');
+  if (!result.isConfirmed) return;
+  
+  if (!window.db) {
+    window.showModal('오류', 'Firebase가 초기화되지 않았습니다.', 'error');
+    return;
+  }
+  
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) loadingOverlay.style.display = 'flex';
+  
+  window.db.collection('cy-ilchon').doc(id).delete()
+    .then(() => {
+      window.showModal('성공', '일촌평이 삭제되었습니다.', 'success');
+    })
+    .catch((error) => {
+      console.error('Error deleting ilchon:', error);
+      window.showModal('오류', '삭제 중 오류가 발생했습니다.', 'error');
+    })
+    .finally(() => {
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+    });
+}
+
+// Escape HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Initialize on load
+document.addEventListener('firebaseReady', initializeIlchon);
+
+if (window.firebaseInitialized && window.db) {
+  setTimeout(initializeIlchon, 100);
+}
+</script>
