@@ -21,6 +21,29 @@ const state = {
   jobAbbreviations: {}
 };
 
+// 파티 평균 전투력 계산 헬퍼 함수
+function calculatePartyAverageCombatPower(party) {
+  if (!party || !Array.isArray(party.members)) return 0;
+
+  let totalCombatPower = 0;
+  let memberCount = 0;
+
+  for (const member of party.members) {
+    if (!member) continue;
+
+    const details = typeof window.getCharacterDetailsFromExpedition === 'function'
+      ? window.getCharacterDetailsFromExpedition(member.name || member.id)
+      : null;
+
+    if (details?.combatPower) {
+      totalCombatPower += parseCompareNumber(details.combatPower);
+      memberCount++;
+    }
+  }
+
+  return memberCount > 0 ? totalCombatPower / memberCount : 0;
+}
+
 
 // 레이드 데이터 로드
 async function loadRaidsData() {
@@ -3094,78 +3117,89 @@ async function autoAssign() {
   let assignedCount = 0;
   let supportCount = 0;
 
-  // 각 파티에 캐릭터 배치
-  parties.forEach(party => {
-    // 클리어된 파티는 건너뛰기
-    if (party.cleared) {
-      return;
-    }
-    
-    // 유틸리티 함수: 원정대 슬롯 인덱스 가져오기
-    const getUsedExpeditionSlotIndices = () => {
-      const used = new Set();
-      (party.members || []).forEach(m => {
-        if (!m) return;
-        const idx = Constraints.getExpeditionSlotIndexByCharacterName(m.name);
-        if (idx !== null && idx !== undefined) used.add(idx);
+  // 전투력 기준 정렬 (높은 전투력 순)
+  supports.sort((a, b) => parseCompareNumber(b.combatPower || '0') - parseCompareNumber(a.combatPower || '0'));
+  dps.sort((a, b) => parseCompareNumber(b.combatPower || '0') - parseCompareNumber(a.combatPower || '0'));
+
+  // 각 파티에 캐릭터 배치 (전투력 균형 고려)
+  const activeParties = parties.filter(p => !p.cleared);
+
+  // 유틸리티 함수: 원정대 슬롯 인덱스 가져오기
+  const getUsedExpeditionSlotIndices = (party, targetIndex) => {
+    const used = new Set();
+    const members = Array.isArray(party.members) ? party.members : [];
+    const isSplitParty = (party.size === 8) && (targetIndex !== null && targetIndex !== undefined);
+    const start = isSplitParty ? (targetIndex < 4 ? 0 : 4) : 0;
+    const end = isSplitParty ? start + 4 : members.length;
+    members.slice(start, end).forEach(m => {
+      if (!m) return;
+      const idx = Constraints.getExpeditionSlotIndexByCharacterName(m.name);
+      if (idx !== null && idx !== undefined) used.add(idx);
+    });
+    return used;
+  };
+
+  // 서폿 배치 (전투력 균형 고려)
+  for (const party of activeParties) {
+    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1);
+    let currentSupports = 0;
+
+    for (let i = 0; i < party.size && currentSupports < maxSupports && supports.length > 0; i++) {
+      if (party.members[i]) continue;
+
+      const usedSlots = getUsedExpeditionSlotIndices(party, i);
+      let pickIndex = supports.findIndex(c => {
+        const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name);
+        return slotIdx !== null && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(party, c, null, i).valid;
       });
-      return used;
-    };
-    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1); // 4인 1명, 8인 2명
-    // 서폿 배치 (제약 조건 확인) - 빈 슬롯만 채움
-    for (let i = 0; i < party.size && supportCount < maxSupports && supports.length > 0; i++) {
-      if (party.members[i]) continue;
-      // 유효한 캐릭터가 나올 때까지 스킵
-      while (supports.length > 0) {
-        const usedSlots = getUsedExpeditionSlotIndices();
-        let pickIndex = supports.findIndex(c => {
-          const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name);
-          return slotIdx !== null && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(party, c).valid;
-        });
-        if (pickIndex === -1) {
-          pickIndex = supports.findIndex(c => Constraints.canAddCharacterToParty(party, c).valid);
-        }
-        if (pickIndex === -1) {
-          break;
-        }
-        const picked = supports.splice(pickIndex, 1)[0];
-        // 공격대에는 캐릭터 ID와 이름 저장
-        party.members[i] = { 
-          id: picked.id,
-          name: picked.name 
-        };
-        supportCount++;
-        assignedCount++;
-        break;
+      if (pickIndex === -1) {
+        pickIndex = supports.findIndex(c => Constraints.canAddCharacterToParty(party, c, null, i).valid);
       }
+      if (pickIndex === -1) continue;
+
+      const picked = supports.splice(pickIndex, 1)[0];
+      party.members[i] = { id: picked.id, name: picked.name };
+      supportCount++;
+      assignedCount++;
+      currentSupports++;
     }
-      
-    // DPS 배치 (제약 조건 확인) - 빈 슬롯만 채움
-    for (let i = 0; i < party.size && dps.length > 0; i++) {
-      if (party.members[i]) continue;
-      while (dps.length > 0) {
-        const usedSlots = getUsedExpeditionSlotIndices();
-        let pickIndex = dps.findIndex(c => {
-          const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name);
-          return slotIdx !== null && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(party, c).valid;
-        });
-        if (pickIndex === -1) {
-          pickIndex = dps.findIndex(c => Constraints.canAddCharacterToParty(party, c).valid);
-        }
-        if (pickIndex === -1) {
-          break;
-        }
-        const picked = dps.splice(pickIndex, 1)[0];
-        // 공격대에는 캐릭터 ID와 이름 저장
-        party.members[i] = { 
-          id: picked.id,
-          name: picked.name 
-        };
-        assignedCount++;
-        break;
-      }
+  }
+
+  // DPS 배치 (전투력 균형 고려 - 가장 낮은 평균 전투력 파티에 높은 전투력 캐릭터 배정)
+  while (dps.length > 0) {
+    const activePartiesWithSlots = activeParties.filter(p => p.members.some(m => m === null));
+    if (activePartiesWithSlots.length === 0) break;
+
+    // 각 파티의 평균 전투력 계산
+    const partyStats = activePartiesWithSlots.map(p => ({
+      party: p,
+      avgCp: calculatePartyAverageCombatPower(p),
+      emptySlotIndex: p.members.findIndex(m => m === null)
+    }));
+
+    // 평균 전투력이 가장 낮은 파티 찾기
+    partyStats.sort((a, b) => a.avgCp - b.avgCp);
+    const target = partyStats[0];
+    const targetParty = target.party;
+    const targetIndex = target.emptySlotIndex;
+
+    const usedSlots = getUsedExpeditionSlotIndices(targetParty, targetIndex);
+    let pickIndex = dps.findIndex(c => {
+      const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name);
+      return slotIdx !== null && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(targetParty, c, null, targetIndex).valid;
+    });
+    if (pickIndex === -1) {
+      pickIndex = dps.findIndex(c => Constraints.canAddCharacterToParty(targetParty, c, null, targetIndex).valid);
     }
-  });
+    if (pickIndex === -1) {
+      dps.shift(); // 배정 불가능한 캐릭터 제거
+      continue;
+    }
+
+    const picked = dps.splice(pickIndex, 1)[0];
+    targetParty.members[targetIndex] = { id: picked.id, name: picked.name };
+    assignedCount++;
+  }
 
   // UI 업데이트
   renderRaidParties();
@@ -3303,13 +3337,25 @@ async function balancedAssign() {
 
   // 각 파티에 균등하게 분배 (기존 배치 유지)
   let assignedCount = 0;
-  // 1) 서폿: 각 파티의 "부족한 서폿"만 채움
-  parties.forEach(party => {
-    // 클리어된 파티는 건너뛰기
-    if (party.cleared) {
-      return;
-    }
-    
+  const activeParties = parties.filter(p => !p.cleared);
+
+  // 유틸리티 함수: 원정대 슬롯 인덱스 가져오기
+  const getUsedExpeditionSlotIndices = (party, targetIndex) => {
+    const used = new Set();
+    const members = Array.isArray(party.members) ? party.members : [];
+    const isSplitParty = (party.size === 8) && (targetIndex !== null && targetIndex !== undefined);
+    const start = isSplitParty ? (targetIndex < 4 ? 0 : 4) : 0;
+    const end = isSplitParty ? start + 4 : members.length;
+    members.slice(start, end).forEach(m => {
+      if (!m) return;
+      const idx = Constraints.getExpeditionSlotIndexByCharacterName(m.name);
+      if (idx !== null && idx !== undefined) used.add(idx);
+    });
+    return used;
+  };
+
+  // 1) 서폿: 각 파티의 "부족한 서폿"만 채움 (전투력 균형 고려)
+  for (const party of activeParties) {
     if (!Array.isArray(party.members)) party.members = [];
     if (party.members.length < party.size) {
       party.members = party.members.concat(Array(party.size - party.members.length).fill(null));
@@ -3317,120 +3363,126 @@ async function balancedAssign() {
       party.members = party.members.slice(0, party.size);
     }
 
-    const existingSupports = party.members.filter(m => m?.role === 'support').length;
-    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1); // 4인 1명, 8인 2명
-    const supportsNeeded = Math.max(0, maxSupports - existingSupports);
-    if (supportsNeeded <= 0) return;
-
-    let placedSupports = 0;
-    for (let i = 0; i < party.size && placedSupports < supportsNeeded && supports.length > 0; i++) {
-      if (party.members[i]) continue;
-
-      const usedSlots = new Set();
-      party.members.forEach(m => {
-        if (!m) return;
-        const idx = Constraints.getExpeditionSlotIndexByCharacterName(m.name);
-        if (idx !== null && idx !== undefined) usedSlots.add(idx);
-      });
-
-      let pickIndex = supports.findIndex(c => {
-        const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name);
-        return slotIdx !== null && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(party, c).valid;
-      });
-      if (pickIndex === -1) {
-        pickIndex = supports.findIndex(c => Constraints.canAddCharacterToParty(party, c).valid);
+    const fillSupports = (start, end) => {
+      const maxSupports = party.maxSupports ?? 1;
+      let currentSupports = 0;
+      for (let idx = start; idx < end; idx++) {
+        const m = party.members[idx];
+        if (!m) continue;
+        const details = typeof window.getCharacterDetailsFromExpedition === 'function'
+          ? window.getCharacterDetailsFromExpedition(m.name || m.id)
+          : null;
+        if (details?.role === 'support') currentSupports++;
       }
-      if (pickIndex === -1) break;
+      const supportsNeeded = Math.max(0, maxSupports - currentSupports);
+      if (supportsNeeded <= 0) return 0;
 
-      const picked = supports.splice(pickIndex, 1)[0];
-      const oldMember = party.members[i];
-      const newMember = {
-        id: picked.id,
-        name: picked.name
-      };
-      
-      // 히스토리 기록
-      if (typeof recordHistory === 'function') {
-        recordHistory(
-          'add',
-          {
-            type: 'character',
-            id: `${party.id}_slot${i}`,
-            path: `party.members[${i}]`
-          },
-          oldMember,
-          newMember,
-          `균등 배치: ${party.id} 파티 ${i}번 슬롯에 ${picked.name} 캐릭터 추가`
-        );
+      let placedSupports = 0;
+      for (let i = start; i < end && placedSupports < supportsNeeded && supports.length > 0; i++) {
+        if (party.members[i]) continue;
+
+        const usedSlots = getUsedExpeditionSlotIndices(party, i);
+        let pickIndex = supports.findIndex(c => {
+          const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name);
+          return slotIdx !== null && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(party, c, null, i).valid;
+        });
+        if (pickIndex === -1) {
+          pickIndex = supports.findIndex(c => Constraints.canAddCharacterToParty(party, c, null, i).valid);
+        }
+        if (pickIndex === -1) break;
+
+        const picked = supports.splice(pickIndex, 1)[0];
+        const oldMember = party.members[i];
+        const newMember = {
+          id: picked.id,
+          name: picked.name
+        };
+
+        // 히스토리 기록
+        if (typeof recordHistory === 'function') {
+          recordHistory(
+            'add',
+            {
+              type: 'character',
+              id: `${party.id}_slot${i}`,
+              path: `party.members[${i}]`
+            },
+            oldMember,
+            newMember,
+            `균등 배치: ${party.id} 파티 ${i}번 슬롯에 ${picked.name} 캐릭터 추가`
+          );
+        }
+
+        party.members[i] = newMember;
+        assignedCount++;
+        placedSupports++;
       }
-      
-      party.members[i] = newMember;
-      assignedCount++;
-      placedSupports++;
+      return placedSupports;
+    };
+
+    if (party.size === 8) {
+      fillSupports(0, 4);
+      fillSupports(4, 8);
+    } else {
+      fillSupports(0, 4);
     }
-  });
+  }
 
-  // 2) DPS: 남은 빈 슬롯을 라운드로빈으로 채움 (기존 배치 유지)
-  let safety = 0;
-  while (dps.length > 0 && safety < 5000) {
-    safety++;
-    let placedThisRound = 0;
+  // 2) DPS: 전투력 균형 고려 - 가장 낮은 평균 전투력 파티에 높은 전투력 캐릭터 배정
+  while (dps.length > 0) {
+    const activePartiesWithSlots = activeParties.filter(p => p.members.some(m => m === null));
+    if (activePartiesWithSlots.length === 0) break;
 
-    for (const party of parties) {
-      // 클리어된 파티는 건너뛰기
-      if (party.cleared) {
-        continue;
-      }
-      
-      const emptyIndex = (party.members || []).findIndex(m => m === null);
-      if (emptyIndex === -1) continue;
+    // 각 파티의 평균 전투력 계산
+    const partyStats = activePartiesWithSlots.map(p => ({
+      party: p,
+      avgCp: calculatePartyAverageCombatPower(p),
+      emptySlotIndex: p.members.findIndex(m => m === null)
+    }));
 
-      const usedSlots = new Set();
-      (party.members || []).forEach(m => {
-        if (!m) return;
-        const idx = Constraints.getExpeditionSlotIndexByCharacterName(m.name);
-        if (idx !== null && idx !== undefined) usedSlots.add(idx);
-      });
+    // 평균 전투력이 가장 낮은 파티 찾기
+    partyStats.sort((a, b) => a.avgCp - b.avgCp);
+    const target = partyStats[0];
+    const targetParty = target.party;
+    const targetIndex = target.emptySlotIndex;
 
-      let pickIndex = dps.findIndex(c => {
-        const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name);
-        return slotIdx !== null && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(party, c).valid;
-      });
-      if (pickIndex === -1) {
-        pickIndex = dps.findIndex(c => Constraints.canAddCharacterToParty(party, c).valid);
-      }
-      if (pickIndex === -1) continue;
-
-      const picked = dps.splice(pickIndex, 1)[0];
-      const oldMember = party.members[emptyIndex];
-      const newMember = {
-        id: picked.id,
-        name: picked.name
-      };
-      
-      // 히스토리 기록
-      if (typeof recordHistory === 'function') {
-        recordHistory(
-          'add',
-          {
-            type: 'character',
-            id: `${party.id}_slot${emptyIndex}`,
-            path: `party.members[${emptyIndex}]`
-          },
-          oldMember,
-          newMember,
-          `균등 배치: ${party.id} 파티 ${emptyIndex}번 슬롯에 ${picked.name} 캐릭터 추가`
-        );
-      }
-      
-      party.members[emptyIndex] = newMember;
-      assignedCount++;
-      placedThisRound++;
-
-      if (dps.length === 0) break;
+    const usedSlots = getUsedExpeditionSlotIndices(targetParty, targetIndex);
+    let pickIndex = dps.findIndex(c => {
+      const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name);
+      return slotIdx !== null && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(targetParty, c, null, targetIndex).valid;
+    });
+    if (pickIndex === -1) {
+      pickIndex = dps.findIndex(c => Constraints.canAddCharacterToParty(targetParty, c, null, targetIndex).valid);
+    }
+    if (pickIndex === -1) {
+      dps.shift(); // 배정 불가능한 캐릭터 제거
+      continue;
     }
 
-    if (placedThisRound === 0) break;
+    const picked = dps.splice(pickIndex, 1)[0];
+    const oldMember = targetParty.members[targetIndex];
+    const newMember = {
+      id: picked.id,
+      name: picked.name
+    };
+
+    // 히스토리 기록
+    if (typeof recordHistory === 'function') {
+      recordHistory(
+        'add',
+        {
+          type: 'character',
+          id: `${targetParty.id}_slot${targetIndex}`,
+          path: `party.members[${targetIndex}]`
+        },
+        oldMember,
+        newMember,
+        `균등 배치: ${targetParty.id} 파티 ${targetIndex}번 슬롯에 ${picked.name} 캐릭터 추가`
+      );
+    }
+
+    targetParty.members[targetIndex] = newMember;
+    assignedCount++;
   }
 
   // UI 업데이트
@@ -3469,6 +3521,339 @@ async function balancedAssign() {
     }
   }
 }
+
+async function randomGroupAssignByExpeditionSplit() {
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    window.modalManager.showAlert({
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
+    });
+    return;
+  }
+
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('파티 랜덤 뽑기');
+  }
+
+  if (!acquired) return;
+
+  const shuffleInPlace = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
+  const getSupportCountInSlot = (slotIndex) => {
+    const slot = state.expeditionSlots?.[slotIndex];
+    if (!Array.isArray(slot)) return 0;
+    return slot.filter(c => c && c.role === 'support').length;
+  };
+
+  const splitExpeditionSlots = () => {
+    const indices = Array.from({ length: 8 }, (_, i) => i);
+    const heavy = indices.filter(i => getSupportCountInSlot(i) >= 5);
+
+    if (heavy.length > 2) {
+      return { ok: false, message: `서폿 5명 이상 원정대가 ${heavy.length}개라서 4/4 분할 시 서로 겹치지 않게 나눌 수 없습니다.` };
+    }
+
+    const remaining = indices.filter(i => !heavy.includes(i));
+    shuffleInPlace(remaining);
+
+    const groupA = [];
+    const groupB = [];
+
+    if (heavy.length === 2) {
+      groupA.push(heavy[0]);
+      groupB.push(heavy[1]);
+    } else if (heavy.length === 1) {
+      (Math.random() < 0.5 ? groupA : groupB).push(heavy[0]);
+    }
+
+    while (groupA.length < 4 && remaining.length > 0) groupA.push(remaining.pop());
+    while (groupB.length < 4 && remaining.length > 0) groupB.push(remaining.pop());
+
+    if (groupA.length !== 4 || groupB.length !== 4) {
+      return { ok: false, message: '원정대 4/4 분할에 실패했습니다.' };
+    }
+
+    const aHeavyCount = groupA.filter(i => getSupportCountInSlot(i) >= 5).length;
+    const bHeavyCount = groupB.filter(i => getSupportCountInSlot(i) >= 5).length;
+    if (aHeavyCount > 1 || bHeavyCount > 1) {
+      return { ok: false, message: '서폿 5명 이상 원정대가 같은 그룹에 포함되어 분할에 실패했습니다.' };
+    }
+
+    return { ok: true, groupA, groupB };
+  };
+
+  const collectCharactersFromSlots = (slotIndices) => {
+    const chars = [];
+    slotIndices.forEach(idx => {
+      const slot = state.expeditionSlots?.[idx];
+      if (!Array.isArray(slot)) return;
+      slot.forEach(c => {
+        if (c) chars.push(c);
+      });
+    });
+    return chars;
+  };
+
+  try {
+    const parties = getCurrentTabParties();
+    if (!Array.isArray(parties) || parties.length === 0) {
+      window.modalManager.showAlert({
+        title: '알림',
+        message: '먼저 공격대 파티를 생성해주세요.'
+      });
+      return;
+    }
+
+    const activeParties = parties.filter(p => !p?.cleared);
+    const invalidParty = activeParties.find(p => {
+      const size = p?.size || 0;
+      return size !== 4 && size !== 8;
+    });
+    if (invalidParty) {
+      window.modalManager.showAlert({
+        title: '알림',
+        message: '파티 랜덤 뽑기는 4인/8인 파티에만 사용할 수 있습니다.'
+      });
+      return;
+    }
+
+    const split = splitExpeditionSlots();
+    if (!split.ok) {
+      window.modalManager.showAlert({
+        title: '알림',
+        message: split.message
+      });
+      return;
+    }
+
+    const half = Math.ceil(activeParties.length / 2);
+    const groupAParties = activeParties.slice(0, half);
+    const groupBParties = activeParties.slice(half);
+
+    const assignForParties = (targetParties, slotIndices) => {
+      const candidates = collectCharactersFromSlots(slotIndices);
+
+      // 전투력 기준 정렬 (높은 전투력 순)
+      const supports = candidates.filter(c => c.role === 'support').sort((a, b) => parseCompareNumber(b.combatPower || '0') - parseCompareNumber(a.combatPower || '0'));
+      const dps = candidates.filter(c => c.role !== 'support').sort((a, b) => parseCompareNumber(b.combatPower || '0') - parseCompareNumber(a.combatPower || '0'));
+
+      let assignedCount = 0;
+
+      // 유틸리티 함수: 원정대 슬롯 인덱스 가져오기
+      const getUsedExpeditionSlotIndices = (party, targetIndex) => {
+        const used = new Set();
+        const members = Array.isArray(party.members) ? party.members : [];
+        const isSplitParty = (party.size === 8) && (targetIndex !== null && targetIndex !== undefined);
+        const start = isSplitParty ? (targetIndex < 4 ? 0 : 4) : 0;
+        const end = isSplitParty ? start + 4 : members.length;
+        members.slice(start, end).forEach(m => {
+          if (!m) return;
+          const idx = Constraints.getExpeditionSlotIndexByCharacterName(m.name || m.id);
+          if (idx !== null && idx !== undefined) used.add(idx);
+        });
+        return used;
+      };
+
+      // 서폿 배치 (전투력 균형 고려)
+      for (const party of targetParties) {
+        if (!party || party.cleared) return;
+        if (!Array.isArray(party.members)) party.members = [];
+        if (party.members.length < party.size) {
+          party.members = party.members.concat(Array(party.size - party.members.length).fill(null));
+        } else if (party.members.length > party.size) {
+          party.members = party.members.slice(0, party.size);
+        }
+
+        const fillSupports = (start, end) => {
+          const maxSupports = party.maxSupports ?? 1;
+          let currentSupports = 0;
+          for (let idx = start; idx < end; idx++) {
+            const m = party.members[idx];
+            if (!m) continue;
+            const details = typeof window.getCharacterDetailsFromExpedition === 'function'
+              ? window.getCharacterDetailsFromExpedition(m.name || m.id)
+              : null;
+            if (details?.role === 'support') currentSupports++;
+          }
+          const supportsNeeded = Math.max(0, maxSupports - currentSupports);
+          if (supportsNeeded <= 0) return 0;
+
+          let placedSupports = 0;
+          for (let i = start; i < end && placedSupports < supportsNeeded && supports.length > 0; i++) {
+            if (party.members[i]) continue;
+
+            const usedSlots = getUsedExpeditionSlotIndices(party, i);
+            let pickIndex = supports.findIndex(c => {
+              const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name || c.id);
+              return slotIdx !== null && slotIndices.includes(slotIdx) && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(party, c, null, i).valid;
+            });
+            if (pickIndex === -1) {
+              pickIndex = supports.findIndex(c => Constraints.canAddCharacterToParty(party, c, null, i).valid);
+            }
+            if (pickIndex === -1) break;
+
+            const picked = supports.splice(pickIndex, 1)[0];
+            party.members[i] = { id: picked.id, name: picked.name };
+            currentSupports++;
+            assignedCount++;
+            placedSupports++;
+          }
+          return placedSupports;
+        };
+
+        if (party.size === 8) {
+          fillSupports(0, 4);
+          fillSupports(4, 8);
+        } else {
+          fillSupports(0, 4);
+        }
+      }
+
+      // DPS 배치 (전투력 균형 고려 - 가장 낮은 평균 전투력 파티에 높은 전투력 캐릭터 배정)
+      while (dps.length > 0) {
+        const activePartiesWithSlots = targetParties.filter(p => p.members.some(m => m === null));
+        if (activePartiesWithSlots.length === 0) break;
+
+        // 각 파티의 평균 전투력 계산
+        const partyStats = activePartiesWithSlots.map(p => ({
+          party: p,
+          avgCp: calculatePartyAverageCombatPower(p),
+          emptySlotIndex: p.members.findIndex(m => m === null)
+        }));
+
+        // 평균 전투력이 가장 낮은 파티 찾기
+        partyStats.sort((a, b) => a.avgCp - b.avgCp);
+        const target = partyStats[0];
+        const targetParty = target.party;
+        const targetIndex = target.emptySlotIndex;
+
+        const usedSlots = getUsedExpeditionSlotIndices(targetParty, targetIndex);
+        let pickIndex = dps.findIndex(c => {
+          const slotIdx = Constraints.getExpeditionSlotIndexByCharacterName(c.name || c.id);
+          return slotIdx !== null && slotIndices.includes(slotIdx) && !usedSlots.has(slotIdx) && Constraints.canAddCharacterToParty(targetParty, c, null, targetIndex).valid;
+        });
+        if (pickIndex === -1) {
+          pickIndex = dps.findIndex(c => Constraints.canAddCharacterToParty(targetParty, c, null, targetIndex).valid);
+        }
+        if (pickIndex === -1) {
+          dps.shift(); // 배정 불가능한 캐릭터 제거
+          continue;
+        }
+
+        const picked = dps.splice(pickIndex, 1)[0];
+        targetParty.members[targetIndex] = { id: picked.id, name: picked.name };
+        assignedCount++;
+      }
+
+      return assignedCount;
+    };
+
+    const assignedA = assignForParties(groupAParties, split.groupA);
+    const assignedB = assignForParties(groupBParties, split.groupB);
+
+    renderRaidParties();
+    renderExpedition();
+    scheduleAutoSave();
+
+    window.modalManager.showAlert({
+      title: '파티 랜덤 뽑기 완료',
+      message: `원정대 4/4 분할 후 랜덤 배치를 완료했습니다.\nA그룹: ${split.groupA.map(i => i + 1).join(', ')}\nB그룹: ${split.groupB.map(i => i + 1).join(', ')}\n배치된 캐릭터 수: ${assignedA + assignedB}`
+    });
+  } finally {
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('파티 랜덤 뽑기');
+    }
+  }
+}
+
+window.randomGroupAssignByExpeditionSplit = randomGroupAssignByExpeditionSplit;
+
+// 전체 공격대 초기화 기능
+async function clearAllRaidCharacters() {
+  // 작업 잠금 확인
+  if (window.operationLock && typeof window.operationLock.isLocked === 'function' && window.operationLock.isLocked()) {
+    window.modalManager.showAlert({
+      title: '작업 중',
+      message: `현재 ${window.operationLock.getCurrentOperation()} 중입니다. 잠시 후 다시 시도해주세요.`
+    });
+    return;
+  }
+
+  // 잠금 획득 시도
+  let acquired = true;
+  if (window.operationLock && typeof window.operationLock.acquire === 'function') {
+    acquired = await window.operationLock.acquire('전체 공격대 초기화');
+  }
+
+  if (!acquired) return;
+
+  try {
+    const parties = getCurrentTabParties();
+    if (!Array.isArray(parties) || parties.length === 0) {
+      window.modalManager.showAlert({
+        title: '알림',
+        message: '초기화할 공격대가 없습니다.'
+      });
+      return;
+    }
+
+    // 확인 모달
+    const result = await window.modalManager.showConfirm({
+      title: '전체 공격대 초기화',
+      message: `현재 레이드의 모든 파티에서 캐릭터를 제거합니다.\n\n파티 슬롯은 유지되고 캐릭터만 삭제됩니다.\n정말 초기화하시겠습니까?`,
+      confirmText: '초기화',
+      cancelText: '취소'
+    });
+
+    if (!result) return;
+
+    // 모든 파티의 캐릭터 제거
+    for (const party of parties) {
+      if (!party || !Array.isArray(party.members)) continue;
+
+      const oldMembers = [...party.members];
+      party.members = Array(party.size || 4).fill(null);
+
+      // 히스토리 기록
+      if (typeof recordHistory === 'function') {
+        await recordHistory(
+          'modify',
+          {
+            type: 'party',
+            id: party.id,
+            path: `party.members`
+          },
+          oldMembers,
+          party.members,
+          `${party.name || party.id} 파티 캐릭터 전체 제거`
+        );
+      }
+    }
+
+    // UI 업데이트
+    renderRaidParties();
+    renderExpedition();
+    scheduleAutoSave();
+
+    window.modalManager.showAlert({
+      title: '초기화 완료',
+      message: '모든 파티의 캐릭터가 제거되었습니다.'
+    });
+  } finally {
+    if (window.operationLock && typeof window.operationLock.release === 'function') {
+      window.operationLock.release('전체 공격대 초기화');
+    }
+  }
+}
+
+window.clearAllRaidCharacters = clearAllRaidCharacters;
 
 // === 클리어 체크 기능 ===
 

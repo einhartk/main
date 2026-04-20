@@ -366,6 +366,12 @@ function renderRaidPartiesInternal(forceRender = false) {
 
             </button>
 
+            <button class="btn btn-sm btn-danger" onclick="clearAllRaidCharacters()" style="font-size: 0.8rem;">
+
+              <i class="bi bi-trash me-1"></i>전체 초기화
+
+            </button>
+
           </div>
 
         </div>

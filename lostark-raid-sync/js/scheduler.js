@@ -1728,14 +1728,14 @@ function startScheduleReminder() {
   
   // Check every 30 seconds
   scheduleReminderInterval = setInterval(checkScheduleReminder, SCHEDULE_CHECK_INTERVAL);
-  console.log(`[SCHEDULE REMINDER] Started checking every ${SCHEDULE_CHECK_INTERVAL/1000} seconds`);
+  //console.log(`[SCHEDULE REMINDER] Started checking every ${SCHEDULE_CHECK_INTERVAL/1000} seconds`);
 }
 
 function stopScheduleReminder() {
   if (scheduleReminderInterval) {
     clearInterval(scheduleReminderInterval);
     scheduleReminderInterval = null;
-    console.log('[SCHEDULE REMINDER] Stopped');
+    //console.log('[SCHEDULE REMINDER] Stopped');
   }
   
   // Clean up audio cache

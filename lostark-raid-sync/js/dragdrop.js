@@ -339,7 +339,7 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
 
   try {
     const currentParties = getCurrentTabParties();
-    const sourceValidation = Constraints.canAddCharacterToParty(targetParty, sourceCharacterDetails, currentParties);
+    const sourceValidation = Constraints.canAddCharacterToParty(targetParty, sourceCharacterDetails, currentParties, targetSlotIndex);
     
     let targetValidation = { valid: true, message: '' };
     if (targetCharacter) {
@@ -352,7 +352,7 @@ async function handleRaidToRaidDrop(draggedData, targetPartyId, targetSlotIndex,
       }
       
       if (targetCharacterDetails) {
-        targetValidation = Constraints.canAddCharacterToParty(sourceParty, targetCharacterDetails, currentParties);
+        targetValidation = Constraints.canAddCharacterToParty(sourceParty, targetCharacterDetails, currentParties, sourceSlotIndex);
       }
     }
 
@@ -503,7 +503,7 @@ async function handleExpeditionToRaidDrop(charId, targetPartyId, targetSlotIndex
 
   // 제약 조건 확인
   const currentParties = getCurrentTabParties();
-  const partyValidation = Constraints.canAddCharacterToParty(targetParty, character, currentParties);
+  const partyValidation = Constraints.canAddCharacterToParty(targetParty, character, currentParties, targetSlotIndex);
 
   if (!partyValidation.valid) {
     

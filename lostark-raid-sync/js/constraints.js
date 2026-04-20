@@ -88,15 +88,20 @@ const Constraints = {
   },
 
   // 원정대 슬롯당 1캐릭 제약: "공격대(=party.id)" 단위로만 적용
-  exceedsOneRaidOneExpeditionForCharacter: function(characterName, party) {
+  exceedsOneRaidOneExpeditionForCharacter: function(characterName, party, targetIndex = null) {
     const slotIndex = this.getExpeditionSlotIndexByCharacterName(characterName);
     if (slotIndex === null) return false;
     if (!party) return false;
 
     let usedCount = 0;
-    
-    // 현재 파티의 멤버 중 같은 원정대 슬롯의 캐릭터 수 확인
-    party.members.forEach(member => {
+
+    const members = Array.isArray(party.members) ? party.members : [];
+    const isSplitParty = (party.size === 8) && (targetIndex !== null && targetIndex !== undefined);
+    const start = isSplitParty ? (targetIndex < 4 ? 0 : 4) : 0;
+    const end = isSplitParty ? start + 4 : members.length;
+
+    // 현재 파티(또는 8인인 경우 해당 4인 파티 구간)의 멤버 중 같은 원정대 슬롯의 캐릭터 수 확인
+    members.slice(start, end).forEach(member => {
       if (!member) return;
       const memberSlotIndex = this.getExpeditionSlotIndexByCharacterName(member.name);
       if (memberSlotIndex === slotIndex) usedCount++;
@@ -144,7 +149,7 @@ const Constraints = {
   },
 
   // 캐릭터 배치 가능 여부 확인
-  canAddCharacterToParty: function(party, character, currentParties = null) {
+  canAddCharacterToParty: function(party, character, currentParties = null, targetIndex = null) {
     const currentCount = this.getCharacterUsageCount(character.name, currentParties);
 
     if (currentCount >= 4) {
@@ -159,7 +164,7 @@ const Constraints = {
       return { valid: false, reason: 'same_raid_same_character', message };
     }
 
-    const expeditionExceeded = this.exceedsOneRaidOneExpeditionForCharacter(character.name, party);
+    const expeditionExceeded = this.exceedsOneRaidOneExpeditionForCharacter(character.name, party, targetIndex);
 
     if (expeditionExceeded) {
       return { valid: false, reason: 'one_raid_one_expedition', message: '1원정대 슬롯당 1캐릭터만 사용할 수 있습니다.' };
@@ -181,13 +186,33 @@ const Constraints = {
       return { valid: false, reason: 'cp_requirement', message };
     }
 
-    // 서폿 제한 확인 (4인 1명, 8인 2명)
-    const maxSupports = party.size === 8 ? 2 : (party.maxSupports ?? 1);
-    const supportExceeded = this.exceedsSupportLimit(party, character, maxSupports);
+    // 서폿 제한 확인 (기본: party.maxSupports, 8인은 4/4 분리 시 4인 기준으로 계산)
+    const isSplitParty = (party.size === 8) && (targetIndex !== null && targetIndex !== undefined);
+    const maxSupports = isSplitParty ? 1 : (party.maxSupports ?? 1);
+    const supportExceeded = this.exceedsSupportLimit(party, character, maxSupports, targetIndex);
 
     if (supportExceeded) {
       const message = `이 파티에는 서포터를 ${maxSupports}명만 배치할 수 있습니다.`;
       return { valid: false, reason: 'support_limit', message };
+    }
+
+    const getDetails = typeof window.getCharacterDetailsFromExpedition === 'function' ? window.getCharacterDetailsFromExpedition : null;
+    const newClassName = (character.className || (getDetails ? getDetails(character.name || character.id)?.className : null) || '').toString().trim();
+    if (newClassName) {
+      const members = Array.isArray(party.members) ? party.members : [];
+      const checkSplit = (party.size === 8) && (targetIndex !== null && targetIndex !== undefined);
+      const start = checkSplit ? (targetIndex < 4 ? 0 : 4) : 0;
+      const end = checkSplit ? start + 4 : members.length;
+      const hasSameClass = members.slice(start, end).some(m => {
+        if (!m) return false;
+        const details = getDetails ? getDetails(m.name || m.id) : null;
+        const className = (details?.className || '').toString().trim();
+        return className && className === newClassName;
+      });
+      if (hasSameClass) {
+        const message = `이 파티에는 동일 직업(${newClassName})을 중복 배치할 수 없습니다.`;
+        return { valid: false, reason: 'duplicate_job', message };
+      }
     }
 
     const successMessage = '제약 조건을 모두 만족합니다.';
@@ -195,11 +220,15 @@ const Constraints = {
   },
 
   // 서폿 제한 확인 (maxSupports: 4인 1, 8인 2). 파티 멤버는 { id, name }만 있으므로 원정대 상세에서 role 조회
-  exceedsSupportLimit: function(party, newCharacter = null, maxSupports = null) {
-    const limit = maxSupports != null ? maxSupports : (party.size === 8 ? 2 : (party.maxSupports ?? 1));
+  exceedsSupportLimit: function(party, newCharacter = null, maxSupports = null, targetIndex = null) {
+    const isSplitParty = (party.size === 8) && (targetIndex !== null && targetIndex !== undefined);
+    const limit = maxSupports != null ? maxSupports : (isSplitParty ? 1 : (party.maxSupports ?? 1));
     const getDetails = typeof window.getCharacterDetailsFromExpedition === 'function' ? window.getCharacterDetailsFromExpedition : null;
-    const currentSupports = getDetails
-      ? party.members.filter(m => m && getDetails(m.name || m.id)?.role === 'support').length
+    const members = Array.isArray(party.members) ? party.members : [];
+    const start = isSplitParty ? (targetIndex < 4 ? 0 : 4) : 0;
+    const end = isSplitParty ? start + 4 : members.length;
+    const currentSupports = (getDetails && members.length > 0)
+      ? members.slice(start, end).filter(m => m && getDetails(m.name || m.id)?.role === 'support').length
       : 0;
     const additionalSupport = newCharacter?.role === 'support' ? 1 : 0;
     return (currentSupports + additionalSupport) > limit;
@@ -349,12 +378,12 @@ const Constraints = {
 };
 
 // 제약 조건 적용 헬퍼 함수
-function applyConstraints(character, party, operation = 'add') {
+function applyConstraints(character, party, operation = 'add', targetIndex = null) {
   // 파티가 없는 경우
   if (!party) {
     return { valid: false, reason: 'no_party', message: '파티가 존재하지 않습니다.' };
   }
 
   // 모든 제약/요구사항은 canAddCharacterToParty로 단일화
-  return Constraints.canAddCharacterToParty(party, character);
+  return Constraints.canAddCharacterToParty(party, character, null, targetIndex);
 }

@@ -554,7 +554,7 @@ async function openRaidCharacterSelector(partyId, slotIndex) {
     for (const slot of state.expeditionSlots) {
       for (const char of slot) {
         // 제약 조건 확인
-        const partyValidation = Constraints.canAddCharacterToParty(party, char);
+        const partyValidation = Constraints.canAddCharacterToParty(party, char, null, slotIndex);
         if (partyValidation.valid) {
           availableCharacters.push(char);
         }
@@ -817,7 +817,7 @@ async function selectRaidCharacter(characterName, partyId, slotIndex) {
     
     // 기본 조건 통과 시에만 상세 제약 조건 체크
     if (basicValidation.valid) {
-      const partyValidation = Constraints.canAddCharacterToParty(party, charDetails);
+      const partyValidation = Constraints.canAddCharacterToParty(party, charDetails, null, slotIndex);
       if (!partyValidation.valid) {
         window.modalManager.showAlert({
           title: '제약 조건 위반',
