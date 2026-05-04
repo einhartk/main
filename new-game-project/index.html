@@ -31,9 +31,233 @@
         color: #d7e3ff;
         cursor: pointer;
       }
+
+      /* Character Selection Screen */
+      #char-select {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #0b0f17 0%, #16213a 50%, #1a2744 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+
+      #char-select.hidden {
+        display: none;
+      }
+
+      .char-select-title {
+        color: #d7e3ff;
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        text-shadow: 0 0 20px rgba(100, 150, 255, 0.5);
+      }
+
+      .char-select-subtitle {
+        color: #8a9ab0;
+        font-size: 16px;
+        margin-bottom: 48px;
+      }
+
+      .char-cards {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+        max-width: 1200px;
+        padding: 0 24px;
+      }
+
+      .char-card {
+        background: rgba(22, 33, 58, 0.8);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 32px 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .char-card:hover {
+        border-color: rgba(255, 255, 255, 0.3);
+        transform: translateY(-8px);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      .char-card.selected {
+        border-color: #6496ff;
+        box-shadow: 0 0 30px rgba(100, 150, 255, 0.4);
+      }
+
+      .char-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        margin: 0 auto 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+      }
+
+      .char-icon.sura { background: linear-gradient(135deg, #4682b4, #5a9fd4); }
+      .char-icon.lancer { background: linear-gradient(135deg, #cd853f, #daa520); }
+      .char-icon.sorceress { background: linear-gradient(135deg, #9370db, #b19cd9); }
+      .char-icon.gunslinger { background: linear-gradient(135deg, #c9a227, #ffd700); }
+
+      .char-name {
+        color: #d7e3ff;
+        font-size: 22px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .char-role {
+        color: #6496ff;
+        font-size: 13px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 16px;
+      }
+
+      .char-difficulty {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-bottom: 16px;
+      }
+
+      .char-difficulty.easy { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+      .char-difficulty.medium { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+      .char-difficulty.hard { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+      .char-desc {
+        color: #8a9ab0;
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 20px;
+      }
+
+      .char-gauge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #6b7a8f;
+      }
+
+      .char-gauge-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+      }
+
+      .char-gauge-color.arden { background: #ff3333; }
+      .char-gauge-color.focus { background: #ff8c00; }
+      .char-gauge-color.mana { background: #4169e1; }
+      .char-gauge-color.hunt { background: #ffd700; }
+
+      .char-select-btn {
+        margin-top: 48px;
+        padding: 16px 64px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #fff;
+        background: linear-gradient(135deg, #6496ff, #8b5cf6);
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        opacity: 0.5;
+        pointer-events: none;
+      }
+
+      .char-select-btn.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .char-select-btn.active:hover {
+        transform: scale(1.05);
+        box-shadow: 0 8px 30px rgba(100, 150, 255, 0.4);
+      }
     </style>
   </head>
   <body>
+    <!-- Character Selection Screen -->
+    <div id="char-select">
+      <h1 class="char-select-title">캐릭터 선택</h1>
+      <p class="char-select-subtitle">플레이할 직업을 선택하세요</p>
+      
+      <div class="char-cards">
+        <!-- Sura -->
+        <div class="char-card" data-character="sura">
+          <div class="char-icon sura">👊</div>
+          <div class="char-name">수라</div>
+          <div class="char-role">격투가</div>
+          <span class="char-difficulty medium">중급</span>
+          <div class="char-desc">근접 격투가. 기력(藍)과 충격(黃)을 교대 사용하여 아덴 게이지를 채우는 기믹</div>
+          <div class="char-gauge">
+            <div class="char-gauge-color arden"></div>
+            <span>아덴 게이지</span>
+          </div>
+        </div>
+
+        <!-- Lancer -->
+        <div class="char-card" data-character="lancer">
+          <div class="char-icon lancer">🎯</div>
+          <div class="char-name">창술사</div>
+          <div class="char-role">전사</div>
+          <span class="char-difficulty easy">초급</span>
+          <div class="char-desc">중거리 창 전사. 집중 게이지를 쌓아 크리티컬 확률을 높이는 기믹</div>
+          <div class="char-gauge">
+            <div class="char-gauge-color focus"></div>
+            <span>집중 게이지</span>
+          </div>
+        </div>
+
+        <!-- Sorceress -->
+        <div class="char-card" data-character="sorceress">
+          <div class="char-icon sorceress">✨</div>
+          <div class="char-name">소서리스</div>
+          <div class="char-role">마법사</div>
+          <span class="char-difficulty hard">상급</span>
+          <div class="char-desc">원거리 마법사. 마나를 관리하며 불/얼음/번개 원소 마법을 사용</div>
+          <div class="char-gauge">
+            <div class="char-gauge-color mana"></div>
+            <span>마나 시스템</span>
+          </div>
+        </div>
+
+        <!-- Gunslinger -->
+        <div class="char-card" data-character="gunslinger">
+          <div class="char-icon gunslinger">🔫</div>
+          <div class="char-name">건슬링어</div>
+          <div class="char-role">총잡이</div>
+          <span class="char-difficulty hard">상급</span>
+          <div class="char-desc">3종 무기 교대 사용. 사냥의 시간 각인으로 무기 교대 시 버프 획득</div>
+          <div class="char-gauge">
+            <div class="char-gauge-color hunt"></div>
+            <span>사냥 게이지</span>
+          </div>
+        </div>
+      </div>
+
+      <button id="char-select-btn" class="char-select-btn">게임 시작</button>
+    </div>
+
     <div id="app"></div>
 
     <div id="auth-ui">
@@ -44,5 +268,45 @@
 
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
     <script type="module" src="./src/main.js"></script>
+    
+    <script>
+      // Character Selection Logic
+      (function() {
+        const charSelectScreen = document.getElementById('char-select');
+        const charCards = document.querySelectorAll('.char-card');
+        const selectBtn = document.getElementById('char-select-btn');
+        let selectedCharacter = null;
+
+        // Character card selection
+        charCards.forEach(card => {
+          card.addEventListener('click', () => {
+            // Remove selection from others
+            charCards.forEach(c => c.classList.remove('selected'));
+            // Add selection to clicked
+            card.classList.add('selected');
+            // Store selection
+            selectedCharacter = card.dataset.character;
+            // Enable start button
+            selectBtn.classList.add('active');
+          });
+        });
+
+        // Start game button
+        selectBtn.addEventListener('click', () => {
+          if (!selectedCharacter) return;
+          
+          // Store selected character in session storage
+          sessionStorage.setItem('selectedCharacter', selectedCharacter);
+          
+          // Hide character selection screen
+          charSelectScreen.classList.add('hidden');
+          
+          // Trigger game start event
+          window.dispatchEvent(new CustomEvent('characterSelected', { 
+            detail: { character: selectedCharacter }
+          }));
+        });
+      })();
+    </script>
   </body>
 </html>

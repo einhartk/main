@@ -9,12 +9,25 @@ export class InputHandler {
     this._skillKeysPressed = new Set();
     this._enterRaidPressed = false;
     this._returnToTownPressed = false;
+    this._mouseX = 0;
+    this._mouseY = 0;
 
-    window.addEventListener('pointerdown', (e) => {
+    window.addEventListener('mousemove', (e) => {
+      this._mouseX = e.clientX;
+      this._mouseY = e.clientY;
+    });
+
+    window.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
         this._pendingClick = { x: e.clientX, y: e.clientY };
       } else if (e.button === 2) {
         this._pendingRightClick = { x: e.clientX, y: e.clientY };
+      }
+    });
+
+    window.addEventListener('contextmenu', (e) => {
+      if (e.target.tagName === 'CANVAS') {
+        e.preventDefault();
       }
     });
 
@@ -30,14 +43,16 @@ export class InputHandler {
       if (e.code === 'Digit4') this._useConsumablePressed = 4;
 
       const skillKey = e.code.toLowerCase().replace('key', '');
-      if (['q', 'w', 'e', 'r', 't', 'a', 's', 'd', 'f', 'v'].includes(skillKey)) {
+      if (['q', 'w', 'e', 'r', 't', 'a', 's', 'd', 'f', 'v', 'z', 'x'].includes(skillKey)) {
         this._skillKeysPressed.add(skillKey);
       }
     });
 
     window.addEventListener('keyup', (e) => {
       const skillKey = e.code.toLowerCase().replace('key', '');
-      this._skillKeysPressed.delete(skillKey);
+      if (['q', 'w', 'e', 'r', 't', 'a', 's', 'd', 'f', 'v', 'z', 'x'].includes(skillKey)) {
+        this._skillKeysPressed.delete(skillKey);
+      }
     });
   }
 
@@ -93,5 +108,9 @@ export class InputHandler {
     const v = this._returnToTownPressed;
     this._returnToTownPressed = false;
     return v;
+  }
+
+  getMousePosition() {
+    return { x: this._mouseX, y: this._mouseY };
   }
 }

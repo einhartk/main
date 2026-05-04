@@ -1,33 +1,17 @@
+import { CharacterFactory } from '../characters/CharacterFactory.js';
+
 export class GameState {
-  constructor() {
-    this.player = {
+  constructor(characterType = 'sura') {
+    // Use CharacterFactory to create player based on character type
+    this.player = CharacterFactory.createCharacter(characterType, {
       x: 160,
       y: 270,
-      targetX: 160,
-      targetY: 270,
       level: 1,
-      hp: 100,
       gold: 1000,
-      equipment: {
-        weapon: null,
-        armor: null,
-        accessory: null,
-      },
-      inventory: [],
-      consumableSlots: [null, null, null, null],
-      skills: {
-        q: { key: 'q', name: 'Nova', cooldown: 1.25, remaining: 0, radius: 90, damage: 20, effectType: 'aoe' },
-        w: { key: 'w', name: 'Fireball', cooldown: 2.0, remaining: 0, radius: 70, damage: 35, effectType: 'projectile' },
-        e: { key: 'e', name: 'Ice Spike', cooldown: 1.5, remaining: 0, radius: 60, damage: 28, effectType: 'chain' },
-        r: { key: 'r', name: 'Lightning', cooldown: 3.0, remaining: 0, radius: 100, damage: 50, effectType: 'aoe' },
-        t: { key: 't', name: 'Meteor', cooldown: 5.0, remaining: 0, radius: 120, damage: 80, effectType: 'falling' },
-        a: { key: 'a', name: 'Slash', cooldown: 0.8, remaining: 0, radius: 50, damage: 15, effectType: 'melee' },
-        s: { key: 's', name: 'Whirlwind', cooldown: 2.5, remaining: 0, radius: 80, damage: 30, effectType: 'aoe' },
-        d: { key: 'd', name: 'Smash', cooldown: 1.8, remaining: 0, radius: 65, damage: 25, effectType: 'melee' },
-        f: { key: 'f', name: 'Bash', cooldown: 1.2, remaining: 0, radius: 55, damage: 18, effectType: 'melee' },
-        v: { key: 'v', name: 'Ultimate', cooldown: 10.0, remaining: 0, radius: 150, damage: 100, effectType: 'aoe' },
-      },
-    };
+    });
+    
+    // Store selected character type
+    this.selectedCharacter = characterType;
 
     this.currentZone = 'town';
 
@@ -41,6 +25,19 @@ export class GameState {
       colliders: [
         { id: 'wall-1', x: 320, y: 160, w: 120, h: 220 },
         { id: 'wall-2', x: 560, y: 320, w: 160, h: 80 },
+      ],
+    };
+
+    this.raidMap = {
+      width: 1200,
+      height: 800,
+      colliders: [
+        { id: 'pillar-1', x: 300, y: 200, w: 80, h: 80 },
+        { id: 'pillar-2', x: 900, y: 200, w: 80, h: 80 },
+        { id: 'pillar-3', x: 300, y: 600, w: 80, h: 80 },
+        { id: 'pillar-4', x: 900, y: 600, w: 80, h: 80 },
+        { id: 'platform-1', x: 500, y: 150, w: 200, h: 40 },
+        { id: 'platform-2', x: 500, y: 650, w: 200, h: 40 },
       ],
     };
 
@@ -68,12 +65,20 @@ export class GameState {
         hp: 5000,
         speed: 80,
         skills: {
-          fireBreath: { cooldown: 4.0, remaining: 0, radius: 200, damage: 40 },
-          tailSwipe: { cooldown: 6.0, remaining: 0, radius: 150, damage: 30 },
-          roar: { cooldown: 8.0, remaining: 0, radius: 300, damage: 20 },
+          fireBreath: { cooldown: 4.0, remaining: 0, radius: 120, damage: 40, warningTime: 1.5 },
+          tailSwipe: { cooldown: 6.0, remaining: 0, radius: 80, damage: 30, warningTime: 1.0 },
+          roar: { cooldown: 8.0, remaining: 0, radius: 150, damage: 20, warningTime: 2.0 },
+          charge: { cooldown: 10.0, remaining: 0, radius: 200, damage: 60, warningTime: 2.0 },
+          groundSlam: { cooldown: 7.0, remaining: 0, radius: 100, damage: 45, warningTime: 1.2 },
+          summonAdds: { cooldown: 15.0, remaining: 0, radius: 0, damage: 0, warningTime: 2.5 },
         },
+        phase: 1,
+        maxPhases: 4,
         patternTimer: 0,
         currentPattern: 0,
+        activeSkill: null,
+        skillPhase: 'idle',
+        skillTimer: 0,
       },
     };
 

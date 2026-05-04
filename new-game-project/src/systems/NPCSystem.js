@@ -14,6 +14,13 @@ export class NPCSystem {
   }
 
   tryInteract(state) {
+    // Disable interaction in raid/dungeon zones - only allow in town
+    if (state.currentZone !== 'town') {
+      state.interactions.targetNpcId = null;
+      state.interactions.dialog = null;
+      return;
+    }
+
     const p = state.player;
     const px = p.x;
     const py = p.y;

@@ -23,44 +23,62 @@ import { ZoneSystem } from './systems/ZoneSystem.js';
 
 import { createItem, createConsumable } from './data/items.js';
 
-const state = new GameState();
-const inputHandler = new InputHandler();
+let state = null;
+let loop = null;
+let inputHandler = null;
 
-const inventorySystem = new InventorySystem();
-
-inventorySystem.addItem(state, 'weapon', 'w1');
-inventorySystem.addItem(state, 'armor', 'a1');
-inventorySystem.addItem(state, 'accessory', 'ac1');
-
-inventorySystem.equipItem(state, state.player.inventory[0].id);
-inventorySystem.equipItem(state, state.player.inventory[0].id);
-inventorySystem.equipItem(state, state.player.inventory[0].id);
-
-inventorySystem.addConsumable(state, 1, 'potion_hp');
-inventorySystem.addConsumable(state, 2, 'potion_hp');
-inventorySystem.addConsumable(state, 3, 'potion_elixir');
-inventorySystem.addConsumable(state, 4, 'potion_berserk');
-
-const renderer = new PhaserRenderer({
-  parentId: 'app',
-  width: 960,
-  height: 540,
+// Wait for character selection before starting the game
+window.addEventListener('characterSelected', (e) => {
+  const selectedCharacter = e.detail.character;
+  startGame(selectedCharacter);
 });
 
-const systems = [
-  new InputSystem(inputHandler),
-  new ZoneSystem(),
-  new AISystem(),
-  new BossAISystem(),
-  new MovementSystem(),
-  new SkillSystem(),
-  new NPCSystem(),
-  new InventorySystem(),
-  new CollisionSystem(),
-];
+function startGame(characterType) {
+  // Check if already started
+  if (state) return;
+  
+  // Create game state with selected character
+  state = new GameState(characterType);
+  inputHandler = new InputHandler();
 
-const loop = new GameLoop({ state, renderer, systems });
-loop.start();
+  const inventorySystem = new InventorySystem();
+
+  inventorySystem.addItem(state, 'weapon', 'w1');
+  inventorySystem.addItem(state, 'armor', 'a1');
+  inventorySystem.addItem(state, 'accessory', 'ac1');
+
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+
+  inventorySystem.addConsumable(state, 1, 'potion_hp');
+  inventorySystem.addConsumable(state, 2, 'potion_hp');
+  inventorySystem.addConsumable(state, 3, 'potion_elixir');
+  inventorySystem.addConsumable(state, 4, 'potion_berserk');
+
+  const renderer = new PhaserRenderer({
+    parentId: 'app',
+    width: 1280,
+    height: 720,
+  });
+
+  const systems = [
+    new InputSystem(inputHandler),
+    new ZoneSystem(renderer),
+    new AISystem(),
+    new BossAISystem(),
+    new MovementSystem(),
+    new SkillSystem(),
+    new NPCSystem(),
+    new InventorySystem(),
+    new CollisionSystem(),
+  ];
+
+  loop = new GameLoop({ state, renderer, systems });
+  loop.start();
+  
+  console.log(`Game started with character: ${characterType}`);
+}
 
 const { auth, db } = initFirebase();
 
@@ -100,6 +118,9 @@ onAuth(auth, async (user) => {
   if (elStatus) elStatus.textContent = `Auth: ${user.displayName ?? user.email ?? user.uid}`;
   if (btnLogin) btnLogin.disabled = true;
   if (btnLogout) btnLogout.disabled = false;
+
+  // Only apply data if game has started
+  if (!state) return;
 
   try {
     const data = await loadPlayerData(db, user.uid);

@@ -35,29 +35,38 @@ export class InputSystem {
       state.actions.castSkills = skillKeys;
     }
 
-    const viewport = state._render?.viewport;
-    if (viewport) {
-      const click = this.inputHandler.consumeClick();
-      if (click) {
-        const { left, top, scaleX, scaleY } = viewport;
+    const viewport = state._render?.viewport || { left: 0, top: 0, scaleX: 1, scaleY: 1 };
+    const canvas = document.querySelector('canvas');
+    const canvasRect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0 };
 
-        const worldX = (click.x - left) / scaleX;
-        const worldY = (click.y - top) / scaleY;
+    const click = this.inputHandler.consumeClick();
+    if (click) {
+      const { left, top, scaleX, scaleY } = viewport;
 
-        state.player.targetX = clamp(worldX, 0, state.map.width);
-        state.player.targetY = clamp(worldY, 0, state.map.height);
-      }
+      const worldX = (click.x - canvasRect.left - left) / scaleX;
+      const worldY = (click.y - canvasRect.top - top) / scaleY;
 
-      const rightClick = this.inputHandler.consumeRightClick();
-      if (rightClick && (state.currentZone === 'dungeon' || state.currentZone === 'raid')) {
-        const { left, top, scaleX, scaleY } = viewport;
-
-        const worldX = (rightClick.x - left) / scaleX;
-        const worldY = (rightClick.y - top) / scaleY;
-
-        state.actions.basicAttack = { x: worldX, y: worldY };
-      }
+      state.player.targetX = clamp(worldX, 0, state.map.width);
+      state.player.targetY = clamp(worldY, 0, state.map.height);
     }
+
+    const rightClick = this.inputHandler.consumeRightClick();
+    if (rightClick) {
+      const { left, top, scaleX, scaleY } = viewport;
+
+      const worldX = (rightClick.x - canvasRect.left - left) / scaleX;
+      const worldY = (rightClick.y - canvasRect.top - top) / scaleY;
+
+      state.actions.basicAttack = { x: worldX, y: worldY };
+    }
+
+    // Track mouse position for skill aiming
+    const mousePos = this.inputHandler.getMousePosition();
+    const { left, top, scaleX, scaleY } = viewport;
+    state.mouse = {
+      x: (mousePos.x - canvasRect.left - left) / scaleX,
+      y: (mousePos.y - canvasRect.top - top) / scaleY,
+    };
 
     state.time += dt;
     state.frame += 1;
