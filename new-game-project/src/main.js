@@ -9,6 +9,8 @@ import {
   loadPlayerData,
   makePlayerSaveSnapshot,
   savePlayerData,
+  HybridSaveManager,
+  BrowserStorageManager,
 } from './services/playerStore.js';
 
 import { InputSystem } from './systems/InputSystem.js';
@@ -21,11 +23,29 @@ import { InventorySystem } from './systems/InventorySystem.js';
 import { BossAISystem } from './systems/BossAISystem.js';
 import { ZoneSystem } from './systems/ZoneSystem.js';
 
-import { createItem, createConsumable } from './data/items.js';
+import { createItem, createConsumable, getUpgradeSuccessRate, getUpgradeCost } from './data/items.js';
 
 let state = null;
 let loop = null;
 let inputHandler = null;
+let saveManager = null;
+
+// Global save function for activity-based auto-saving
+async function saveOnActivity(activityType = 'general') {
+  if (saveManager && state) {
+    await saveManager.saveOnActivity(state, activityType);
+  }
+}
+
+// Global functions for upgrade UI
+window.getUpgradeSuccessRate = null;
+window.getUpgradeCost = null;
+
+// Expose upgrade functions to global scope
+function exposeUpgradeFunctions() {
+  window.getUpgradeSuccessRate = getUpgradeSuccessRate;
+  window.getUpgradeCost = getUpgradeCost;
+}
 
 // Wait for character selection before starting the game
 window.addEventListener('characterSelected', (e) => {
@@ -40,6 +60,12 @@ function startGame(characterType) {
   // Create game state with selected character
   state = new GameState(characterType);
   inputHandler = new InputHandler();
+  
+  // Set state globally for upgrade UI
+  window.state = state;
+  
+  // Initialize hybrid save manager
+  saveManager = new HybridSaveManager(db, currentUid);
 
   const inventorySystem = new InventorySystem();
 
@@ -62,22 +88,48 @@ function startGame(characterType) {
     height: 720,
   });
 
+  const bossAISystem = new BossAISystem();
+  
   const systems = [
     new InputSystem(inputHandler),
     new ZoneSystem(renderer),
     new AISystem(),
-    new BossAISystem(),
+    bossAISystem,
     new MovementSystem(),
     new SkillSystem(),
     new NPCSystem(),
     new InventorySystem(),
     new CollisionSystem(),
   ];
+  
+  // Store reference to BossAISystem in state for SkillSystem to access
+  state.bossAISystem = bossAISystem;
 
   loop = new GameLoop({ state, renderer, systems });
   loop.start();
   
+  // Load saved data and start auto-save
+  loadGameData();
+  saveManager.startAutoSave(state);
+  
+  // Expose upgrade functions to global scope
+  exposeUpgradeFunctions();
+  
   console.log(`Game started with character: ${characterType}`);
+}
+
+async function loadGameData() {
+  try {
+    const result = await saveManager.loadGame();
+    if (result.success && result.data) {
+      applyLoadedPlayerDataToState(state, result.data);
+      console.log(`Game loaded from ${result.location} storage`);
+    } else {
+      console.log('No saved data found, starting fresh game');
+    }
+  } catch (error) {
+    console.error('Failed to load game data:', error);
+  }
 }
 
 const { auth, db } = initFirebase();
@@ -109,9 +161,14 @@ onAuth(auth, async (user) => {
   currentUid = user?.uid ?? null;
 
   if (!user) {
-    if (elStatus) elStatus.textContent = 'Auth: signed out';
+    if (elStatus) elStatus.textContent = 'Auth: signed out (playing as guest)';
     if (btnLogin) btnLogin.disabled = false;
     if (btnLogout) btnLogout.disabled = true;
+    
+    // Update save manager for guest mode
+    if (saveManager) {
+      saveManager.setFirebaseUser(null);
+    }
     return;
   }
 
@@ -119,29 +176,39 @@ onAuth(auth, async (user) => {
   if (btnLogin) btnLogin.disabled = true;
   if (btnLogout) btnLogout.disabled = false;
 
+  // Update save manager for logged in user
+  if (saveManager) {
+    saveManager.setFirebaseUser(user.uid);
+  }
+
   // Only apply data if game has started
   if (!state) return;
 
   try {
-    const data = await loadPlayerData(db, user.uid);
-    applyLoadedPlayerDataToState(state, data);
+    const result = await saveManager.loadGame();
+    if (result.success && result.data) {
+      applyLoadedPlayerDataToState(state, result.data);
+      console.log(`Game loaded from ${result.location} storage for user: ${user.uid}`);
+    }
   } catch (e) {
-    console.error(e);
+    console.error('Failed to load user data:', e);
   }
 });
 
-async function persistIfAuthed() {
-  if (!currentUid) return;
-  const snapshot = makePlayerSaveSnapshot(state);
+async function persistGame() {
+  if (!saveManager || !state) return;
   try {
-    await savePlayerData(db, currentUid, snapshot);
+    const result = await saveManager.saveGame(state);
+    if (result.success) {
+      console.log(`Game saved to ${result.location} storage`);
+    }
   } catch (e) {
-    console.error(e);
+    console.error('Failed to save game:', e);
   }
 }
 
-setInterval(persistIfAuthed, 10_000);
+setInterval(persistGame, 60_000); // Save every minute instead of 10 seconds
 
 window.addEventListener('beforeunload', () => {
-  void persistIfAuthed();
+  void persistGame();
 });

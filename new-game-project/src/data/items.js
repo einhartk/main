@@ -31,6 +31,29 @@ export function createItem(slot, templateId, level = 0) {
   const template = templates.find((t) => t.id === templateId);
   if (!template) return null;
 
+  // 희귀도에 따른 초기 보너스
+  let rarityBonus = 0;
+  switch (template.rarity) {
+    case 'uncommon':
+      rarityBonus = 2;
+      break;
+    case 'rare':
+      rarityBonus = 5;
+      break;
+    case 'epic':
+      rarityBonus = 10;
+      break;
+    case 'legendary':
+      rarityBonus = 15;
+      break;
+    default: // common
+      rarityBonus = 0;
+  }
+
+  // 구간별 누적 스탯 보너스 적용
+  const cumulativeStatBonus = getCumulativeStatBonus(level);
+  const totalPower = template.basePower + cumulativeStatBonus + rarityBonus;
+
   return {
     id: `${templateId}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     templateId,
@@ -39,7 +62,7 @@ export function createItem(slot, templateId, level = 0) {
     basePower: template.basePower,
     rarity: template.rarity,
     level,
-    totalPower: template.basePower + level * 5,
+    totalPower: totalPower,
   };
 }
 
@@ -56,14 +79,175 @@ export function createConsumable(templateId) {
   };
 }
 
+// 구간별 스탯 증가량 계산
+function getStatBonusForLevel(level) {
+  // 레벨 구간별로 다른 증가량 적용
+  if (level <= 5) {
+    return 3; // 1-5레벨: 낮은 증가량 (초기)
+  } else if (level <= 10) {
+    return 5; // 6-10레벨: 중간 증가량 (중기)
+  } else if (level <= 15) {
+    return 7; // 11-15레벨: 높은 증가량 (후기)
+  } else {
+    return 9; // 16-20레벨: 최고 증가량 (최종)
+  }
+}
+
+// 누적 스탯 보너스 계산
+function getCumulativeStatBonus(level) {
+  let totalBonus = 0;
+  for (let i = 0; i < level; i++) {
+    totalBonus += getStatBonusForLevel(i);
+  }
+  return totalBonus;
+}
+
 export function upgradeItem(item) {
+  // 최대 레벨 체크
+  if (item.level >= 20) {
+    return {
+      ...item,
+      upgradeFailed: true,
+      reason: 'MAX_LEVEL'
+    };
+  }
+  
+  const newLevel = item.level + 1;
+  
+  // 희귀도에 따른 추가 보너스
+  let rarityBonus = 0;
+  switch (item.rarity) {
+    case 'uncommon':
+      rarityBonus = 2;
+      break;
+    case 'rare':
+      rarityBonus = 5;
+      break;
+    case 'epic':
+      rarityBonus = 10;
+      break;
+    case 'legendary':
+      rarityBonus = 15;
+      break;
+    default: // common
+      rarityBonus = 0;
+  }
+  
+  // 구간별 누적 스탯 보너스 적용
+  const cumulativeStatBonus = getCumulativeStatBonus(newLevel);
+  const totalPower = item.basePower + cumulativeStatBonus + rarityBonus;
+  
   return {
     ...item,
-    level: item.level + 1,
-    totalPower: item.basePower + (item.level + 1) * 5,
+    level: newLevel,
+    totalPower: totalPower,
   };
 }
 
 export function getUpgradeCost(item) {
-  return 100 + item.level * 150;
+  // 레벨에 따른 기본 비용 증가
+  const baseCost = 100;
+  const costPerLevel = 150;
+  const levelMultiplier = Math.pow(1.5, item.level); // 지수적 비용 증가
+  
+  // 등급에 따른 비용 배수
+  let rarityMultiplier = 1.0;
+  switch (item.rarity) {
+    case 'uncommon':
+      rarityMultiplier = 1.5; // +50%
+      break;
+    case 'rare':
+      rarityMultiplier = 2.0; // +100%
+      break;
+    case 'epic':
+      rarityMultiplier = 3.0; // +200%
+      break;
+    case 'legendary':
+      rarityMultiplier = 5.0; // +400%
+      break;
+    default: // common
+      rarityMultiplier = 1.0;
+  }
+  
+  const baseCostWithLevel = baseCost + (costPerLevel * levelMultiplier);
+  return Math.floor(baseCostWithLevel * rarityMultiplier);
 }
+
+export function getUpgradeSuccessRate(item) {
+  // 레벨에 따른 성공률: 최대 25%에서 시작해 최종 3%까지
+  const maxSuccessRate = 0.25; // 최대 25%
+  const minSuccessRate = 0.03; // 최소 3%
+  
+  // 레벨 0~19에 대한 성공률 계산 (선형 감소)
+  const levelProgress = item.level / 19; // 0~1 사이의 진행률
+  const successRate = maxSuccessRate - (maxSuccessRate - minSuccessRate) * levelProgress;
+  
+  // 희귀도에 따른 추가 페널티
+  let rarityPenalty = 0;
+  switch (item.rarity) {
+    case 'uncommon':
+      rarityPenalty = 0.02; // -2%
+      break;
+    case 'rare':
+      rarityPenalty = 0.05; // -5%
+      break;
+    case 'epic':
+      rarityPenalty = 0.08; // -8%
+      break;
+    case 'legendary':
+      rarityPenalty = 0.12; // -12%
+      break;
+  }
+  
+  const finalRate = Math.max(minSuccessRate, successRate - rarityPenalty);
+  return finalRate;
+}
+
+export function getUpgradeFailureRate(item) {
+  // 하락 확률은 성공률의 1/4
+  const successRate = getUpgradeSuccessRate(item);
+  return successRate * 0.25;
+}
+
+export function calculateUpgradeResult(item) {
+  const successRate = getUpgradeSuccessRate(item);
+  const failureRate = getUpgradeFailureRate(item);
+  const random = Math.random();
+  
+  let result;
+  if (random < successRate) {
+    // 성공
+    result = {
+      success: true,
+      successRate: successRate,
+      newLevel: item.level + 1,
+      cost: getUpgradeCost(item),
+      type: 'success'
+    };
+  } else if (random < successRate + failureRate) {
+    // 하락
+    const newLevel = Math.max(0, item.level - 1);
+    result = {
+      success: false,
+      successRate: successRate,
+      failureRate: failureRate,
+      newLevel: newLevel,
+      cost: getUpgradeCost(item),
+      type: 'downgrade',
+      levelLost: item.level - newLevel
+    };
+  } else {
+    // 실패 (변화 없음)
+    result = {
+      success: false,
+      successRate: successRate,
+      failureRate: failureRate,
+      newLevel: item.level,
+      cost: getUpgradeCost(item),
+      type: 'failed'
+    };
+  }
+  
+  return result;
+}
+

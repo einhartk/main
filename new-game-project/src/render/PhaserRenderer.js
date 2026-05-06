@@ -1,3 +1,5 @@
+import { SoundManager } from './SoundManager.js';
+
 export class PhaserRenderer {
   constructor({ parentId, width, height }) {
     this.parentId = parentId;
@@ -6,6 +8,7 @@ export class PhaserRenderer {
 
     this._game = null;
     this._scene = null;
+    this._soundManager = null;
 
     this._gfx = null;
     this._text = null;
@@ -25,6 +28,11 @@ export class PhaserRenderer {
       create() {
         self._scene = this;
         self._gfx = this.add.graphics();
+        
+        // Initialize sound manager
+        self._soundManager = new SoundManager(this);
+        self._soundManager.init();
+        
         self._text = this.add.text(12, 10, '', {
           fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
           fontSize: '14px',
@@ -40,6 +48,7 @@ export class PhaserRenderer {
 
         self._skillSlotTexts = [];
         self._skillCdTexts = [];
+        self._skillKeyTexts = []; // Key labels for top-left corner
         // Main skills: QWERT-V (기력/공격), ASDF (충격/이동)
         const mainSkillKeys = ['q', 'w', 'e', 'r', 't', 'a', 's', 'd', 'f', 'v'];
         // Special skills: Z (수라결), X (호신투기)
@@ -47,16 +56,28 @@ export class PhaserRenderer {
         const allSkillKeys = [...mainSkillKeys, ...specialSkillKeys];
 
         for (let i = 0; i < allSkillKeys.length; i++) {
-          // Skill key label
+          // Skill icon (center)
           const label = this.add.text(0, 0, allSkillKeys[i].toUpperCase(), {
             fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-            fontSize: '10px',
+            fontSize: '16px',
             color: '#ffffff',
             fontStyle: 'bold',
           });
           label.setScrollFactor(0);
           label.setVisible(false);
           self._skillSlotTexts.push(label);
+
+          // Skill key label (top-left corner)
+          const keyLabel = this.add.text(0, 0, allSkillKeys[i].toUpperCase(), {
+            fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+            fontSize: '9px',
+            color: '#ffffff',
+            fontStyle: 'bold',
+          });
+          keyLabel.setScrollFactor(0);
+          keyLabel.setVisible(false);
+          self._skillKeyTexts.push(keyLabel);
+
           // Cooldown text
           const cdText = this.add.text(0, 0, '', {
             fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
@@ -133,8 +154,64 @@ export class PhaserRenderer {
     }
 
     if (state.boss) {
+      // Draw boss body
       this._gfx.fillStyle(0xff3333, 1);
       this._gfx.fillRect(state.boss.x - 20, state.boss.y - 20, 40, 40);
+
+      // Draw back/head indicators
+      // Calculate back and head positions based on boss facing angle
+      const facingAngle = state.boss.facingAngle || 0;
+      const indicatorRadius = 50;
+      
+      // Head position (in front of facing direction)
+      const headX = state.boss.x + Math.cos(facingAngle) * indicatorRadius;
+      const headY = state.boss.y + Math.sin(facingAngle) * indicatorRadius;
+      
+      // Back position (behind facing direction)
+      const backX = state.boss.x - Math.cos(facingAngle) * indicatorRadius;
+      const backY = state.boss.y - Math.sin(facingAngle) * indicatorRadius;
+      
+      // Check if player is in back or head position
+      let isBackAttack = false;
+      let isHeadAttack = false;
+      if (state.player) {
+        const dx = state.player.x - state.boss.x;
+        const dy = state.player.y - state.boss.y;
+        const angleToPlayer = Math.atan2(dy, dx);
+        let angleDiff = angleToPlayer - facingAngle;
+        while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+        while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+        const absAngleDiff = Math.abs(angleDiff);
+        // Both back and head set to 90° for balanced gameplay
+        isBackAttack = absAngleDiff > (3 * Math.PI / 4); // > 135 degrees (90° behind)
+        isHeadAttack = absAngleDiff < (Math.PI / 4); // < 45 degrees (90° in front)
+      }
+      
+      // Draw head indicator (blue triangle pointing to head position)
+      const headColor = isHeadAttack ? 0x00ff00 : 0x4444ff; // Green if player is at head
+      this._gfx.fillStyle(headColor, 0.7);
+      this._gfx.beginPath();
+      this._gfx.moveTo(headX + Math.cos(facingAngle) * 8, headY + Math.sin(facingAngle) * 8);
+      this._gfx.lineTo(headX + Math.cos(facingAngle + 2.5) * 6, headY + Math.sin(facingAngle + 2.5) * 6);
+      this._gfx.lineTo(headX + Math.cos(facingAngle - 2.5) * 6, headY + Math.sin(facingAngle - 2.5) * 6);
+      this._gfx.closePath();
+      this._gfx.fillPath();
+      
+      // Draw back indicator (yellow triangle pointing to back position)
+      const backColor = isBackAttack ? 0x00ff00 : 0xffaa00; // Green if player is at back
+      this._gfx.fillStyle(backColor, 0.7);
+      this._gfx.beginPath();
+      this._gfx.moveTo(backX - Math.cos(facingAngle) * 8, backY - Math.sin(facingAngle) * 8);
+      this._gfx.lineTo(backX - Math.cos(facingAngle + 2.5) * 6, backY - Math.sin(facingAngle + 2.5) * 6);
+      this._gfx.lineTo(backX - Math.cos(facingAngle - 2.5) * 6, backY - Math.sin(facingAngle - 2.5) * 6);
+      this._gfx.closePath();
+      this._gfx.fillPath();
+      
+      // Labels for head/back
+      this._gfx.fillStyle(headColor, 1);
+      this._gfx.fillCircle(headX, headY - 12, 3);
+      this._gfx.fillStyle(backColor, 1);
+      this._gfx.fillCircle(backX, backY + 12, 3);
 
       const bossBarWidth = 200;
       const bossBarHeight = 12;
@@ -159,7 +236,27 @@ export class PhaserRenderer {
       }
     }
 
+    // Track effect IDs for sound effects
+    if (!this._lastEffectIds) {
+      this._lastEffectIds = new Set();
+    }
+    const currentEffectIds = new Set();
+    
     for (const e of state.effects) {
+      // Generate unique ID for effect (based on type, position, and time)
+      const effectId = `${e.type}-${e.x?.toFixed(0) || 0}-${e.y?.toFixed(0) || 0}-${e.ttl?.toFixed(2) || 0}`;
+      currentEffectIds.add(effectId);
+      
+      // Play sound for new effects
+      if (!this._lastEffectIds.has(effectId) && this._soundManager) {
+        if (e.type === 'bossWarning' || e.type === 'bossSkill') {
+          this._soundManager.playBossSkill();
+        } else if (e.type !== 'damageText' && e.type !== 'shield' && e.effectId !== e.type) {
+          // Play skill sound for combat effects
+          this._soundManager.playSkill(e.type);
+        }
+      }
+      
       const skillColors = {
         q: 0x9b7bff,
         w: 0xff6b35,
@@ -978,6 +1075,171 @@ export class PhaserRenderer {
         this._gfx.fillStyle(purpleColor, 0.3 * alpha);
         this._gfx.fillCircle(waveX, waveY, 40);
       }
+
+      // Damage floating text effect
+      if (e.type === 'damageText') {
+        const alpha = Math.max(0, Math.min(1, e.ttl / 0.8));
+        const progress = 1 - alpha;
+        const floatY = progress * 40; // Float upward 40 pixels
+        
+        // Color based on attack type
+        let textColor = '#ffffff'; // Default white
+        if (e.attackType === 'back-full' || e.attackType === 'back-partial') {
+          textColor = '#ffcc00'; // Yellow for back attack
+        } else if (e.attackType === 'head-full' || e.attackType === 'head-partial') {
+          textColor = '#00ccff'; // Cyan for head attack
+        }
+        
+        // Create damage text objects array if needed
+        if (!this._damageTexts) {
+          this._damageTexts = [];
+        }
+        
+        // Create new text for each damage instance (simpler approach)
+        const damageText = this._scene.add.text(0, 0, e.text, {
+          fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+          fontSize: '18px',
+          color: textColor,
+          fontStyle: 'bold',
+          stroke: '#000000',
+          strokeThickness: 2,
+        });
+        
+        damageText.setScrollFactor(0);
+        damageText.setOrigin(0.5);
+        
+        // Position and animate the text with random offset to prevent overlap
+        const randomOffsetX = (Math.random() - 0.5) * 20; // -10 to +10 pixels
+        const randomOffsetY = (Math.random() - 0.5) * 10; // -5 to +5 pixels
+        const textX = e.x + randomOffsetX;
+        const textY = e.y - floatY + randomOffsetY;
+        
+        damageText.setPosition(textX, textY);
+        damageText.setAlpha(alpha);
+        
+        // Add to array for tracking
+        this._damageTexts.push({
+          text: damageText,
+          ttl: e.ttl,
+          maxTtl: 0.8,
+          initialY: textY,
+          maxFloatHeight: 30 // Maximum 30 pixels upward from initial position
+        });
+      }
+
+      // Hit impact effect
+      if (e.type === 'hitImpact') {
+        const alpha = Math.max(0, Math.min(1, e.ttl / 0.2));
+        const progress = 1 - alpha;
+        
+        // Red/orange impact flash
+        const impactColor = 0xff4444;
+        const impactRadius = e.radius * (1 + progress * 0.5);
+        
+        // Outer impact ring
+        this._gfx.lineStyle(3, impactColor, alpha * 0.8);
+        this._gfx.strokeCircle(e.x, e.y, impactRadius);
+        
+        // Inner bright core
+        this._gfx.fillStyle(0xffffff, alpha * 0.6);
+        this._gfx.fillCircle(e.x, e.y, impactRadius * 0.3);
+        
+        // Impact particles
+        for (let i = 0; i < 6; i++) {
+          const particleAngle = (i / 6) * Math.PI * 2;
+          const particleDist = impactRadius * (0.5 + progress * 0.8);
+          const particleX = e.x + Math.cos(particleAngle) * particleDist;
+          const particleY = e.y + Math.sin(particleAngle) * particleDist;
+          const particleSize = 3 * (1 - progress);
+          
+          this._gfx.fillStyle(0xffaa44, alpha * (1 - progress));
+          this._gfx.fillCircle(particleX, particleY, particleSize);
+        }
+        
+        // Screen shake effect (visual feedback)
+        if (progress < 0.3) {
+          const shakeIntensity = (1 - progress / 0.3) * 2;
+          // Note: Actual screen shake would need to be implemented at game level
+        }
+      }
+
+      // Critical hit effect
+      if (e.type === 'criticalHit') {
+        const alpha = Math.max(0, Math.min(1, e.ttl / 0.4));
+        const progress = 1 - alpha;
+        
+        // Golden critical hit burst
+        const critColor = 0xffd700;
+        const burstRadius = e.radius * (1 + progress);
+        
+        // Multiple expanding rings for critical hit
+        for (let ring = 0; ring < 3; ring++) {
+          const ringProgress = Math.max(0, (progress * 3 - ring));
+          if (ringProgress > 0 && ringProgress <= 1) {
+            const ringRadius = burstRadius * (0.3 + ringProgress * 0.7);
+            const ringAlpha = (1 - ringProgress) * alpha * 0.6;
+            this._gfx.lineStyle(4 - ring, critColor, ringAlpha);
+            this._gfx.strokeCircle(e.x, e.y, ringRadius);
+          }
+        }
+        
+        // Bright central flash
+        this._gfx.fillStyle(0xffffff, alpha * 0.8);
+        this._gfx.fillCircle(e.x, e.y, burstRadius * 0.4);
+        
+        // Star burst pattern
+        for (let i = 0; i < 8; i++) {
+          const starAngle = (i / 8) * Math.PI * 2;
+          const starDist = burstRadius * (0.6 + progress * 0.4);
+          const starX = e.x + Math.cos(starAngle) * starDist;
+          const starY = e.y + Math.sin(starAngle) * starDist;
+          
+          this._gfx.fillStyle(critColor, alpha * (1 - progress * 0.5));
+          this._gfx.fillCircle(starX, starY, 5 * (1 - progress));
+        }
+      }
+    }
+
+    // Update tracked effect IDs for next frame
+    this._lastEffectIds = currentEffectIds;
+
+    // Clean up expired damage text objects
+    if (this._damageTexts) {
+      for (let i = this._damageTexts.length - 1; i >= 0; i--) {
+        const damageTextObj = this._damageTexts[i];
+        damageTextObj.ttl -= dt;
+        
+        if (damageTextObj.ttl <= 0) {
+          // Destroy the Phaser text object
+          damageTextObj.text.destroy();
+          // Remove from array
+          this._damageTexts.splice(i, 1);
+        } else {
+          // Update alpha based on remaining time
+          const alpha = Math.max(0, Math.min(1, damageTextObj.ttl / damageTextObj.maxTtl));
+          const progress = 1 - alpha;
+          const floatY = progress * 40;
+          
+          // Update position (floating upward with height limit and easing)
+          const textX = damageTextObj.text.x;
+          const currentY = damageTextObj.text.y;
+          const maxY = damageTextObj.initialY - damageTextObj.maxFloatHeight;
+          
+          // Only move up if we haven't reached max height
+          if (currentY > maxY) {
+            // Easing function for smooth deceleration
+            const easedProgress = 1 - Math.pow(1 - progress, 2); // Ease-out quadratic
+            const targetY = damageTextObj.initialY - (damageTextObj.maxFloatHeight * easedProgress);
+            
+            // Smooth movement towards target
+            const movementSpeed = 60; // pixels per second
+            const newY = currentY - Math.min(movementSpeed * dt, currentY - targetY);
+            damageTextObj.text.setPosition(textX, newY);
+          }
+          
+          damageTextObj.text.setAlpha(alpha);
+        }
+      }
     }
 
     if (this._text) {
@@ -1016,15 +1278,39 @@ export class PhaserRenderer {
     if (this._panelText) {
       if (state.interactions.upgradePanelOpen) {
         const eq = state.player.equipment;
-        const lines = [
-          '=== EQUIPMENT & UPGRADE ===',
-          '',
-          `[1] Weapon: ${eq.weapon ? `${eq.weapon.name} (+${eq.weapon.level}) ${eq.weapon.totalPower}P` : 'None'}`,
-          `[2] Armor: ${eq.armor ? `${eq.armor.name} (+${eq.armor.level}) ${eq.armor.totalPower}P` : 'None'}`,
-          `[3] Accessory: ${eq.accessory ? `${eq.accessory.name} (+${eq.accessory.level}) ${eq.accessory.totalPower}P` : 'None'}`,
-          '',
-          'Press 1/2/3 to upgrade (costs gold)',
-        ];
+        // Calculate upgrade info for each slot
+      const getUpgradeInfo = (item) => {
+        if (!item) return null;
+        if (item.level >= 20) return { text: 'MAX', cost: 'MAX', failure: '0%' };
+        
+        const successRate = window.getUpgradeSuccessRate ? window.getUpgradeSuccessRate(item) : 0.25;
+        const failureRate = window.getUpgradeFailureRate ? window.getUpgradeFailureRate(item) : 0.06;
+        const cost = window.getUpgradeCost ? window.getUpgradeCost(item) : 100;
+        
+        return {
+          text: `${Math.floor(successRate * 100)}%`,
+          failure: `${Math.floor(failureRate * 100)}%`,
+          cost: `${cost}G`
+        };
+      };
+
+      const weaponInfo = getUpgradeInfo(eq.weapon);
+      const armorInfo = getUpgradeInfo(eq.armor);
+      const accessoryInfo = getUpgradeInfo(eq.accessory);
+
+      const lines = [
+        '=== EQUIPMENT & UPGRADE ===',
+        '',
+        `[1] Weapon: ${eq.weapon ? `${eq.weapon.name} (+${eq.weapon.level}) ${eq.weapon.totalPower}P` : 'None'}`,
+        weaponInfo ? `   Success: ${weaponInfo.text} | Downgrade: ${weaponInfo.failure} | Cost: ${weaponInfo.cost}` : '',
+        `[2] Armor: ${eq.armor ? `${eq.armor.name} (+${eq.armor.level}) ${eq.armor.totalPower}P` : 'None'}`,
+        armorInfo ? `   Success: ${armorInfo.text} | Downgrade: ${armorInfo.failure} | Cost: ${armorInfo.cost}` : '',
+        `[3] Accessory: ${eq.accessory ? `${eq.accessory.name} (+${eq.accessory.level}) ${eq.accessory.totalPower}P` : 'None'}`,
+        accessoryInfo ? `   Success: ${accessoryInfo.text} | Downgrade: ${accessoryInfo.failure} | Cost: ${accessoryInfo.cost}` : '',
+        '',
+        'Press Shift+1/2/3 to upgrade',
+        'Gold: ' + state.player.gold,
+      ];
         this._panelText.setText(lines.join('\n'));
       } else {
         this._panelText.setText('');
@@ -1106,10 +1392,22 @@ export class PhaserRenderer {
       this._gfx.fillStyle(color, 0.5);
       this._gfx.fillRect(x + 2, y + 2, slotSize - 4, slotSize - 4);
 
-      // Position skill key label
+      // Position skill icon (center of slot)
       const label = this._skillSlotTexts[i];
-      label.setPosition(x + 4, y + 4);
+      const skillIcon = skill.icon || key.toUpperCase();
+      label.setText(skillIcon);
+      label.setPosition(x + slotSize / 2, y + slotSize / 2);
+      label.setOrigin(0.5);
+      label.setFontSize('16px');
       label.setVisible(true);
+
+      // Position skill key label (top-left corner)
+      const keyLabel = this._skillKeyTexts[i];
+      keyLabel.setText(key.toUpperCase());
+      keyLabel.setPosition(x + 3, y + 2);
+      keyLabel.setOrigin(0, 0);
+      keyLabel.setFontSize('9px');
+      keyLabel.setVisible(true);
 
       // Cooldown overlay and text
       const cdText = this._skillCdTexts[i];
@@ -1148,11 +1446,23 @@ export class PhaserRenderer {
       this._gfx.fillStyle(color, 0.6);
       this._gfx.fillRect(x + 2, y + 2, slotSize - 4, slotSize - 4);
 
-      // Position skill key label
+      // Position skill icon (center of slot)
       const labelIndex = mainSkillKeys.length + i;
       const label = this._skillSlotTexts[labelIndex];
-      label.setPosition(x + 4, y + 4);
+      const skillIcon = skill.icon || key.toUpperCase();
+      label.setText(skillIcon);
+      label.setPosition(x + slotSize / 2, y + slotSize / 2);
+      label.setOrigin(0.5);
+      label.setFontSize('16px');
       label.setVisible(true);
+
+      // Position skill key label (top-left corner)
+      const keyLabel = this._skillKeyTexts[labelIndex];
+      keyLabel.setText(key.toUpperCase());
+      keyLabel.setPosition(x + 3, y + 2);
+      keyLabel.setOrigin(0, 0);
+      keyLabel.setFontSize('9px');
+      keyLabel.setVisible(true);
 
       // Cooldown overlay and text
       const cdText = this._skillCdTexts[labelIndex];

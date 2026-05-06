@@ -1,10 +1,21 @@
 import { getPlayerAABB, PLAYER_SIZE } from '../entities/player.js';
 import { resolveCollisionsForMovement } from './MovementSystem.js';
+import { updatePlayerStats } from '../services/playerStore.js';
 
 export class SkillSystem {
   constructor() {
     this.basicAttackDamage = 10;
     this.basicAttackRange = 25;
+  }
+
+  // Get player's total power from equipment
+  getPlayerTotalPower(state) {
+    let total = 0;
+    for (const slot of ['weapon', 'armor', 'accessory']) {
+      const item = state.player.equipment[slot];
+      if (item) total += item.totalPower;
+    }
+    return total;
   }
 
   update(state, dt) {
@@ -115,8 +126,34 @@ function tryCastSkill(state, key) {
     const dy = m.y - cy;
     const d2 = dx * dx + dy * dy;
     if (d2 <= r2) {
+      const damageDealt = Math.min(skill.damage, m.hp);
       m.hp = Math.max(0, m.hp - skill.damage);
       targets.push({ x: m.x, y: m.y });
+      
+      // Update statistics
+      updatePlayerStats(state, 'damageDealt', { amount: damageDealt });
+      
+      // Add hit impact effect for monsters
+      state.effects.push({
+        type: 'hitImpact',
+        x: m.x,
+        y: m.y,
+        radius: 18,
+        ttl: 0.2,
+      });
+      
+      // Check if monster died
+      if (m.hp <= 0) {
+        updatePlayerStats(state, 'monsterKill', { 
+          count: 1, 
+          gold: Math.floor(Math.random() * 10) + 5 
+        });
+        
+        // Auto-save on monster kill (item drop simulation)
+        if (window.saveOnActivity) {
+          window.saveOnActivity('monster_kill');
+        }
+      }
     }
   }
 
@@ -127,8 +164,93 @@ function tryCastSkill(state, key) {
     const dy = state.boss.y - cy;
     const d2 = dx * dx + dy * dy;
     if (d2 <= r2) {
-      state.boss.hp = Math.max(0, state.boss.hp - skill.damage);
-      targets.push({ x: state.boss.x, y: state.boss.y });
+      // Calculate back/head attack damage bonus
+      let finalDamage = skill.damage;
+      let attackPositionType = 'normal';
+      
+      // Get BossAISystem methods for position calculation
+      if (state.boss) {
+        const bossAI = state.bossAISystem || { checkAttackPosition: () => ({ isBack: false, isHead: false }) };
+        const { isBack, isHead } = bossAI.checkAttackPosition?.(state.boss, state.player.x, state.player.y) || { isBack: false, isHead: false };
+        
+        // Calculate damage multiplier with position bonuses
+        const skillBackAttack = skill.backAttack || false;
+        const skillHeadAttack = skill.headAttack || false;
+        
+        if (isBack && skillBackAttack) {
+          finalDamage = Math.floor(finalDamage * 1.25); // Back attack skill: +25%
+          attackPositionType = 'back';
+        } else if (isHead && skillHeadAttack) {
+          finalDamage = Math.floor(finalDamage * 1.20); // Head attack skill: +20%
+          attackPositionType = 'head';
+        } else if (isBack) {
+          finalDamage = Math.floor(finalDamage * 1.10); // Normal skill from back: +10%
+          attackPositionType = 'back-partial';
+        } else if (isHead) {
+          finalDamage = Math.floor(finalDamage * 1.05); // Normal skill from front: +5%
+          attackPositionType = 'head-partial';
+        }
+        
+        // Apply boss defense calculation
+        if (state.boss) {
+          // Calculate player's total power from equipment
+          let playerTotalPower = 0;
+          for (const slot of ['weapon', 'armor', 'accessory']) {
+            const item = state.player.equipment[slot];
+            if (item) playerTotalPower += item.totalPower;
+          }
+          
+          const bossDefense = state.boss.defense || 50; // 기본 보스 방어력
+          
+          // 방어력 감산 공식: damage * (playerPower / (playerPower + bossDefense))
+          const defenseMultiplier = playerTotalPower / (playerTotalPower + bossDefense);
+          finalDamage = Math.floor(finalDamage * defenseMultiplier);
+          
+          // 최소 데미지 보장 (항상 1 이상의 데미지)
+          finalDamage = Math.max(1, finalDamage);
+        }
+      }
+      
+      state.boss.hp = Math.max(0, state.boss.hp - finalDamage);
+      targets.push({ 
+        x: state.boss.x, 
+        y: state.boss.y,
+        attackType: attackPositionType
+      });
+      
+      // Add hit impact effect for boss
+      const isCritical = attackPositionType === 'back' || attackPositionType === 'head';
+      state.effects.push({
+        type: isCritical ? 'criticalHit' : 'hitImpact',
+        x: state.boss.x,
+        y: state.boss.y,
+        radius: isCritical ? 25 : 20,
+        ttl: isCritical ? 0.4 : 0.2,
+      });
+      
+      // Damage text is now handled in the unified boss damage section below
+      
+      // Add unified damage floating text effect for boss
+      state.effects.push({
+        type: 'damageText',
+        x: state.boss.x + (Math.random() - 0.5) * 20, // Less spread
+        y: state.boss.y - 40 + (Math.random() - 0.5) * 10, // Less spread
+        text: Math.floor(finalDamage).toString(),
+        ttl: 0.8,
+        attackType: attackPositionType,
+      });
+      
+      // Check if boss died
+      if (state.boss.hp <= 0) {
+        updatePlayerStats(state, 'bossDefeated', { 
+          gold: Math.floor(Math.random() * 50) + 100 
+        });
+        
+        // Auto-save on boss defeat (major item drop)
+        if (window.saveOnActivity) {
+          window.saveOnActivity('boss_defeat');
+        }
+      }
     }
   }
 
@@ -353,6 +475,9 @@ function tryCastSkill(state, key) {
 
   state.effects.push(effectData);
   skill.remaining = skill.cooldown;
+  
+  // Track skill usage statistics
+  updatePlayerStats(state, 'skillUsed', { skillKey: key });
 
   // Character-specific gauge system
   const gauge = state.player.gauge;
@@ -495,7 +620,42 @@ function tryBasicAttack(state, target, damage, range, attackSpeedMultiplier = 1.
     if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
 
     if (angleDiff <= coneAngle) {
+      const damageDealt = Math.min(damage, m.hp);
       m.hp = Math.max(0, m.hp - damage);
+      
+      // Update statistics
+      updatePlayerStats(state, 'damageDealt', { amount: damageDealt });
+      
+      // Add hit impact effect
+      state.effects.push({
+        type: 'hitImpact',
+        x: m.x,
+        y: m.y,
+        radius: 15,
+        ttl: 0.2,
+      });
+      
+      // Add damage floating text effect
+      state.effects.push({
+        type: 'damageText',
+        x: m.x,
+        y: m.y - 30,
+        text: damage.toString(),
+        ttl: 0.8,
+      });
+      
+      // Check if monster died
+      if (m.hp <= 0) {
+        updatePlayerStats(state, 'monsterKill', { 
+          count: 1, 
+          gold: Math.floor(Math.random() * 10) + 5 
+        });
+        
+        // Auto-save on monster kill (item drop simulation)
+        if (window.saveOnActivity) {
+          window.saveOnActivity('monster_kill');
+        }
+      }
     }
   }
 
@@ -513,7 +673,56 @@ function tryBasicAttack(state, target, damage, range, attackSpeedMultiplier = 1.
       if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
 
       if (angleDiff <= coneAngle) {
-        state.boss.hp = Math.max(0, state.boss.hp - damage);
+        // Apply boss defense calculation for basic attack
+        let finalDamage = damage;
+        if (state.boss) {
+          // Calculate player's total power from equipment
+          let playerTotalPower = 0;
+          for (const slot of ['weapon', 'armor', 'accessory']) {
+            const item = state.player.equipment[slot];
+            if (item) playerTotalPower += item.totalPower;
+          }
+          
+          const bossDefense = state.boss.defense || 50; // 기본 보스 방어력
+          
+          // 방어력 감산 공식: damage * (playerPower / (playerPower + bossDefense))
+          const defenseMultiplier = playerTotalPower / (playerTotalPower + bossDefense);
+          finalDamage = Math.floor(damage * defenseMultiplier);
+          
+          // 최소 데미지 보장 (항상 1 이상의 데미지)
+          finalDamage = Math.max(1, finalDamage);
+        }
+        
+        const damageDealt = Math.min(finalDamage, state.boss.hp);
+        state.boss.hp = Math.max(0, state.boss.hp - finalDamage);
+        
+        // Update statistics
+        updatePlayerStats(state, 'damageDealt', { amount: damageDealt });
+        
+        // Add hit impact effect for boss
+        state.effects.push({
+          type: 'hitImpact',
+          x: state.boss.x,
+          y: state.boss.y,
+          radius: 20,
+          ttl: 0.2,
+        });
+        
+        // Add damage floating text effect
+        state.effects.push({
+          type: 'damageText',
+          x: state.boss.x,
+          y: state.boss.y - 30,
+          text: finalDamage.toString(),
+          ttl: 0.8,
+        });
+        
+        // Check if boss died
+        if (state.boss.hp <= 0) {
+          updatePlayerStats(state, 'bossDefeated', { 
+            gold: Math.floor(Math.random() * 50) + 100 
+          });
+        }
       }
     }
   }

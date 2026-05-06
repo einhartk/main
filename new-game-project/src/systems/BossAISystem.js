@@ -52,6 +52,8 @@ export class BossAISystem {
       if (dist > 100) {
         boss.targetX = p.x;
         boss.targetY = p.y;
+        // Update facing angle to look at player while chasing
+        boss.facingAngle = Math.atan2(dy, dx);
       } else {
         boss.targetX = boss.x;
         boss.targetY = boss.y;
@@ -62,6 +64,57 @@ export class BossAISystem {
       const skill = boss.skills[skillKey];
       skill.remaining = Math.max(0, skill.remaining - dt);
     }
+  }
+
+  // Check if player is hitting from back or head position
+  // Back: 90 degrees behind boss facing direction
+  // Head: 45 degrees in front of boss facing direction
+  checkAttackPosition(boss, playerX, playerY) {
+    const dx = playerX - boss.x;
+    const dy = playerY - boss.y;
+    const angleToPlayer = Math.atan2(dy, dx);
+    
+    // Normalize angle difference to [-PI, PI]
+    let angleDiff = angleToPlayer - boss.facingAngle;
+    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+    const absAngleDiff = Math.abs(angleDiff);
+    
+    // Back attack: within 90 degrees behind (PI ± PI/4 = 135° ~ 225°)
+    // Head attack: within 90 degrees in front (± PI/4 = ±45°)
+    // Both set to 90° for balanced gameplay
+    const isBack = absAngleDiff > (3 * Math.PI / 4); // > 135 degrees (90° behind)
+    const isHead = absAngleDiff < (Math.PI / 4); // < 45 degrees (90° in front)
+    
+    return { isBack, isHead, angleDiff };
+  }
+
+  // Calculate damage with back/head bonuses
+  // Back attack: +15% damage
+  // Head attack: +10% damage
+  calculateDamageWithPosition(baseDamage, isBack, isHead, skillBackAttack, skillHeadAttack) {
+    let multiplier = 1.0;
+    let attackType = 'normal';
+    
+    if (isBack && skillBackAttack) {
+      multiplier = 1.25; // Back attack skill from behind: +25%
+      attackType = 'back';
+    } else if (isHead && skillHeadAttack) {
+      multiplier = 1.20; // Head attack skill from front: +20%
+      attackType = 'head';
+    } else if (isBack) {
+      multiplier = 1.10; // Normal skill from behind: +10%
+      attackType = 'back-partial';
+    } else if (isHead) {
+      multiplier = 1.05; // Normal skill from front: +5%
+      attackType = 'head-partial';
+    }
+    
+    return {
+      damage: Math.floor(baseDamage * multiplier),
+      multiplier,
+      attackType
+    };
   }
 
   checkPhaseTransitions(state, boss) {

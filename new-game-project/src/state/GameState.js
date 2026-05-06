@@ -4,8 +4,8 @@ export class GameState {
   constructor(characterType = 'sura') {
     // Use CharacterFactory to create player based on character type
     this.player = CharacterFactory.createCharacter(characterType, {
-      x: 160,
-      y: 270,
+      x: 100,  // 마을 입구 위치 (왼쪽)
+      y: 270,  // 중앙 높이
       level: 1,
       gold: 1000,
     });
@@ -79,6 +79,7 @@ export class GameState {
         activeSkill: null,
         skillPhase: 'idle',
         skillTimer: 0,
+        facingAngle: 0, // Boss facing direction (0 = right, PI/2 = down, PI = left, -PI/2 = up)
       },
     };
 

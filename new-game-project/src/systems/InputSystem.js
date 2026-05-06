@@ -14,12 +14,24 @@ export class InputSystem {
 
     const upgradeSlot = this.inputHandler.consumeUpgradeSlotPressed();
     if (upgradeSlot) {
-      state.actions.upgradeSlot = upgradeSlot;
+      console.log(`Upgrade slot pressed: ${upgradeSlot}, Panel open: ${state.interactions.upgradePanelOpen}`);
+      if (state.interactions.upgradePanelOpen) {
+        state.actions.upgradeSlot = upgradeSlot;
+        console.log(`Setting upgradeSlot action: ${upgradeSlot}`);
+      }
     }
 
     const useConsumable = this.inputHandler.consumeUseConsumablePressed();
     if (useConsumable) {
-      state.actions.useConsumable = useConsumable;
+      // Only process consumable use if no UI panels are open (dialog, upgrade panel, etc.)
+      const isUIOpen = state.interactions?.upgradePanelOpen || state.interactions?.dialog;
+      
+      if (!isUIOpen) {
+        state.actions.useConsumable = useConsumable;
+      } else if (state.interactions?.dialog) {
+        // If dialog is open, treat number keys as dialog options
+        state.actions.dialogOption = useConsumable;
+      }
     }
 
     if (this.inputHandler.consumeEnterRaidPressed()) {
@@ -30,8 +42,13 @@ export class InputSystem {
       state.actions.returnToTown = true;
     }
 
+    // Only process skill keys if:
+    // 1. In dungeon/raid zone
+    // 2. No UI panels are open (upgrade panel, dialog, etc.)
+    const isUIOpen = state.interactions?.upgradePanelOpen || state.interactions?.dialog;
+    
     const skillKeys = this.inputHandler.consumeSkillKeysPressed();
-    if (skillKeys.length > 0 && (state.currentZone === 'dungeon' || state.currentZone === 'raid')) {
+    if (skillKeys.length > 0 && (state.currentZone === 'dungeon' || state.currentZone === 'raid') && !isUIOpen) {
       state.actions.castSkills = skillKeys;
     }
 

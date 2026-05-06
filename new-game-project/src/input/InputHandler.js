@@ -42,6 +42,20 @@ export class InputHandler {
       if (e.code === 'Digit3') this._useConsumablePressed = 3;
       if (e.code === 'Digit4') this._useConsumablePressed = 4;
 
+      // Upgrade slot keys (when upgrade panel is open)
+      if (e.key === '1' && e.shiftKey) {
+        this._upgradeSlotPressed = 'weapon';
+        console.log('Shift+1 pressed - weapon upgrade');
+      }
+      if (e.key === '2' && e.shiftKey) {
+        this._upgradeSlotPressed = 'armor';
+        console.log('Shift+2 pressed - armor upgrade');
+      }
+      if (e.key === '3' && e.shiftKey) {
+        this._upgradeSlotPressed = 'accessory';
+        console.log('Shift+3 pressed - accessory upgrade');
+      }
+
       const skillKey = e.code.toLowerCase().replace('key', '');
       if (['q', 'w', 'e', 'r', 't', 'a', 's', 'd', 'f', 'v', 'z', 'x'].includes(skillKey)) {
         this._skillKeysPressed.add(skillKey);

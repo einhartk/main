@@ -29,26 +29,26 @@ export const gunslinger = {
   // rifle (원거리, 공이속 버프)
   skills: {
     // Handgun Skills (기동/치명)
-    q: { key: 'q', name: '퀵 샷', cooldown: 4, remaining: 0, radius: 120, damage: 25, effectType: 'projectile', gaugeType: 'handgun', description: '빠른 핸드건 2연사' },
-    w: { key: 'w', name: '애프터 쇼크', cooldown: 8, remaining: 0, radius: 100, damage: 35, effectType: 'projectile', gaugeType: 'handgun', description: '강력한 핸드건 일격' },
+    q: { key: 'q', name: '퀵 샷', icon: '🔫', cooldown: 4, remaining: 0, radius: 120, damage: 25, effectType: 'projectile', gaugeType: 'handgun', description: '빠른 핸드건 2연사' },
+    w: { key: 'w', name: '애프터 쇼크', icon: '💥', cooldown: 8, remaining: 0, radius: 100, damage: 35, effectType: 'projectile', gaugeType: 'handgun', description: '강력한 핸드건 일격' },
     
     // Shotgun Skills (근거리 폭발)
-    e: { key: 'e', name: '샷건 도미네이터', cooldown: 10, remaining: 0, radius: 80, damage: 50, effectType: 'fireAoE', gaugeType: 'shotgun', description: '샷건 부채꼴 폭발' },
-    r: { key: 'r', name: '카타스트로피', cooldown: 12, remaining: 0, radius: 90, damage: 60, effectType: 'fireAoE', gaugeType: 'shotgun', description: '샷건 원형 범위 공격' },
+    e: { key: 'e', name: '샷건 도미네이터', icon: '🔫🔫', cooldown: 10, remaining: 0, radius: 80, damage: 50, effectType: 'fireAoE', gaugeType: 'shotgun', description: '샷건 부채꼴 폭발' },
+    r: { key: 'r', name: '카타스트로피', icon: '💣', cooldown: 12, remaining: 0, radius: 90, damage: 60, effectType: 'fireAoE', gaugeType: 'shotgun', description: '샷건 원형 범위 공격' },
     
     // Rifle Skills (원거리 관통)
-    a: { key: 'a', name: '포커스드 샷', cooldown: 11, remaining: 0, radius: 200, damage: 55, effectType: 'pierce', gaugeType: 'rifle', description: '라플 관통 사격' },
-    s: { key: 's', name: '타겟 다운', cooldown: 14, remaining: 0, radius: 220, damage: 70, effectType: 'pierce', gaugeType: 'rifle', description: '라플 고위력 단일 사격' },
+    a: { key: 'a', name: '포커스드 샷', icon: '🎯', cooldown: 11, remaining: 0, radius: 200, damage: 55, effectType: 'pierce', gaugeType: 'rifle', description: '라플 관통 사격' },
+    s: { key: 's', name: '타겟 다운', icon: '🎯💥', cooldown: 14, remaining: 0, radius: 220, damage: 70, effectType: 'pierce', gaugeType: 'rifle', description: '라플 고위력 단일 사격' },
     
     // Utility/Movement
-    d: { key: 'd', name: '퀵 스텝', cooldown: 7, remaining: 0, radius: 150, damage: 0, effectType: 'dash', gaugeType: 'handgun', description: '핸드건 자세에서 빠른 이동' },
-    f: { key: 'f', name: '플래시 그레네이드', cooldown: 9, remaining: 0, radius: 100, damage: 20, effectType: 'aoe', gaugeType: 'handgun', description: '섬광 수류탄 (기절 효과)' },
+    d: { key: 'd', name: '퀵 스텝', icon: '👟', cooldown: 7, remaining: 0, radius: 150, damage: 0, effectType: 'dash', gaugeType: 'handgun', description: '핸드건 자세에서 빠른 이동' },
+    f: { key: 'f', name: '플래시 그레네이드', icon: '💥✨', cooldown: 9, remaining: 0, radius: 100, damage: 20, effectType: 'aoe', gaugeType: 'handgun', description: '섬광 수류탄 (기절 효과)' },
     
     // Special Skills
-    t: { key: 't', name: '피스메이커', cooldown: 30, remaining: 0, radius: 0, damage: 0, effectType: 'buff', gaugeType: 'special', description: '30초간 모든 무기 버프 증폭', buffDuration: 30 },
-    v: { key: 'v', name: '하이 눈', cooldown: 100, remaining: 0, radius: 300, damage: 180, effectType: 'awakening', gaugeType: 'special', description: '각성: 360도 전방 위력 사격' },
-    z: { key: 'z', name: '멸망의 탄환', cooldown: 0.5, remaining: 0, radius: 180, damage: 40, effectType: 'projectile', gaugeType: 'hunt', requiredStacks: 20, description: '20스택 필요: 모든 무기 동시 발사' },
-    x: { key: 'x', name: '롤', cooldown: 8, remaining: 0, radius: 80, damage: 0, effectType: 'counter', gaugeType: 'handgun', description: '구르기로 회피' },
+    t: { key: 't', name: '피스메이커', icon: '🔫✨', cooldown: 30, remaining: 0, radius: 0, damage: 0, effectType: 'buff', gaugeType: 'special', description: '30초간 모든 무기 버프 증폭', buffDuration: 30 },
+    v: { key: 'v', name: '하이 눈', icon: '👁️', cooldown: 100, remaining: 0, radius: 300, damage: 180, effectType: 'awakening', gaugeType: 'special', description: '각성: 360도 전방 위력 사격' },
+    z: { key: 'z', name: '멸망의 탄환', icon: '🔴', cooldown: 0.5, remaining: 0, radius: 180, damage: 40, effectType: 'projectile', gaugeType: 'hunt', requiredStacks: 20, description: '20스택 필요: 모든 무기 동시 발사' },
+    x: { key: 'x', name: '롤', icon: '🔄', cooldown: 8, remaining: 0, radius: 80, damage: 0, effectType: 'counter', gaugeType: 'handgun', description: '구르기로 회피' },
   },
   
   createGauge() {

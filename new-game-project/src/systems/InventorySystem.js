@@ -1,4 +1,4 @@
-import { createItem, upgradeItem, getUpgradeCost, ITEM_SLOTS, createConsumable } from '../data/items.js';
+import { createItem, upgradeItem, getUpgradeCost, calculateUpgradeResult, ITEM_SLOTS, createConsumable } from '../data/items.js';
 
 export class InventorySystem {
   constructor() {}
@@ -62,6 +62,12 @@ export class InventorySystem {
 
     state.player.equipment[item.slot] = item;
     state.player.inventory.splice(idx, 1);
+    
+    // Auto-save on equipment change
+    if (window.saveOnActivity) {
+      window.saveOnActivity('equip_item');
+    }
+    
     return true;
   }
 
@@ -71,6 +77,12 @@ export class InventorySystem {
 
     state.player.inventory.push(item);
     state.player.equipment[slot] = null;
+    
+    // Auto-save on equipment change
+    if (window.saveOnActivity) {
+      window.saveOnActivity('unequip_item');
+    }
+    
     return true;
   }
 
@@ -78,11 +90,93 @@ export class InventorySystem {
     const item = state.player.equipment[slot];
     if (!item) return;
 
+    // 최대 레벨 체크
+    if (item.level >= 20) {
+      // 최대 레벨 도달 메시지 표시
+      if (window.saveOnActivity) {
+        window.saveOnActivity('upgrade_max_level');
+      }
+      return;
+    }
+
     const cost = getUpgradeCost(item);
     if (state.player.gold < cost) return;
 
     state.player.gold -= cost;
-    state.player.equipment[slot] = upgradeItem(item);
+    
+    // 새로운 강화 시스템 적용
+    const upgradeResult = calculateUpgradeResult(item);
+    
+    if (upgradeResult.success) {
+      state.player.equipment[slot] = upgradeItem(item);
+      
+      // 성공 메시지
+      console.log(`강화 성공! ${item.name} Lv.${item.level} → Lv.${upgradeResult.newLevel} (성공률: ${Math.floor(upgradeResult.successRate * 100)}%)`);
+      
+      // 모달창에 성공 메시지 표시
+      if (window.showUpgradeResult) {
+        window.showUpgradeResult('success', `강화 성공! ${item.name} Lv.${item.level} → Lv.${upgradeResult.newLevel}`);
+      }
+      
+      if (window.saveOnActivity) {
+        window.saveOnActivity('upgrade_success');
+      }
+    } else {
+      // 실패 또는 하락 처리
+      if (upgradeResult.type === 'downgrade') {
+        // 하락: 레벨 감소 (구간별 스탯 계산 적용)
+        const getCumulativeStatBonus = (level) => {
+          let totalBonus = 0;
+          for (let i = 0; i < level; i++) {
+            if (i <= 5) totalBonus += 3;
+            else if (i <= 10) totalBonus += 5;
+            else if (i <= 15) totalBonus += 7;
+            else totalBonus += 9;
+          }
+          return totalBonus;
+        };
+        
+        const getRarityBonus = (rarity) => {
+          switch (rarity) {
+            case 'uncommon': return 2;
+            case 'rare': return 5;
+            case 'epic': return 10;
+            case 'legendary': return 15;
+            default: return 0;
+          }
+        };
+        
+        const downgradedItem = {
+          ...item,
+          level: upgradeResult.newLevel,
+          totalPower: item.basePower + getCumulativeStatBonus(upgradeResult.newLevel) + getRarityBonus(item.rarity)
+        };
+        state.player.equipment[slot] = downgradedItem;
+        
+        console.log(`강화 하락! ${item.name} Lv.${item.level} → Lv.${upgradeResult.newLevel} (성공: ${Math.floor(upgradeResult.successRate * 100)}%, 하락: ${Math.floor(upgradeResult.failureRate * 100)}%)`);
+        
+        // 모달창에 하락 메시지 표시
+        if (window.showUpgradeResult) {
+          window.showUpgradeResult('downgrade', `강화 하락! ${item.name} Lv.${item.level} → Lv.${upgradeResult.newLevel}`);
+        }
+        
+        if (window.saveOnActivity) {
+          window.saveOnActivity('upgrade_downgrade');
+        }
+      } else {
+        // 실패: 변화 없음
+        console.log(`강화 실패! ${item.name} Lv.${item.level} 유지 (성공: ${Math.floor(upgradeResult.successRate * 100)}%, 하락: ${Math.floor(upgradeResult.failureRate * 100)}%)`);
+        
+        // 모달창에 실패 메시지 표시
+        if (window.showUpgradeResult) {
+          window.showUpgradeResult('failed', `강화 실패! ${item.name} Lv.${item.level} 유지`);
+        }
+        
+        if (window.saveOnActivity) {
+          window.saveOnActivity('upgrade_failed');
+        }
+      }
+    }
   }
 
   tryUseConsumable(state, slotIndex) {

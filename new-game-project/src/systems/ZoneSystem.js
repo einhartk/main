@@ -40,6 +40,11 @@ export class ZoneSystem {
       this.renderer._updateViewportState();
       console.log('Camera set to bounds: 1200x800, zoom: 1');
     }
+
+    // Auto-save on raid entry
+    if (window.saveOnActivity) {
+      window.saveOnActivity('raid_entry');
+    }
   }
 
   returnToTown(state) {
@@ -72,7 +77,12 @@ export class ZoneSystem {
       camera.scrollX = 0;
       camera.scrollY = 0;
       this.renderer._updateViewportState();
-      console.log('Camera set to bounds: 960x540, zoom: 1');
+      console.log('Camera reset to town bounds: 960x540');
+    }
+
+    // Auto-save on raid exit
+    if (window.saveOnActivity) {
+      window.saveOnActivity('raid_exit');
     }
   }
 }
