@@ -1,4 +1,5 @@
 import { SoundManager } from './SoundManager.js';
+import { ParticleSystem } from './ParticleSystem.js';
 
 export class PhaserRenderer {
   constructor({ parentId, width, height }) {
@@ -15,6 +16,7 @@ export class PhaserRenderer {
     this._panelText = null;
 
     this._resizeHandler = null;
+    this._particleSystem = new ParticleSystem();
   }
 
   init(state) {
@@ -28,6 +30,11 @@ export class PhaserRenderer {
       create() {
         self._scene = this;
         self._gfx = this.add.graphics();
+        
+        // Connect performance manager to particle system
+        if (window.performanceManager) {
+          self._particleSystem.setPerformanceManager(window.performanceManager);
+        }
         
         // Initialize sound manager
         self._soundManager = new SoundManager(this);
@@ -129,6 +136,15 @@ export class PhaserRenderer {
     this._updateViewportState(state);
 
     this._gfx.clear();
+
+    // Update particle system
+    this._particleSystem.update(dt);
+    
+    // Update performance manager
+    if (window.performanceManager) {
+      const particleCount = this._particleSystem.getParticleCount();
+      window.performanceManager.update(performance.now(), particleCount, 0);
+    }
 
     this._gfx.lineStyle(1, 0x22304a, 1);
     this._gfx.strokeRect(0.5, 0.5, state.map.width - 1, state.map.height - 1);
@@ -243,6 +259,11 @@ export class PhaserRenderer {
     const currentEffectIds = new Set();
     
     for (const e of state.effects) {
+      // Debug: Log effect processing
+      if (e.type === 'bossBasicAttack' || e.type === 'bossFullHPAttack') {
+        console.log(`Effect Debug - Processing boss attack effect: ${e.type} at (${e.x}, ${e.y})`);
+      }
+      
       // Generate unique ID for effect (based on type, position, and time)
       const effectId = `${e.type}-${e.x?.toFixed(0) || 0}-${e.y?.toFixed(0) || 0}-${e.ttl?.toFixed(2) || 0}`;
       currentEffectIds.add(effectId);
@@ -275,6 +296,23 @@ export class PhaserRenderer {
         const alpha = Math.max(0, Math.min(1, e.ttl / 0.3));
         const progress = 1 - alpha;
 
+        // Enhanced explosion with particle system
+        if (progress === 0) { // Initial explosion
+          this._particleSystem.createExplosion(e.x, e.y, {
+            count: 25,
+            speed: 200,
+            color: color,
+            size: 4,
+            gravity: 100,
+          });
+          
+          // Create impact sparks
+          this._particleSystem.createImpactSparks(e.x, e.y, {
+            count: 15,
+            color: 0xffffff,
+          });
+        }
+
         // EXPLOSION: Expanding shockwave rings
         const ringCount = 3;
         for (let i = 0; i < ringCount; i++) {
@@ -287,14 +325,37 @@ export class PhaserRenderer {
           }
         }
 
-        // Center burst
-        this._gfx.fillStyle(color, 0.4 * alpha);
-        this._gfx.fillCircle(e.x, e.y, e.radius * 0.3);
+        // Center burst with glow effect
+        const glowRadius = e.radius * 0.3 * (1 + progress * 0.5);
+        this._gfx.fillStyle(color, 0.6 * alpha);
+        this._gfx.fillCircle(e.x, e.y, glowRadius);
+        
+        // Inner bright core
+        this._gfx.fillStyle(0xffffff, 0.8 * alpha);
+        this._gfx.fillCircle(e.x, e.y, glowRadius * 0.3);
 
-        // Radial lines
-        for (let i = 0; i < 12; i++) {
-          const angle = (i / 12) * Math.PI * 2 + progress * Math.PI;
+        // Enhanced radial lines with particle trails
+        for (let i = 0; i < 16; i++) {
+          const angle = (i / 16) * Math.PI * 2 + progress * Math.PI;
           const lineLength = e.radius * (0.5 + 0.5 * Math.sin(progress * Math.PI));
+          
+          // Create small particles along lines
+          if (Math.random() < 0.3) {
+            const px = e.x + Math.cos(angle) * lineLength * 0.7;
+            const py = e.y + Math.sin(angle) * lineLength * 0.7;
+            this._particleSystem.addParticle({
+              x: px,
+              y: py,
+              vx: Math.cos(angle) * 50,
+              vy: Math.sin(angle) * 50,
+              size: 2,
+              color: color,
+              ttl: 0.5,
+              fadeOut: true,
+              shrink: true,
+            });
+          }
+          
           this._gfx.lineStyle(2, color, 0.6 * alpha);
           this._gfx.beginPath();
           this._gfx.moveTo(e.x, e.y);
@@ -312,24 +373,67 @@ export class PhaserRenderer {
         const px = e.startX + (e.targetX - e.startX) * progress;
         const py = e.startY + (e.targetY - e.startY) * progress;
 
-        // ARROW PROJECTILE: Pointed shape with long trail
+        // ARROW PROJECTILE: Pointed shape with enhanced trail
         const angle = Math.atan2(e.targetY - e.startY, e.targetX - e.startX);
 
-        // Long fading trail
-        for (let i = 1; i <= 10; i++) {
+        // Enhanced particle trail
+        if (Math.random() < 0.4) {
+          this._particleSystem.addParticle({
+            x: px + (Math.random() - 0.5) * 10,
+            y: py + (Math.random() - 0.5) * 10,
+            vx: -Math.cos(angle) * 30 + (Math.random() - 0.5) * 20,
+            vy: -Math.sin(angle) * 30 + (Math.random() - 0.5) * 20,
+            size: 2 + Math.random() * 2,
+            color: color,
+            ttl: 0.3,
+            fadeOut: true,
+            shrink: true,
+          });
+        }
+
+        // Long fading trail with enhanced glow
+        for (let i = 1; i <= 12; i++) {
           const trailDist = i * 8;
-          const trailAlpha = alpha * (1 - i / 11) * 0.5;
+          const trailAlpha = alpha * (1 - i / 13) * 0.6;
+          const trailSize = 8 - i * 0.5;
+          
+          // Outer glow
+          this._gfx.fillStyle(color, trailAlpha * 0.3);
+          this._gfx.fillCircle(
+            px - Math.cos(angle) * trailDist,
+            py - Math.sin(angle) * trailDist,
+            trailSize * 1.5
+          );
+          
+          // Inner trail
           this._gfx.fillStyle(color, trailAlpha);
           this._gfx.fillCircle(
             px - Math.cos(angle) * trailDist,
             py - Math.sin(angle) * trailDist,
-            6 - i * 0.4
+            trailSize
           );
         }
 
-        // Arrow head (triangle)
-        const headLen = 18;
-        const headWidth = 10;
+        // Enhanced arrow head with glow
+        const headLen = 20;
+        const headWidth = 12;
+        
+        // Glow behind arrow
+        this._gfx.fillStyle(color, 0.4 * alpha);
+        this._gfx.beginPath();
+        this._gfx.moveTo(px + Math.cos(angle) * headLen * 1.2, py + Math.sin(angle) * headLen * 1.2);
+        this._gfx.lineTo(
+          px + Math.cos(angle + Math.PI * 0.8) * headWidth * 1.3,
+          py + Math.sin(angle + Math.PI * 0.8) * headWidth * 1.3
+        );
+        this._gfx.lineTo(
+          px + Math.cos(angle - Math.PI * 0.8) * headWidth * 1.3,
+          py + Math.sin(angle - Math.PI * 0.8) * headWidth * 1.3
+        );
+        this._gfx.closePath();
+        this._gfx.fillPath();
+
+        // Main arrow head
         this._gfx.fillStyle(0xffffff, 0.9 * alpha);
         this._gfx.beginPath();
         this._gfx.moveTo(px + Math.cos(angle) * headLen, py + Math.sin(angle) * headLen);
@@ -344,9 +448,13 @@ export class PhaserRenderer {
         this._gfx.closePath();
         this._gfx.fillPath();
 
-        // Core glow
+        // Enhanced core glow
         this._gfx.fillStyle(color, 0.8 * alpha);
-        this._gfx.fillCircle(px, py, 10);
+        this._gfx.fillCircle(px, py, 12);
+        
+        // Bright center
+        this._gfx.fillStyle(0xffffff, 0.9 * alpha);
+        this._gfx.fillCircle(px, py, 6);
       }
 
       if (e.type === 'chain') {
@@ -1077,6 +1185,111 @@ export class PhaserRenderer {
       }
 
       // Damage floating text effect
+      // Boss basic attack warning
+      if (e.type === 'bossBasicWarning') {
+        const alpha = Math.max(0, Math.min(1, e.ttl / 0.5));
+        const pulse = Math.sin(state.time * 15) * 0.2 + 0.8;
+        
+        // Red warning circle
+        this._gfx.fillStyle(0xff4444, 0.3 * alpha * pulse);
+        this._gfx.fillCircle(e.x, e.y, e.radius);
+        
+        this._gfx.lineStyle(3, 0xff6666, 0.8 * alpha * pulse);
+        this._gfx.strokeCircle(e.x, e.y, e.radius);
+        
+        // Inner danger indicator
+        this._gfx.fillStyle(0xff0000, 0.6 * alpha);
+        this._gfx.fillCircle(e.x, e.y, 10);
+      }
+
+      // Boss full HP attack warning
+      if (e.type === 'bossFullHPWarning') {
+        const alpha = Math.max(0, Math.min(1, e.ttl / 0.8));
+        const pulse = Math.sin(state.time * 12) * 0.3 + 0.7;
+        
+        // Orange warning circle (larger)
+        this._gfx.fillStyle(0xff6600, 0.4 * alpha * pulse);
+        this._gfx.fillCircle(e.x, e.y, e.radius);
+        
+        this._gfx.lineStyle(4, 0xff9900, 0.9 * alpha * pulse);
+        this._gfx.strokeCircle(e.x, e.y, e.radius);
+        
+        // Danger symbols
+        for (let i = 0; i < 4; i++) {
+          const angle = (i / 4) * Math.PI * 2 + state.time * 3;
+          const symbolX = e.x + Math.cos(angle) * (e.radius * 0.7);
+          const symbolY = e.y + Math.sin(angle) * (e.radius * 0.7);
+          
+          this._gfx.fillStyle(0xff0000, alpha);
+          this._gfx.fillCircle(symbolX, symbolY, 5);
+        }
+        
+        // Inner danger indicator
+        this._gfx.fillStyle(0xff3300, 0.8 * alpha);
+        this._gfx.fillCircle(e.x, e.y, 15);
+      }
+
+      // Boss basic attack effect
+      if (e.type === 'bossBasicAttack') {
+        const alpha = Math.max(0, Math.min(1, e.ttl / 0.4));
+        const progress = 1 - alpha;
+        
+        // Red slash effect
+        this._gfx.lineStyle(3, 0xff4444, alpha);
+        this._gfx.beginPath();
+        
+        // Create slash arc
+        const slashAngle = Math.atan2(state.player.y - e.y, state.player.x - e.x);
+        const slashLength = 60;
+        
+        for (let i = 0; i < 3; i++) {
+          const angle = slashAngle + (i - 1) * 0.3;
+          const startX = e.x + Math.cos(angle) * 20;
+          const startY = e.y + Math.sin(angle) * 20;
+          const endX = e.x + Math.cos(angle) * slashLength;
+          const endY = e.y + Math.sin(angle) * slashLength;
+          
+          this._gfx.moveTo(startX, startY);
+          this._gfx.lineTo(endX, endY);
+        }
+        this._gfx.strokePath();
+        
+        // Impact spark
+        this._gfx.fillStyle(0xff6666, alpha);
+        this._gfx.fillCircle(e.x, e.y, 8);
+      }
+
+      // Boss full HP attack effect
+      if (e.type === 'bossFullHPAttack') {
+        const alpha = Math.max(0, Math.min(1, e.ttl / 0.6));
+        const progress = 1 - alpha;
+        
+        // Orange explosive effect
+        this._gfx.fillStyle(0xff6600, alpha * 0.8);
+        this._gfx.fillCircle(e.x, e.y, 40);
+        
+        // Inner bright core
+        this._gfx.fillStyle(0xffffff, alpha);
+        this._gfx.fillCircle(e.x, e.y, 15);
+        
+        // Radial burst lines
+        this._gfx.lineStyle(2, 0xff9900, alpha);
+        
+        for (let i = 0; i < 8; i++) {
+          const angle = (i / 8) * Math.PI * 2;
+          const length = 60 * (1 + progress * 0.5);
+          
+          this._gfx.beginPath();
+          this._gfx.moveTo(e.x, e.y);
+          this._gfx.lineTo(
+            e.x + Math.cos(angle) * length,
+            e.y + Math.sin(angle) * length
+          );
+          this._gfx.strokePath();
+        }
+      }
+
+      // Damage floating text effect
       if (e.type === 'damageText') {
         const alpha = Math.max(0, Math.min(1, e.ttl / 0.8));
         const progress = 1 - alpha;
@@ -1691,5 +1904,8 @@ export class PhaserRenderer {
       this._gfx.fillStyle(0xffffff, 1);
       this._gfx.fillRect(mainStartX + 5, hpBarY + 3, 60, 10);
     }
+
+    // Render particle system
+    this._particleSystem.render(this._gfx);
   }
 }

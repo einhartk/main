@@ -27,6 +27,15 @@ export class ZoneSystem {
     state.player.targetY = 400;
     state.interactions.upgradePanelOpen = false;
 
+    // Reset all skill cooldowns when entering raid
+    for (const skillKey of Object.keys(state.player.skills)) {
+      const skill = state.player.skills[skillKey];
+      if (skill) {
+        skill.remaining = 0;
+      }
+    }
+    console.log('레이드 진입 - 모든 스킬 쿨타임 초기화');
+
     state.map = JSON.parse(JSON.stringify(state.raidMap));
     console.log('Enter raid - map:', state.map.width, state.map.height, 'colliders:', state.map.colliders);
 
@@ -57,6 +66,19 @@ export class ZoneSystem {
     state.player.y = 270;
     state.player.targetX = 160;
     state.player.targetY = 270;
+    
+    // Reset consumable usage when returning to town
+    state.raidConsumablesUsed = 0;
+    console.log('마을로 복귀 - 소모품 사용 횟수 초기화');
+    
+    // Reset all skill cooldowns when returning to town
+    for (const skillKey of Object.keys(state.player.skills)) {
+      const skill = state.player.skills[skillKey];
+      if (skill) {
+        skill.remaining = 0;
+      }
+    }
+    console.log('마을로 복귀 - 모든 스킬 쿨타임 초기화');
     state.interactions.upgradePanelOpen = false;
 
     state.map = {

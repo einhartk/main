@@ -242,11 +242,33 @@ function tryCastSkill(state, key) {
       
       // Check if boss died
       if (state.boss.hp <= 0) {
+        // Give boss rewards
+        if (state.boss.rewards) {
+          const rewards = state.boss.rewards;
+          
+          // Gold reward
+          if (rewards.gold) {
+            state.player.gold += rewards.gold;
+            console.log(`보스 클리어! ${rewards.gold} 골드 획득`);
+          }
+          
+          // Experience reward (if implemented)
+          if (rewards.exp && state.player.level !== undefined) {
+            // Experience system can be implemented later
+            console.log(`경험치 ${rewards.exp} 획득`);
+          }
+          
+          // Item rewards (can be implemented later)
+          if (rewards.items && rewards.items.length > 0) {
+            console.log(`아이템 보상: ${rewards.items.join(', ')}`);
+          }
+        }
+        
         updatePlayerStats(state, 'bossDefeated', { 
-          gold: Math.floor(Math.random() * 50) + 100 
+          gold: state.boss.rewards?.gold || Math.floor(Math.random() * 50) + 100 
         });
         
-        // Auto-save on boss defeat (major item drop)
+        // Auto-save on boss defeat (item drop simulation)
         if (window.saveOnActivity) {
           window.saveOnActivity('boss_defeat');
         }

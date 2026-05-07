@@ -1,6 +1,15 @@
 export class BossAISystem {
   constructor() {
     this.phaseTriggered = { 75: false, 50: false, 25: false };
+    this.currentBoss = null;
+  }
+
+  getCurrentBoss() {
+    return this.currentBoss;
+  }
+
+  setCurrentBoss(boss) {
+    this.currentBoss = boss;
   }
 
   update(state, dt) {
@@ -9,10 +18,145 @@ export class BossAISystem {
     const boss = state.boss;
     const p = state.player;
 
+    // Update current boss reference
+    this.setCurrentBoss(boss);
+
     // Check HP phases for special mechanics
     this.checkPhaseTransitions(state, boss);
 
     boss.patternTimer += dt;
+
+    // Debug: Log boss state every frame
+    if (Math.random() < 0.1) { // Log 10% of frames to avoid spam
+      console.log(`Boss Debug - Zone: ${state.currentZone}, Boss HP: ${boss.hp}/${boss.maxHp}, Player at: (${p.x}, ${p.y}), Boss at: (${boss.x}, ${boss.y}), Distance: ${Math.sqrt((p.x - boss.x) ** 2 + (p.y - boss.y) ** 2)}`);
+    }
+
+    // Basic attack logic - attack if within range and cooldown is ready
+    const dx = p.x - boss.x;
+    const dy = p.y - boss.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Initialize warning state if not exists
+    if (!boss.warningState) {
+      boss.warningState = null;
+      boss.warningTimer = 0;
+    }
+
+    // Basic melee attack when close (within 80 units)
+    if (distance < 80 && (!boss.attackCooldown || boss.attackCooldown <= 0) && !boss.warningState) {
+      // Start warning state
+      boss.warningState = 'basic';
+      boss.warningTimer = 0.5; // 0.5 second warning
+      
+      // Add warning before basic attack
+      if (!state.effects) {
+        state.effects = [];
+      }
+      state.effects.push({
+        type: 'bossBasicWarning',
+        x: p.x,
+        y: p.y,
+        radius: 40,
+        ttl: 0.6, // Slightly longer than warning timer
+        warningTime: 0.5
+      });
+      
+      // Store attack data for after warning
+      boss.pendingAttack = {
+        bossId: boss.id,
+        targetX: p.x,
+        targetY: p.y,
+        damage: boss.basicDamage || 15,
+        type: 'basic',
+        dangerRadius: 40 // Danger zone radius
+      };
+      
+      // Set attack cooldown (1.5 seconds for basic attacks)
+      boss.attackCooldown = 1.5;
+      
+      console.log(`Boss ${boss.id} starting basic attack warning!`);
+    }
+
+    // Process warning states
+    if (boss.warningState && boss.warningTimer > 0) {
+      boss.warningTimer -= dt;
+      
+      // Debug: Log warning timer progress
+      if (Math.random() < 0.2) { // Log 20% of frames
+        console.log(`Warning Debug - State: ${boss.warningState}, Timer: ${boss.warningTimer.toFixed(3)}, Pending: ${!!boss.pendingAttack}`);
+      }
+      
+      if (boss.warningTimer <= 0) {
+        // Warning complete, check if player is still in danger zone
+        if (boss.pendingAttack) {
+          const currentDistance = Math.sqrt(
+            Math.pow(p.x - boss.pendingAttack.targetX, 2) + 
+            Math.pow(p.y - boss.pendingAttack.targetY, 2)
+          );
+          
+          if (currentDistance <= boss.pendingAttack.dangerRadius) {
+            // Player is still in danger zone, apply damage
+            if (!state.actions.bossAttacks) {
+              state.actions.bossAttacks = [];
+            }
+            state.actions.bossAttacks.push(boss.pendingAttack);
+            
+            console.log(`Boss ${boss.id} hit player! Distance: ${currentDistance.toFixed(1)}, Damage: ${boss.pendingAttack.damage}`);
+          } else {
+            // Player dodged the attack
+            console.log(`Boss ${boss.id} missed! Player distance: ${currentDistance.toFixed(1)}, Danger radius: ${boss.pendingAttack.dangerRadius}`);
+          }
+          
+          boss.pendingAttack = null;
+        }
+        boss.warningState = null;
+        boss.warningTimer = 0;
+      }
+    }
+
+    // 100% HP phase - add aggressive patterns
+    const hpPercent = (boss.hp / boss.maxHp) * 100;
+    if (hpPercent > 95 && (!boss.fullHPPattern || boss.fullHPPattern <= 0) && !boss.warningState) {
+      // Start full HP warning state
+      boss.warningState = 'fullHP';
+      boss.warningTimer = 0.8; // 0.8 second warning
+      
+      // Add warning before full HP pattern
+      if (!state.effects) {
+        state.effects = [];
+      }
+      state.effects.push({
+        type: 'bossFullHPWarning',
+        x: p.x,
+        y: p.y,
+        radius: 60,
+        ttl: 0.9, // Slightly longer than warning timer
+        warningTime: 0.8
+      });
+
+      // Store full HP attack data for after warning
+      boss.pendingAttack = {
+        bossId: boss.id,
+        targetX: p.x,
+        targetY: p.y,
+        damage: Math.floor((boss.basicDamage || 15) * 1.5), // 50% more damage at full HP
+        type: 'fullHP',
+        dangerRadius: 60 // Larger danger zone for full HP attack
+      };
+
+      boss.fullHPPattern = 2.0; // 2 second cooldown for full HP pattern
+      console.log(`Boss ${boss.id} starting full HP warning!`);
+    }
+
+    // Update full HP pattern cooldown
+    if (boss.fullHPPattern && boss.fullHPPattern > 0) {
+      boss.fullHPPattern -= dt;
+    }
+
+    // Update basic attack cooldown
+    if (boss.attackCooldown && boss.attackCooldown > 0) {
+      boss.attackCooldown -= dt;
+    }
 
     // Patterns based on current phase
     const patterns = this.getPatternsForPhase(boss.phase);
@@ -162,18 +306,39 @@ export class BossAISystem {
   }
 
   getPatternsForPhase(phase) {
-    // Different patterns for each phase
-    switch (phase) {
-      case 1: // 100-75%
-        return ['fireBreath', 'tailSwipe', 'roar'];
-      case 2: // 75-50% - Add charge attack
-        return ['fireBreath', 'tailSwipe', 'charge', 'roar'];
-      case 3: // 50-25% - More aggressive
-        return ['charge', 'groundSlam', 'fireBreath', 'roar'];
-      case 4: // 25-0% - Desperate, fast patterns
-        return ['charge', 'groundSlam', 'tailSwipe', 'fireBreath'];
-      default:
-        return ['fireBreath', 'tailSwipe', 'roar'];
+    const boss = this.getCurrentBoss();
+    
+    // Different patterns for each boss type
+    if (boss.id === 'boss-demon') {
+      // Demon Lord patterns
+      switch (phase) {
+        case 1: // 100-80%
+          return ['hellFire', 'soulSteal', 'darknessNova'];
+        case 2: // 80-60% - Add teleport
+          return ['hellFire', 'soulSteal', 'teleport', 'darknessNova'];
+        case 3: // 60-40% - More aggressive
+          return ['demonRage', 'hellFire', 'soulSteal', 'darknessNova'];
+        case 4: // 40-20% - Add shadow clones
+          return ['demonRage', 'shadowClones', 'hellFire', 'teleport'];
+        case 5: // 20-0% - Desperate, include life drain
+          return ['demonRage', 'lifeDrain', 'shadowClones', 'hellFire'];
+        default:
+          return ['hellFire', 'soulSteal', 'darknessNova'];
+      }
+    } else {
+      // Dragon patterns (default)
+      switch (phase) {
+        case 1: // 100-75%
+          return ['fireBreath', 'tailSwipe', 'roar'];
+        case 2: // 75-50% - Add charge attack
+          return ['fireBreath', 'tailSwipe', 'charge', 'roar'];
+        case 3: // 50-25% - More aggressive
+          return ['charge', 'groundSlam', 'fireBreath', 'roar'];
+        case 4: // 25-0% - Desperate, fast patterns
+          return ['charge', 'groundSlam', 'tailSwipe', 'fireBreath'];
+        default:
+          return ['fireBreath', 'tailSwipe', 'roar'];
+      }
     }
   }
 
@@ -239,7 +404,7 @@ export class BossAISystem {
     const boss = state.boss;
     const skill = boss.skills[boss.activeSkill];
 
-    // Handle summonAdds differently (no damage check)
+    // Handle special skills differently
     if (boss.activeSkill === 'summonAdds') {
       this.executeSpecialMechanic(state, boss, 'summonAdds');
       boss.skillPhase = 'casting';
@@ -248,6 +413,34 @@ export class BossAISystem {
       return;
     }
 
+    // Demon Lord special skills
+    if (boss.id === 'boss-demon') {
+      if (boss.activeSkill === 'shadowClones') {
+        this.executeShadowClones(state, boss);
+        boss.skillPhase = 'casting';
+        boss.skillTimer = 0;
+        skill.remaining = skill.cooldown;
+        return;
+      }
+      
+      if (boss.activeSkill === 'teleport') {
+        this.executeTeleport(state, boss);
+        boss.skillPhase = 'casting';
+        boss.skillTimer = 0;
+        skill.remaining = skill.cooldown;
+        return;
+      }
+      
+      if (boss.activeSkill === 'lifeDrain') {
+        this.executeLifeDrain(state, boss);
+        boss.skillPhase = 'casting';
+        boss.skillTimer = 0;
+        skill.remaining = skill.cooldown;
+        return;
+      }
+    }
+
+    // Default damage skills (fireBreath, hellFire, etc.) - use danger zone detection
     const cx = boss.x;
     const cy = boss.y;
     const r = skill.radius;
@@ -256,13 +449,18 @@ export class BossAISystem {
     const dx = state.player.x - cx;
     const dy = state.player.y - cy;
     const d2 = dx * dx + dy * dy;
+    const currentDistance = Math.sqrt(d2);
 
     // Phase 3+ deals more damage
     let damage = skill.damage;
     if (boss.phase >= 3) damage *= 1.2; // 20% more damage in phase 3+
 
-    if (d2 <= r2) {
+    // Only apply damage if player is in danger zone (same as warning radius)
+    if (currentDistance <= r) {
       state.player.hp = Math.max(0, state.player.hp - damage);
+      console.log(`Boss ${boss.id} skill ${boss.activeSkill} hit! Distance: ${currentDistance.toFixed(1)}, Damage: ${damage}`);
+    } else {
+      console.log(`Boss ${boss.id} skill ${boss.activeSkill} missed! Player distance: ${currentDistance.toFixed(1)}, Skill radius: ${r}`);
     }
 
     state.effects.push({
@@ -277,6 +475,96 @@ export class BossAISystem {
     boss.skillPhase = 'casting';
     boss.skillTimer = 0;
     skill.remaining = skill.cooldown;
+  }
+
+  // Demon Lord special skill implementations
+  executeShadowClones(state, boss) {
+    // Create 2 shadow clones that attack after delay
+    for (let i = 0; i < 2; i++) {
+      const angle = (Math.PI * 2 * i) / 2;
+      const cloneX = boss.x + Math.cos(angle) * 200;
+      const cloneY = boss.y + Math.sin(angle) * 200;
+      
+      state.effects.push({
+        type: 'shadowClone',
+        x: cloneX,
+        y: cloneY,
+        damage: 30,
+        delay: 1.0 + i * 0.5, // Staggered attacks
+        ttl: 3.0,
+      });
+    }
+    
+    console.log('Demon Lord summons shadow clones!');
+  }
+
+  executeTeleport(state, boss) {
+    // Teleport to a random position around the player
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 150 + Math.random() * 100; // 150-250 units away
+    
+    const teleportX = state.player.x + Math.cos(angle) * distance;
+    const teleportY = state.player.y + Math.sin(angle) * distance;
+    
+    // Keep within map bounds
+    const mapWidth = state.raidMap?.width || 1200;
+    const mapHeight = state.raidMap?.height || 800;
+    
+    boss.x = Math.max(50, Math.min(mapWidth - 50, teleportX));
+    boss.y = Math.max(50, Math.min(mapHeight - 50, teleportY));
+    boss.targetX = boss.x;
+    boss.targetY = boss.y;
+    
+    // Visual effect
+    state.effects.push({
+      type: 'teleport',
+      x: boss.x,
+      y: boss.y,
+      ttl: 1.0,
+    });
+    
+    console.log('Demon Lord teleports!');
+  }
+
+  executeLifeDrain(state, boss) {
+    // Continuous life drain effect
+    const drainDuration = 3.0;
+    const drainInterval = 0.5; // Drain every 0.5 seconds
+    const drainAmount = 10;
+    
+    let drainCount = 0;
+    const maxDrains = Math.floor(drainDuration / drainInterval);
+    
+    const drainIntervalId = setInterval(() => {
+      if (drainCount >= maxDrains || !state.boss || state.boss.hp <= 0) {
+        clearInterval(drainIntervalId);
+        return;
+      }
+      
+      // Check if player is within range
+      const dx = state.player.x - boss.x;
+      const dy = state.player.y - boss.y;
+      const distance = Math.hypot(dx, dy);
+      
+      if (distance <= 200) {
+        state.player.hp = Math.max(0, state.player.hp - drainAmount);
+        
+        // Visual effect
+        state.effects.push({
+          type: 'lifeDrain',
+          x: state.player.x,
+          y: state.player.y,
+          ttl: 0.3,
+        });
+        
+        // Heal boss
+        boss.hp = Math.min(boss.maxHp, boss.hp + drainAmount / 2);
+      }
+      
+      drainCount++;
+    }, drainInterval * 1000);
+    
+    console.log('Demon Lord uses life drain!');
   }
 
   reset() {

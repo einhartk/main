@@ -64,6 +64,22 @@ export async function loadPlayerData(db, uid) {
   return snap.data();
 }
 
+export async function checkPlayerDataExists(db, uid) {
+  const ref = doc(db, 'players', uid);
+  const snap = await getDoc(ref);
+  return snap.exists();
+}
+
+export function checkBrowserSaveDataExists() {
+  try {
+    const storageKey = 'lostark-game-save';
+    return localStorage.getItem(storageKey) !== null;
+  } catch (error) {
+    console.error('Error checking browser save data:', error);
+    return false;
+  }
+}
+
 export async function savePlayerData(db, uid, snapshot) {
   const ref = doc(db, 'players', uid);
   await setDoc(

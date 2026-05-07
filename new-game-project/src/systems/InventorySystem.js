@@ -183,6 +183,12 @@ export class InventorySystem {
     const item = state.player.consumableSlots[slotIndex - 1];
     if (!item || item.remaining > 0) return;
 
+    // Track consumable usage in raid
+    if (state.currentZone === 'raid') {
+      state.raidConsumablesUsed++;
+      console.log(`레이드 소모품 사용: ${state.raidConsumablesUsed}/${state.maxRaidConsumables}`);
+    }
+
     if (item.templateId === 'potion_hp') {
       state.player.hp = Math.min(100, state.player.hp + item.healAmount);
     } else if (item.templateId === 'potion_mp') {

@@ -10,6 +10,14 @@ export class GameState {
       gold: 1000,
     });
     
+    // Initialize battle items slots
+    this.player.battleItemSlots = {
+      1: { id: 'potion', name: 'Health Potion', count: 5, cooldown: 0, maxCooldown: 30, icon: '🧪' },
+      2: { id: 'bomb', name: 'Bomb', count: 3, cooldown: 0, maxCooldown: 60, icon: '💣' },
+      3: { id: 'scroll', name: 'Power Scroll', count: 2, cooldown: 0, maxCooldown: 90, icon: '📜' },
+      4: { id: 'elixir', name: 'Elixir', count: 1, cooldown: 0, maxCooldown: 180, icon: '⚗️' }
+    };
+    
     // Store selected character type
     this.selectedCharacter = characterType;
 
@@ -51,43 +59,102 @@ export class GameState {
       ],
     };
 
-    this.raid = {
-      id: 'raid-1',
-      name: 'Dragon\'s Lair',
-      boss: {
-        id: 'boss-dragon',
-        name: 'Ancient Dragon',
-        x: 480,
-        y: 270,
-        targetX: 480,
-        targetY: 270,
-        maxHp: 5000,
-        hp: 5000,
-        speed: 80,
-        skills: {
-          fireBreath: { cooldown: 4.0, remaining: 0, radius: 120, damage: 40, warningTime: 1.5 },
-          tailSwipe: { cooldown: 6.0, remaining: 0, radius: 80, damage: 30, warningTime: 1.0 },
-          roar: { cooldown: 8.0, remaining: 0, radius: 150, damage: 20, warningTime: 2.0 },
-          charge: { cooldown: 10.0, remaining: 0, radius: 200, damage: 60, warningTime: 2.0 },
-          groundSlam: { cooldown: 7.0, remaining: 0, radius: 100, damage: 45, warningTime: 1.2 },
-          summonAdds: { cooldown: 15.0, remaining: 0, radius: 0, damage: 0, warningTime: 2.5 },
+    this.raids = {
+      'raid-1': {
+        id: 'raid-1',
+        name: 'Dragon\'s Lair',
+        boss: {
+          id: 'boss-dragon',
+          name: 'Ancient Dragon',
+          x: 480,
+          y: 270,
+          targetX: 480,
+          targetY: 270,
+          maxHp: 5000,
+          hp: 5000,
+          speed: 80,
+          skills: {
+            fireBreath: { cooldown: 4.0, remaining: 0, radius: 120, damage: 40, warningTime: 1.5 },
+            tailSwipe: { cooldown: 6.0, remaining: 0, radius: 80, damage: 30, warningTime: 1.0 },
+            roar: { cooldown: 8.0, remaining: 0, radius: 150, damage: 20, warningTime: 2.0 },
+            charge: { cooldown: 10.0, remaining: 0, radius: 200, damage: 60, warningTime: 2.0 },
+            groundSlam: { cooldown: 7.0, remaining: 0, radius: 100, damage: 45, warningTime: 1.2 },
+            summonAdds: { cooldown: 15.0, remaining: 0, radius: 0, damage: 0, warningTime: 2.5 },
+          },
+          phase: 1,
+          maxPhases: 4,
+          patternTimer: 0,
+          currentPattern: 0,
+          activeSkill: null,
+          skillTimer: 0,
+          warningTimer: 0,
+          isWarning: false,
+          attackCooldown: 0,
+          basicDamage: 15,
+          defense: 150,
+          size: 80,
+          rewards: {
+            gold: 1000,
+            exp: 500,
+            items: ['epic-weapon', 'rare-armor']
+          }
         },
-        phase: 1,
-        maxPhases: 4,
-        patternTimer: 0,
-        currentPattern: 0,
-        activeSkill: null,
-        skillPhase: 'idle',
-        skillTimer: 0,
-        facingAngle: 0, // Boss facing direction (0 = right, PI/2 = down, PI = left, -PI/2 = up)
       },
+      'raid-2': {
+        id: 'raid-2',
+        name: 'Demon Fortress',
+        boss: {
+          id: 'boss-demon',
+          name: 'Demon Lord',
+          x: 480,
+          y: 270,
+          targetX: 480,
+          targetY: 270,
+          maxHp: 8000,
+          hp: 8000,
+          speed: 100,
+          skills: {
+            hellFire: { cooldown: 3.5, remaining: 0, radius: 140, damage: 55, warningTime: 1.2 },
+            shadowClones: { cooldown: 12.0, remaining: 0, radius: 0, damage: 0, warningTime: 2.0 },
+            soulSteal: { cooldown: 8.0, remaining: 0, radius: 180, damage: 35, warningTime: 1.8 },
+            demonRage: { cooldown: 15.0, remaining: 0, radius: 250, damage: 80, warningTime: 2.5 },
+            darknessNova: { cooldown: 6.0, remaining: 0, radius: 160, damage: 60, warningTime: 1.5 },
+            teleport: { cooldown: 10.0, remaining: 0, radius: 0, damage: 0, warningTime: 1.0 },
+            lifeDrain: { cooldown: 20.0, remaining: 0, radius: 200, damage: 25, warningTime: 3.0 },
+          },
+          phase: 1,
+          maxPhases: 5,
+          patternTimer: 0,
+          currentPattern: 0,
+          activeSkill: null,
+          skillTimer: 0,
+          warningTimer: 0,
+          isWarning: false,
+          attackCooldown: 0,
+          basicDamage: 20,
+          defense: 250,
+          size: 90,
+          rewards: {
+            gold: 2500,
+            exp: 1200,
+            items: ['legendary-weapon', 'epic-armor', 'epic-accessory']
+          }
+        },
+      }
     };
+
+    // 기존 raid 호환성을 위해 첫번째 레이드를 기본값으로 설정
+    this.raid = this.raids['raid-1'];
 
     this.interactions = {
       targetNpcId: null,
       dialog: null,
       upgradePanelOpen: false,
     };
+
+    // Raid consumables usage tracking
+    this.raidConsumablesUsed = 0;
+    this.maxRaidConsumables = 7;
 
     this.actions = {
       castSkills: [],

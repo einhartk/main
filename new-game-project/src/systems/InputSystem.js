@@ -21,8 +21,18 @@ export class InputSystem {
       }
     }
 
+    // Process consumable keys
     const useConsumable = this.inputHandler.consumeUseConsumablePressed();
     if (useConsumable) {
+      // Check if in raid and has remaining uses
+      if (state.currentZone === 'raid') {
+        const remainingUses = state.maxRaidConsumables - state.raidConsumablesUsed;
+        if (remainingUses <= 0) {
+          console.log('레이드에서 소모품을 모두 사용했습니다.');
+          return; // Don't allow consumable use
+        }
+      }
+      
       // Only process consumable use if no UI panels are open (dialog, upgrade panel, etc.)
       const isUIOpen = state.interactions?.upgradePanelOpen || state.interactions?.dialog;
       
@@ -35,7 +45,11 @@ export class InputSystem {
     }
 
     if (this.inputHandler.consumeEnterRaidPressed()) {
-      state.actions.enterRaid = true;
+      // Only show raid selection if not in raid
+      if (state.currentZone !== 'raid' && window.showRaidSelection) {
+        window.showRaidSelection();
+      }
+      // In raid, R key should be treated as skill (handled below in skill processing)
     }
 
     if (this.inputHandler.consumeReturnToTownPressed()) {
