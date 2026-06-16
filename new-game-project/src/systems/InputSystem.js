@@ -101,6 +101,25 @@ export class InputSystem {
 
     state.time += dt;
     state.frame += 1;
+
+    // Mirror local actions into playerActions for multiplayer sync
+    if (!state.playerActions) state.playerActions = {};
+    const localId = state.localPlayerId || 'local';
+    state.playerActions[localId] = {
+      castSkills: state.actions.castSkills,
+      basicAttack: state.actions.basicAttack,
+      interact: state.actions.interact,
+      toggleUpgradePanel: state.actions.toggleUpgradePanel,
+      upgradeSlot: state.actions.upgradeSlot,
+      useConsumable: state.actions.useConsumable,
+      useBattleItem: state.actions.useBattleItem,
+      enterRaid: state.actions.enterRaid,
+      returnToTown: state.actions.returnToTown,
+      targetX: state.player.targetX,
+      targetY: state.player.targetY,
+      mouseX: state.mouse?.x ?? state.player.targetX,
+      mouseY: state.mouse?.y ?? state.player.targetY,
+    };
   }
 }
 

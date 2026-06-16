@@ -2,24 +2,35 @@ import { CharacterFactory } from '../characters/CharacterFactory.js';
 
 export class GameState {
   constructor(characterType = 'sura') {
+    // Multiplayer-ready players map
+    this.players = {};
+    this.localPlayerId = 'local';
+
     // Use CharacterFactory to create player based on character type
-    this.player = CharacterFactory.createCharacter(characterType, {
+    const localPlayer = CharacterFactory.createCharacter(characterType, {
       x: 100,  // 마을 입구 위치 (왼쪽)
       y: 270,  // 중앙 높이
       level: 1,
       gold: 1000,
     });
-    
+
     // Initialize battle items slots
-    this.player.battleItemSlots = {
+    localPlayer.battleItemSlots = {
       1: { id: 'potion', name: 'Health Potion', count: 5, cooldown: 0, maxCooldown: 30, icon: '🧪' },
       2: { id: 'bomb', name: 'Bomb', count: 3, cooldown: 0, maxCooldown: 60, icon: '💣' },
       3: { id: 'scroll', name: 'Power Scroll', count: 2, cooldown: 0, maxCooldown: 90, icon: '📜' },
       4: { id: 'elixir', name: 'Elixir', count: 1, cooldown: 0, maxCooldown: 180, icon: '⚗️' }
     };
-    
+
+    this.players[this.localPlayerId] = localPlayer;
+
     // Store selected character type
     this.selectedCharacter = characterType;
+
+    // Multiplayer room state
+    this.roomId = null;
+    this.isHost = false;
+    this.isMultiplayer = false;
 
     this.currentZone = 'town';
 
@@ -171,5 +182,28 @@ export class GameState {
 
     this.time = 0;
     this.frame = 0;
+  }
+
+  get player() {
+    return this.players[this.localPlayerId];
+  }
+
+  setPlayerData(playerId, data) {
+    if (!this.players[playerId]) {
+      this.players[playerId] = {};
+    }
+    Object.assign(this.players[playerId], data);
+  }
+
+  removePlayer(playerId) {
+    delete this.players[playerId];
+  }
+
+  getAllPlayerIds() {
+    return Object.keys(this.players);
+  }
+
+  getOtherPlayerIds() {
+    return Object.keys(this.players).filter(id => id !== this.localPlayerId);
   }
 }

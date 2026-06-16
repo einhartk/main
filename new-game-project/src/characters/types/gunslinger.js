@@ -46,7 +46,7 @@ export const gunslinger = {
     
     // Special Skills
     t: { key: 't', name: '피스메이커', icon: '🔫✨', cooldown: 30, remaining: 0, radius: 0, damage: 0, effectType: 'buff', gaugeType: 'special', description: '30초간 모든 무기 버프 증폭', buffDuration: 30 },
-    v: { key: 'v', name: '하이 눈', icon: '👁️', cooldown: 100, remaining: 0, radius: 300, damage: 180, effectType: 'awakening', gaugeType: 'special', description: '각성: 360도 전방 위력 사격' },
+    v: { key: 'v', name: '하이 눈', icon: '👁️', cooldown: 100, remaining: 0, radius: 300, damage: 35, hits: 4, hitInterval: 0.12, effectType: 'awakening', gaugeType: 'special', description: '각성: 360도 전방 위력 사격' },
     z: { key: 'z', name: '멸망의 탄환', icon: '🔴', cooldown: 0.5, remaining: 0, radius: 180, damage: 40, effectType: 'projectile', gaugeType: 'hunt', requiredStacks: 20, description: '20스택 필요: 모든 무기 동시 발사' },
     x: { key: 'x', name: '롤', icon: '🔄', cooldown: 8, remaining: 0, radius: 80, damage: 0, effectType: 'counter', gaugeType: 'handgun', description: '구르기로 회피' },
   },

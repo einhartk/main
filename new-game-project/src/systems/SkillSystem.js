@@ -19,12 +19,22 @@ export class SkillSystem {
   }
 
   update(state, dt) {
-    tickCooldowns(state, dt);
+    const originalLocalId = state.localPlayerId;
+
+    // Tick cooldowns for ALL players (local + remote)
+    for (const playerId of Object.keys(state.players)) {
+      state.localPlayerId = playerId;
+      tickCooldowns(state, dt);
+    }
+    state.localPlayerId = originalLocalId;
+
     tickEffects(state, dt);
 
+    // --- Local player actions (backward compat) ---
     if (state.actions.castSkills && state.actions.castSkills.length > 0) {
       const keys = state.actions.castSkills;
       state.actions.castSkills = [];
+      state.localPlayerId = originalLocalId;
 
       for (const key of keys) {
         tryCastSkill(state, key);
@@ -34,10 +44,37 @@ export class SkillSystem {
     if (state.actions.basicAttack) {
       const target = state.actions.basicAttack;
       state.actions.basicAttack = null;
-      // Apply attackSpeed to basic attack animation duration
+      state.localPlayerId = originalLocalId;
       const attackSpeedMultiplier = (state.player.attackSpeed || 100) / 100;
       tryBasicAttack(state, target, this.basicAttackDamage, this.basicAttackRange, attackSpeedMultiplier);
     }
+
+    // --- Remote player actions (multiplayer) ---
+    if (state.playerActions) {
+      for (const [playerId, actions] of Object.entries(state.playerActions)) {
+        if (playerId === originalLocalId) continue;
+        if (!state.players[playerId] || !actions) continue;
+
+        state.localPlayerId = playerId;
+
+        if (actions.castSkills && actions.castSkills.length > 0) {
+          const keys = [...actions.castSkills];
+          actions.castSkills = [];
+          for (const key of keys) {
+            tryCastSkill(state, key);
+          }
+        }
+
+        if (actions.basicAttack) {
+          const target = actions.basicAttack;
+          actions.basicAttack = null;
+          const attackSpeedMultiplier = (state.player.attackSpeed || 100) / 100;
+          tryBasicAttack(state, target, this.basicAttackDamage, this.basicAttackRange, attackSpeedMultiplier);
+        }
+      }
+    }
+
+    state.localPlayerId = originalLocalId;
   }
 }
 

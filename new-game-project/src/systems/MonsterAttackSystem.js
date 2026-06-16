@@ -5,18 +5,22 @@ export class MonsterAttackSystem {
       console.log(`MonsterAttack Debug - monsterAttacks: ${state.actions.monsterAttacks?.length || 0}, bossAttacks: ${state.actions.bossAttacks?.length || 0}`);
     }
 
-    // Process regular monster attacks
+    // Process regular monster attacks (nearest player)
     if (state.actions.monsterAttacks && state.actions.monsterAttacks.length > 0) {
       for (const attack of state.actions.monsterAttacks) {
-        // Apply damage to player
-        if (state.player) {
-          state.player.hp = Math.max(0, state.player.hp - (attack.damage || 10));
-          
-          // Create visual effect for attack
-          if (!state.effects) {
-            state.effects = [];
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (const p of Object.values(state.players)) {
+          if (p.isDead) continue;
+          const d = Math.hypot(p.x - attack.targetX, p.y - attack.targetY);
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearest = p;
           }
-          
+        }
+        if (nearest) {
+          nearest.hp = Math.max(0, nearest.hp - (attack.damage || 10));
+          if (!state.effects) state.effects = [];
           state.effects.push({
             type: 'monsterAttack',
             x: attack.targetX,
@@ -26,24 +30,25 @@ export class MonsterAttackSystem {
           });
         }
       }
-      
-      // Clear processed attacks
       state.actions.monsterAttacks = [];
     }
 
-    // Process boss attacks
+    // Process boss attacks (nearest player)
     if (state.actions.bossAttacks && state.actions.bossAttacks.length > 0) {
       for (const attack of state.actions.bossAttacks) {
-        // Apply damage to player
-        if (state.player) {
-          state.player.hp = Math.max(0, state.player.hp - (attack.damage || 15));
-          
-          // Create visual effect for boss attack
-          if (!state.effects) {
-            state.effects = [];
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (const p of Object.values(state.players)) {
+          if (p.isDead) continue;
+          const d = Math.hypot(p.x - attack.targetX, p.y - attack.targetY);
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearest = p;
           }
-          
-          // Different effects for different attack types
+        }
+        if (nearest) {
+          nearest.hp = Math.max(0, nearest.hp - (attack.damage || 15));
+          if (!state.effects) state.effects = [];
           if (attack.type === 'fullHP') {
             state.effects.push({
               type: 'bossFullHPAttack',
@@ -63,8 +68,6 @@ export class MonsterAttackSystem {
           }
         }
       }
-      
-      // Clear processed attacks
       state.actions.bossAttacks = [];
     }
   }

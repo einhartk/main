@@ -14,19 +14,22 @@ export class MovementSystem {
   }
 
   update(state, dt) {
-    // Apply movementSpeed multiplier (base 100%, max 140%)
-    const playerSpeedMultiplier = (state.player.movementSpeed || 100) / 100;
-    const adjustedPlayerSpeed = this.playerSpeed * playerSpeedMultiplier;
+    // Move all players (local + remote)
+    for (const player of Object.values(state.players)) {
+      if (player.isDead) continue;
+      const speedMultiplier = (player.movementSpeed || 100) / 100;
+      const adjustedPlayerSpeed = this.playerSpeed * speedMultiplier;
 
-    moveAgentToTargetWithCollisions(
-      state,
-      state.player,
-      adjustedPlayerSpeed,
-      getPlayerAABB,
-      PLAYER_SIZE,
-      dt,
-      this.arrivalEpsilon,
-    );
+      moveAgentToTargetWithCollisions(
+        state,
+        player,
+        adjustedPlayerSpeed,
+        getPlayerAABB,
+        PLAYER_SIZE,
+        dt,
+        this.arrivalEpsilon,
+      );
+    }
 
     for (const m of state.monsters) {
       moveAgentToTargetWithCollisions(

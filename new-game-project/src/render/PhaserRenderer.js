@@ -158,11 +158,39 @@ export class PhaserRenderer {
       console.log('Render - zone:', state.currentZone, 'map size:', state.map.width, state.map.height, 'colliders:', state.map.colliders.length);
     }
 
-    this._gfx.lineStyle(2, 0xa7d7ff, 1);
-    this._gfx.strokeCircle(state.player.targetX, state.player.targetY, 8);
+    // Draw all players (local + remote)
+    const localId = state.localPlayerId || 'local';
+    for (const [playerId, player] of Object.entries(state.players)) {
+      if (player.isDead) continue;
+      const isLocal = playerId === localId;
+      const color = isLocal ? 0x3aa0ff : 0x4ade80;
+      const size = isLocal ? 14 : 12;
+      const alpha = isLocal ? 1 : 0.85;
 
-    this._gfx.fillStyle(0x3aa0ff, 1);
-    this._gfx.fillRect(state.player.x - 14, state.player.y - 14, 28, 28);
+      this._gfx.lineStyle(2, 0xa7d7ff, alpha);
+      this._gfx.strokeCircle(player.targetX, player.targetY, 8);
+
+      this._gfx.fillStyle(color, alpha);
+      this._gfx.fillRect(player.x - size, player.y - size, size * 2, size * 2);
+
+      // Draw player name above head for remote players
+      if (!isLocal && player.name && this._scene) {
+        // Simple name tag using scene text (cached)
+        const cacheKey = `_mp_name_${playerId}`;
+        let nameText = this._scene[cacheKey];
+        if (!nameText) {
+          nameText = this._scene.add.text(0, 0, player.name, {
+            fontFamily: 'system-ui, sans-serif',
+            fontSize: '11px',
+            color: '#aaffaa',
+          });
+          nameText.setOrigin(0.5, 1);
+          this._scene[cacheKey] = nameText;
+        }
+        nameText.setPosition(player.x, player.y - size - 4);
+        nameText.setVisible(true);
+      }
+    }
 
     this._gfx.fillStyle(0xff5a6a, 1);
     for (const m of state.monsters) {

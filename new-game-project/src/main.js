@@ -24,6 +24,7 @@ import { NPCSystem } from './systems/NPCSystem.js';
 import { InventorySystem } from './systems/InventorySystem.js';
 import { BossAISystem } from './systems/BossAISystem.js';
 import { ZoneSystem } from './systems/ZoneSystem.js';
+import { MultiplayerSystem } from './systems/MultiplayerSystem.js';
 
 import { createItem, createConsumable, getUpgradeSuccessRate, getUpgradeCost } from './data/items.js';
 import { PerformanceManager } from './utils/PerformanceManager.js';
@@ -33,6 +34,14 @@ let loop = null;
 let inputHandler = null;
 let saveManager = null;
 let performanceManager = null;
+let multiplayerSystem = null;
+
+// Sync window.multiplayerSystem with module variable
+Object.defineProperty(window, 'multiplayerSystem', {
+  get: () => multiplayerSystem,
+  set: (v) => { multiplayerSystem = v; },
+  configurable: true,
+});
 
 // Global save function for activity-based auto-saving
 async function saveOnActivity(activityType = 'general') {
@@ -250,11 +259,17 @@ function startGameWithLoadedData(characterType, loadedData) {
     new CollisionSystem(),
   ];
 
+  if (multiplayerSystem) {
+    systems.push(multiplayerSystem);
+  }
+
   loop = new GameLoop({ state, renderer, systems });
   loop.start();
 
   // Auto-save every 30 seconds
-  saveManager.startAutoSave(state, 30000);
+  if (saveManager && currentUid) {
+    saveManager.startAutoSave(state, 30000);
+  }
 
   // Save on activity
   window.saveOnActivity = saveOnActivity;
@@ -338,15 +353,22 @@ function startGame(characterType) {
     new InventorySystem(),
     new CollisionSystem(),
   ];
-  
+
+  // Add multiplayer system if active
+  if (multiplayerSystem) {
+    systems.push(multiplayerSystem);
+  }
+
   // Store reference to BossAISystem in state for SkillSystem to access
   state.bossAISystem = bossAISystem;
 
   loop = new GameLoop({ state, renderer, systems });
   loop.start();
-  
+
   // Start auto-save (data loading will be handled separately)
-  saveManager.startAutoSave(state);
+  if (saveManager && currentUid) {
+    saveManager.startAutoSave(state);
+  }
   
   // Expose upgrade functions to global scope
   exposeUpgradeFunctions();
@@ -371,7 +393,7 @@ async function loadGameData() {
   }
 }
 
-const { auth, db } = initFirebase();
+const { auth, db, rdb } = initFirebase();
 
 const elStatus = document.getElementById('auth-status');
 const btnLogin = document.getElementById('btn-login');
@@ -519,4 +541,241 @@ setInterval(persistGame, 60_000); // Save every minute instead of 10 seconds
 
 window.addEventListener('beforeunload', () => {
   void persistGame();
+  if (multiplayerSystem) {
+    multiplayerSystem.cleanup();
+  }
 });
+
+/* ---------- Multiplayer API ---------- */
+
+function getPlayerDisplayName() {
+  const user = auth.currentUser;
+  return user?.displayName || user?.email || user?.uid || 'Guest';
+}
+
+async function createMultiplayerRoom(characterType) {
+  if (!auth.currentUser) {
+    alert('멀티플레이어는 로그인이 필요합니다.');
+    return null;
+  }
+  try {
+    multiplayerSystem = new MultiplayerSystem(rdb, currentUid, getPlayerDisplayName(), characterType);
+    const roomId = await multiplayerSystem.createRoom();
+    console.log('Room created:', roomId);
+    return roomId;
+  } catch (e) {
+    console.error('Failed to create room:', e);
+    alert('방 생성 실패: ' + e.message);
+    return null;
+  }
+}
+
+async function joinMultiplayerRoom(roomCode, characterType) {
+  if (!auth.currentUser) {
+    alert('멀티플레이어는 로그인이 필요합니다.');
+    return false;
+  }
+  try {
+    multiplayerSystem = new MultiplayerSystem(rdb, currentUid, getPlayerDisplayName(), characterType);
+    await multiplayerSystem.joinRoom(roomCode);
+    console.log('Joined room:', roomCode);
+    return true;
+  } catch (e) {
+    console.error('Failed to join room:', e);
+    alert('방 참가 실패: ' + e.message);
+    return false;
+  }
+}
+
+function setMultiplayerReady(ready = true) {
+  if (!multiplayerSystem) return;
+  multiplayerSystem.setReady(ready);
+}
+
+async function startMultiplayerGameFromLobby(characterType) {
+  if (!multiplayerSystem || !multiplayerSystem.isHost) {
+    alert('방장만 게임을 시작할 수 있습니다.');
+    return;
+  }
+
+  // Try to load saved character data first
+  let savedData = null;
+  if (saveManager) {
+    try {
+      const result = await saveManager.loadGame();
+      if (result.success && result.data) {
+        savedData = result.data;
+        console.log('Loaded saved character data for multiplayer host');
+      }
+    } catch (e) {
+      console.warn('Failed to load saved data, starting fresh:', e);
+    }
+  }
+
+  // Initialize game state
+  state = new GameState(characterType);
+  inputHandler = new InputHandler();
+  performanceManager = new PerformanceManager();
+  performanceManager.enableMonitoring();
+  window.state = state;
+
+  // Mark as multiplayer
+  state.isMultiplayer = true;
+  state.isHost = true;
+  state.roomId = multiplayerSystem.roomId;
+  state.localPlayerId = currentUid;
+
+  // Apply saved data if available
+  if (savedData) {
+    applyLoadedPlayerDataToState(state, savedData);
+    console.log('Applied saved character data to multiplayer host state');
+  }
+
+  // Move local player from 'local' key to uid key
+  const localPlayer = state.players['local'];
+  delete state.players['local'];
+  state.players[currentUid] = localPlayer;
+
+  // Initialize remote players and start RDB sync
+  await multiplayerSystem.startGame(state);
+
+  const inventorySystem = new InventorySystem();
+  inventorySystem.addItem(state, 'weapon', 'w1');
+  inventorySystem.addItem(state, 'armor', 'a1');
+  inventorySystem.addItem(state, 'accessory', 'ac1');
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+  inventorySystem.addConsumable(state, 1, 'potion_hp');
+  inventorySystem.addConsumable(state, 2, 'potion_hp');
+  inventorySystem.addConsumable(state, 3, 'potion_elixir');
+  inventorySystem.addConsumable(state, 4, 'potion_berserk');
+
+  const renderer = new PhaserRenderer({ parentId: 'app', width: 1280, height: 720 });
+  window.performanceManager = performanceManager;
+
+  const bossAISystem = new BossAISystem();
+
+  const systems = [
+    new InputSystem(inputHandler),
+    new ZoneSystem(renderer),
+    new AISystem(),
+    bossAISystem,
+    new MovementSystem(),
+    new SkillSystem(),
+    new MonsterAttackSystem(),
+    new NPCSystem(),
+    new InventorySystem(),
+    new CollisionSystem(),
+    multiplayerSystem,
+  ];
+
+  state.bossAISystem = bossAISystem;
+
+  loop = new GameLoop({ state, renderer, systems });
+  loop.start();
+
+  exposeUpgradeFunctions();
+  hideCharacterSelection();
+  hideMultiplayerLobby();
+
+  console.log('Multiplayer game started as host');
+}
+
+async function joinMultiplayerGameInProgress(characterType) {
+  if (!multiplayerSystem) return;
+
+  // Try to load saved character data first
+  let savedData = null;
+  if (saveManager) {
+    try {
+      const result = await saveManager.loadGame();
+      if (result.success && result.data) {
+        savedData = result.data;
+        console.log('Loaded saved character data for multiplayer');
+      }
+    } catch (e) {
+      console.warn('Failed to load saved data, starting fresh:', e);
+    }
+  }
+
+  // Create state with character type (will be overridden by saved data if available)
+  state = new GameState(characterType);
+  inputHandler = new InputHandler();
+  performanceManager = new PerformanceManager();
+  performanceManager.enableMonitoring();
+  window.state = state;
+
+  state.isMultiplayer = true;
+  state.isHost = false;
+  state.roomId = multiplayerSystem.roomId;
+  state.localPlayerId = currentUid;
+
+  // Apply saved data if available and matches character type
+  if (savedData) {
+    applyLoadedPlayerDataToState(state, savedData);
+    console.log('Applied saved character data to multiplayer state');
+  }
+
+  // Move local player from 'local' key to uid key
+  const localPlayer = state.players['local'];
+  delete state.players['local'];
+  state.players[currentUid] = localPlayer;
+
+  const inventorySystem = new InventorySystem();
+  inventorySystem.addItem(state, 'weapon', 'w1');
+  inventorySystem.addItem(state, 'armor', 'a1');
+  inventorySystem.addItem(state, 'accessory', 'ac1');
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+  inventorySystem.equipItem(state, state.player.inventory[0].id);
+  inventorySystem.addConsumable(state, 1, 'potion_hp');
+  inventorySystem.addConsumable(state, 2, 'potion_hp');
+  inventorySystem.addConsumable(state, 3, 'potion_elixir');
+  inventorySystem.addConsumable(state, 4, 'potion_berserk');
+
+  const renderer = new PhaserRenderer({ parentId: 'app', width: 1280, height: 720 });
+  window.performanceManager = performanceManager;
+
+  const bossAISystem = new BossAISystem();
+
+  const systems = [
+    new InputSystem(inputHandler),
+    new ZoneSystem(renderer),
+    new AISystem(),
+    bossAISystem,
+    new MovementSystem(),
+    new SkillSystem(),
+    new MonsterAttackSystem(),
+    new NPCSystem(),
+    new InventorySystem(),
+    new CollisionSystem(),
+    multiplayerSystem,
+  ];
+
+  state.bossAISystem = bossAISystem;
+
+  loop = new GameLoop({ state, renderer, systems });
+  loop.start();
+
+  exposeUpgradeFunctions();
+  hideCharacterSelection();
+  hideMultiplayerLobby();
+
+  console.log('Multiplayer game started as client');
+}
+
+function leaveMultiplayerRoom() {
+  if (multiplayerSystem) {
+    multiplayerSystem.cleanup();
+    multiplayerSystem = null;
+  }
+}
+
+// Expose to window for UI access
+window.createMultiplayerRoom = createMultiplayerRoom;
+window.joinMultiplayerRoom = joinMultiplayerRoom;
+window.setMultiplayerReady = setMultiplayerReady;
+window.startMultiplayerGameFromLobby = startMultiplayerGameFromLobby;
+window.joinMultiplayerGameInProgress = joinMultiplayerGameInProgress;
+window.leaveMultiplayerRoom = leaveMultiplayerRoom;

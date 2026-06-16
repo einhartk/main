@@ -193,14 +193,31 @@ export class BossAISystem {
       const dy = p.y - boss.y;
       const dist = Math.hypot(dx, dy);
 
-      if (dist > 100) {
+      // Improved movement logic - always update target to current player position
+      // This prevents boss from becoming "dumb" when player uses movement skills
+      if (dist > 80) { // Slightly reduced chase distance for better engagement
         boss.targetX = p.x;
         boss.targetY = p.y;
         // Update facing angle to look at player while chasing
         boss.facingAngle = Math.atan2(dy, dx);
+        
+        // Add small random offset to prevent predictable movement
+        if (Math.random() < 0.1) { // 10% chance per frame
+          const randomOffset = 20;
+          boss.targetX += (Math.random() - 0.5) * randomOffset;
+          boss.targetY += (Math.random() - 0.5) * randomOffset;
+        }
       } else {
-        boss.targetX = boss.x;
-        boss.targetY = boss.y;
+        // At close range, maintain some movement to avoid being static
+        if (Math.random() < 0.05) { // 5% chance per frame to adjust position
+          const circleRadius = 30;
+          const angle = Math.atan2(dy, dx) + Math.PI + (Math.random() - 0.5) * Math.PI / 4;
+          boss.targetX = p.x + Math.cos(angle) * circleRadius;
+          boss.targetY = p.y + Math.sin(angle) * circleRadius;
+        } else {
+          boss.targetX = boss.x;
+          boss.targetY = boss.y;
+        }
       }
     }
 
@@ -308,37 +325,55 @@ export class BossAISystem {
   getPatternsForPhase(phase) {
     const boss = this.getCurrentBoss();
     
+    // Basic attack patterns are always available regardless of phase
+    const basicPatterns = ['basicAttack'];
+    
     // Different patterns for each boss type
     if (boss.id === 'boss-demon') {
       // Demon Lord patterns
+      let specialPatterns = [];
       switch (phase) {
         case 1: // 100-80%
-          return ['hellFire', 'soulSteal', 'darknessNova'];
+          specialPatterns = ['hellFire', 'soulSteal', 'darknessNova'];
+          break;
         case 2: // 80-60% - Add teleport
-          return ['hellFire', 'soulSteal', 'teleport', 'darknessNova'];
+          specialPatterns = ['hellFire', 'soulSteal', 'teleport', 'darknessNova'];
+          break;
         case 3: // 60-40% - More aggressive
-          return ['demonRage', 'hellFire', 'soulSteal', 'darknessNova'];
+          specialPatterns = ['demonRage', 'hellFire', 'soulSteal', 'darknessNova'];
+          break;
         case 4: // 40-20% - Add shadow clones
-          return ['demonRage', 'shadowClones', 'hellFire', 'teleport'];
+          specialPatterns = ['demonRage', 'shadowClones', 'hellFire', 'teleport'];
+          break;
         case 5: // 20-0% - Desperate, include life drain
-          return ['demonRage', 'lifeDrain', 'shadowClones', 'hellFire'];
+          specialPatterns = ['demonRage', 'lifeDrain', 'shadowClones', 'hellFire'];
+          break;
         default:
-          return ['hellFire', 'soulSteal', 'darknessNova'];
+          specialPatterns = ['hellFire', 'soulSteal', 'darknessNova'];
+          break;
       }
+      return [...basicPatterns, ...specialPatterns];
     } else {
       // Dragon patterns (default)
+      let specialPatterns = [];
       switch (phase) {
         case 1: // 100-75%
-          return ['fireBreath', 'tailSwipe', 'roar'];
+          specialPatterns = ['fireBreath', 'tailSwipe', 'roar'];
+          break;
         case 2: // 75-50% - Add charge attack
-          return ['fireBreath', 'tailSwipe', 'charge', 'roar'];
+          specialPatterns = ['fireBreath', 'tailSwipe', 'charge', 'roar'];
+          break;
         case 3: // 50-25% - More aggressive
-          return ['charge', 'groundSlam', 'fireBreath', 'roar'];
+          specialPatterns = ['charge', 'groundSlam', 'fireBreath', 'roar'];
+          break;
         case 4: // 25-0% - Desperate, fast patterns
-          return ['charge', 'groundSlam', 'tailSwipe', 'fireBreath'];
+          specialPatterns = ['charge', 'groundSlam', 'tailSwipe', 'fireBreath'];
+          break;
         default:
-          return ['fireBreath', 'tailSwipe', 'roar'];
+          specialPatterns = ['fireBreath', 'tailSwipe', 'roar'];
+          break;
       }
+      return [...basicPatterns, ...specialPatterns];
     }
   }
 

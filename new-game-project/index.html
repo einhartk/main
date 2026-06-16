@@ -69,7 +69,10 @@
         </div>
       </div>
 
-      <button id="char-select-btn" class="char-select-btn">게임 시작</button>
+      <div class="char-select-actions">
+        <button id="char-select-btn" class="char-select-btn">게임 시작</button>
+        <button id="char-select-mp-btn" class="char-select-btn mp">4인 레이드</button>
+      </div>
     </div>
 
     <div id="app"></div>
@@ -212,6 +215,41 @@
       <div id="auth-status">Auth: (loading)</div>
       <button id="btn-login">Login (Google)</button>
       <button id="btn-logout" disabled>Logout</button>
+    </div>
+
+    <!-- Multiplayer Lobby -->
+    <div id="multiplayer-lobby" style="display:none;">
+      <div class="mp-lobby-content">
+        <div class="mp-lobby-header">
+          <h2>4인 레이드 로비</h2>
+          <button id="mp-lobby-close" class="mp-lobby-close">&times;</button>
+        </div>
+        <div class="mp-lobby-body">
+          <div class="mp-room-section">
+            <div id="mp-room-info" style="display:none;">
+              <div class="mp-room-code-box">
+                <span>방 코드:</span>
+                <strong id="mp-room-code">----</strong>
+                <button id="mp-copy-code">복사</button>
+              </div>
+            </div>
+            <div id="mp-join-section">
+              <input type="text" id="mp-join-code" placeholder="방 코드 입력 (예: ABC123)" maxlength="6" />
+              <button id="mp-join-btn">참가</button>
+            </div>
+            <button id="mp-create-btn" style="display:none;">방 만들기</button>
+          </div>
+          <div class="mp-players-section">
+            <h3>참가자</h3>
+            <ul id="mp-player-list"></ul>
+          </div>
+          <div class="mp-actions">
+            <button id="mp-ready-btn" style="display:none;">준비</button>
+            <button id="mp-start-btn" style="display:none;">게임 시작</button>
+            <button id="mp-leave-btn">나가기</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Test Mode Gold Charger Trigger -->
@@ -797,6 +835,141 @@
             hideRaidSelection();
           }
         });
+      })();
+
+      // Multiplayer Lobby Logic
+      (function() {
+        const charSelectScreen = document.getElementById('char-select');
+        const mpBtn = document.getElementById('char-select-mp-btn');
+        const mpLobby = document.getElementById('multiplayer-lobby');
+        const mpClose = document.getElementById('mp-lobby-close');
+        const mpCreate = document.getElementById('mp-create-btn');
+        const mpJoin = document.getElementById('mp-join-btn');
+        const mpJoinCode = document.getElementById('mp-join-code');
+        const mpRoomInfo = document.getElementById('mp-room-info');
+        const mpJoinSection = document.getElementById('mp-join-section');
+        const mpRoomCode = document.getElementById('mp-room-code');
+        const mpCopyCode = document.getElementById('mp-copy-code');
+        const mpPlayerList = document.getElementById('mp-player-list');
+        const mpReady = document.getElementById('mp-ready-btn');
+        const mpStart = document.getElementById('mp-start-btn');
+        const mpLeave = document.getElementById('mp-leave-btn');
+
+        let selectedCharacter = null;
+        let isHost = false;
+        let isReady = false;
+
+        window.showMultiplayerLobby = function(characterType, asHost) {
+          selectedCharacter = characterType;
+          isHost = asHost;
+          // Hide character selection screen
+          charSelectScreen.style.display = 'none';
+          // Show lobby
+          mpLobby.style.display = 'block';
+          if (asHost) {
+            mpCreate.style.display = 'inline-block';
+            mpJoinSection.style.display = 'none';
+          } else {
+            mpCreate.style.display = 'none';
+            mpJoinSection.style.display = 'flex';
+          }
+          mpRoomInfo.style.display = 'none';
+          mpReady.style.display = 'none';
+          mpStart.style.display = 'none';
+          mpPlayerList.innerHTML = '';
+          isReady = false;
+          mpReady.textContent = '준비';
+          mpReady.classList.remove('ready');
+        };
+
+        window.hideMultiplayerLobby = function() {
+          mpLobby.style.display = 'none';
+          charSelectScreen.style.display = 'block';
+        };
+
+        mpBtn.addEventListener('click', () => {
+          const selectedCard = document.querySelector('.char-card.selected');
+          if (!selectedCard) {
+            alert('캐릭터를 먼저 선택해주세요.');
+            return;
+          }
+          selectedCharacter = selectedCard.dataset.character;
+          window.showMultiplayerLobby(selectedCharacter, true);
+        });
+
+        mpClose.addEventListener('click', () => {
+          window.leaveMultiplayerRoom && window.leaveMultiplayerRoom();
+          window.hideMultiplayerLobby();
+        });
+
+        mpLeave.addEventListener('click', () => {
+          window.leaveMultiplayerRoom && window.leaveMultiplayerRoom();
+          window.hideMultiplayerLobby();
+        });
+
+        mpCreate.addEventListener('click', async () => {
+          const roomId = await window.createMultiplayerRoom(selectedCharacter);
+          if (roomId) {
+            mpCreate.style.display = 'none';
+            mpRoomInfo.style.display = 'block';
+            mpRoomCode.textContent = roomId;
+            mpReady.style.display = 'inline-block';
+            mpStart.style.display = 'inline-block';
+            startListeningPlayers();
+          }
+        });
+
+        mpJoin.addEventListener('click', async () => {
+          const code = mpJoinCode.value.trim().toUpperCase();
+          if (!code) return;
+          const ok = await window.joinMultiplayerRoom(code, selectedCharacter);
+          if (ok) {
+            mpJoinSection.style.display = 'none';
+            mpRoomInfo.style.display = 'block';
+            mpRoomCode.textContent = code;
+            mpReady.style.display = 'inline-block';
+            startListeningPlayers();
+          }
+        });
+
+        mpCopyCode.addEventListener('click', () => {
+          navigator.clipboard.writeText(mpRoomCode.textContent).catch(() => {});
+          mpCopyCode.textContent = '복사됨!';
+          setTimeout(() => mpCopyCode.textContent = '복사', 1500);
+        });
+
+        mpReady.addEventListener('click', () => {
+          isReady = !isReady;
+          mpReady.textContent = isReady ? '준비 완료' : '준비';
+          mpReady.classList.toggle('ready', isReady);
+          window.setMultiplayerReady && window.setMultiplayerReady(isReady);
+        });
+
+        mpStart.addEventListener('click', () => {
+          if (!isHost) return;
+          window.startMultiplayerGameFromLobby && window.startMultiplayerGameFromLobby(selectedCharacter);
+        });
+
+        function startListeningPlayers() {
+          if (!window.multiplayerSystem) return;
+          // Poll meta/players from multiplayerSystem or RDB
+          // Simple polling using multiplayerSystem meta subscription
+          const interval = setInterval(() => {
+            if (!window.multiplayerSystem || !window.multiplayerSystem.roomId) {
+              clearInterval(interval);
+              return;
+            }
+            renderPlayerList();
+          }, 1000);
+        }
+
+        function renderPlayerList() {
+          const meta = window.multiplayerSystem && window.multiplayerSystem.meta;
+          if (!meta) return;
+          // Build list from meta if available, otherwise placeholder
+          // In practice, you may want to subscribe to RDB players node directly
+          mpPlayerList.innerHTML = '<li>로비에 연결됨 (업데이트 중...)</li>';
+        }
       })();
     </script>
   </body>

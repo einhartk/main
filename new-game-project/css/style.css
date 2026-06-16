@@ -1235,3 +1235,152 @@ canvas {
 .battle-item-slot.on-cooldown .battle-item-cooldown {
   display: block;
 }
+
+/* Multiplayer */
+.char-select-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.char-select-btn.mp {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+}
+
+#multiplayer-lobby {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  z-index: 10001;
+  backdrop-filter: blur(6px);
+}
+
+.mp-lobby-content {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 2px solid rgba(100,150,255,0.3);
+  border-radius: 16px;
+  padding: 24px;
+  width: 420px;
+  max-width: 90vw;
+  color: #d7e3ff;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.mp-lobby-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.mp-lobby-header h2 {
+  margin: 0;
+  color: #6496ff;
+  font-size: 20px;
+}
+
+.mp-lobby-close {
+  background: transparent;
+  border: none;
+  color: #8a9ab0;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.mp-room-section {
+  margin-bottom: 16px;
+}
+
+.mp-room-code-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.25);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.mp-room-code-box strong {
+  color: #ffd700;
+  font-size: 18px;
+  letter-spacing: 2px;
+}
+
+#mp-join-section {
+  display: flex;
+  gap: 8px;
+}
+
+#mp-join-code {
+  flex: 1;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(100,150,255,0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #d7e3ff;
+  font-size: 14px;
+  outline: none;
+}
+
+#mp-join-code::placeholder {
+  color: #8a9ab0;
+}
+
+.mp-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.mp-actions button,
+.mp-room-section button {
+  background: linear-gradient(135deg, #6496ff, #4169e1);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mp-actions button#mp-ready-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+
+.mp-actions button#mp-ready-btn.ready {
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+}
+
+.mp-actions button#mp-start-btn {
+  background: linear-gradient(135deg, #ff6b6b, #ff5252);
+}
+
+.mp-actions button#mp-leave-btn {
+  background: rgba(255,255,255,0.1);
+  color: #d7e3ff;
+}
+
+#mp-player-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+#mp-player-list li {
+  background: rgba(0,0,0,0.2);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
