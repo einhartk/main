@@ -1,8 +1,45 @@
 {
   "raids": [
     {
+      "id": "belgardin",
+      "name": "벨가르딘",
+      "size": 8,
+      "difficulties": [
+        {
+          "id": "nightmare",
+          "name": "나이트메어",
+          "minIlvl": 1780,
+          "minCombatPower": 1,
+          "clearGold": 52000,
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
+        },
+        {
+          "id": "hard",
+          "name": "하드",
+          "minIlvl": 1770,
+          "minCombatPower": 1,
+          "clearGold": 44000,
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
+        },
+        {
+          "id": "normal",
+          "name": "노말",
+          "minIlvl": 1750,
+          "minCombatPower": 1,
+          "clearGold": 40000,
+          "defaultSize": 8,
+          "maxSupports": 2,
+          "partyCount": 2
+        }
+      ]
+    },
+    {
       "id": "arseno",
-      "name": "막걸리",
+      "name": "지평성당",
       "size": 4,
       "difficulties": [
         {
