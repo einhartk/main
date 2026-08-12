@@ -10,7 +10,7 @@
           "name": "나이트메어",
           "minIlvl": 1780,
           "minCombatPower": 1,
-          "clearGold": 52000,
+          "clearGold": 75000,
           "defaultSize": 8,
           "maxSupports": 2,
           "partyCount": 2
@@ -20,7 +20,7 @@
           "name": "하드",
           "minIlvl": 1770,
           "minCombatPower": 1,
-          "clearGold": 44000,
+          "clearGold": 62000,
           "defaultSize": 8,
           "maxSupports": 2,
           "partyCount": 2
@@ -30,7 +30,7 @@
           "name": "노말",
           "minIlvl": 1750,
           "minCombatPower": 1,
-          "clearGold": 40000,
+          "clearGold": 50000,
           "defaultSize": 8,
           "maxSupports": 2,
           "partyCount": 2
